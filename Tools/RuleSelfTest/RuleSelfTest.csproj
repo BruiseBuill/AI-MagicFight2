@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M11 · 规则自测旁路。
+
+    关键点：用 <Compile Include> 把 Assets/Scripts/Core 的源码「链接」进来 ——
+    一份代码、两处编译，不复制、不同步（`Docs/engineering/03-工程规划.md` §3）。
+    这样核心规则不需要打开 Unity 就能跑 10000 局 + 断言。
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>RuleSelfTest</AssemblyName>
+    <RootNamespace>MagicBrawl.SelfTest</RootNamespace>
+    <!-- 关掉默认通配包含，避免与下面的显式 Include 重复 -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!--
+      关掉 Roslyn 共享编译服务：它走命名管道，在受限环境（沙箱 / CI）里会被拦掉，
+      表现为「无任何输出 + 退出码 1」。关掉后编译行为稳定可预期。
+    -->
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="RuleAssertions.cs" />
+    <Compile Include="AuraScenario.cs" />
+    <Compile Include="BetaDefenseScenario.cs" />
+    <Compile Include="PeekScenario.cs" />
+    <Compile Include="CoolHandScenario.cs" />
+    <Compile Include="RemoveFromGameScenario.cs" />
+    <Compile Include="EarthquakeScenario.cs" />
+    <Compile Include="TorrentScenario.cs" />
+    <!-- Core 源码（链接，不复制） -->
+    <Compile Include="../../Assets/Scripts/Core/**/*.cs" />
+  </ItemGroup>
+
+</Project>

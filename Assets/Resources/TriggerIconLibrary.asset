@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c4439ecd8c7a46439a113acb51fb246, type: 3}
+  m_Name: TriggerIconLibrary
+  m_EditorClassIdentifier: 
+  _entries:
+  - Trigger: 0
+    Icon: {fileID: 21300000, guid: 32291bc2a1592ec4e97e3c0751347122, type: 3}
+  - Trigger: 1
+    Icon: {fileID: 21300000, guid: f2b91fd25303de9439465605f020cd5f, type: 3}
+  - Trigger: 2
+    Icon: {fileID: 21300000, guid: 8effaf65e680f7843a962c97632ca51c, type: 3}

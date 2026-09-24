@@ -1,0 +1,11 @@
+# 角色/动作  画布宽 画布高 锚点X 锚点Y 帧数
+# 锚点 = 身体中心 / 脚底，图像坐标（左上原点）。
+# Unity 侧把每帧 Sprite 的 pivot 设成 Custom = 锚点，摆位时 RectTransform 的位置即「脚底中心」。
+Monster/idle 257 216 126 209 6
+Monster/attack 558 205 296 198 5
+Monster/defend 367 242 207 235 5
+Hero/idle 188 185 94 178 16
+Hero/attack 554 256 206 249 12
+Hero/defend 388 256 186 249 12
+Hero/behit 289 272 144 265 12
+Hero/death 325 254 162 247 12

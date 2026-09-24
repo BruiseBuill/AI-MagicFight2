@@ -1,0 +1,135 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 326cb684cb3525f40adc00885aa17630, type: 3}
+  m_Name: CardArtLibrary
+  m_EditorClassIdentifier: 
+  _entries:
+  - CardId: a
+    Art: {fileID: 21300000, guid: 08fe66e67de34c341abf4bf1586ffba4, type: 3}
+    Illustration: {fileID: 21300000, guid: b9bee2c9064c3504f97e43666adffb7a, type: 3}
+  - CardId: b
+    Art: {fileID: 21300000, guid: c618f3af769c3494f9771dce8319a414, type: 3}
+    Illustration: {fileID: 21300000, guid: 3df908ea7e84c0f4da77310c74af1230, type: 3}
+  - CardId: c
+    Art: {fileID: 21300000, guid: 88567c7db525d7347b0132ab251e5508, type: 3}
+    Illustration: {fileID: 21300000, guid: 710469bef386c2a43aa3c9f4597db246, type: 3}
+  - CardId: d
+    Art: {fileID: 21300000, guid: efe5ac91b4498664c97bbce4f079eaa3, type: 3}
+    Illustration: {fileID: 21300000, guid: 77930f5c4508da3478844dc7d02bf1ba, type: 3}
+  - CardId: e
+    Art: {fileID: 21300000, guid: a1951d108d8de9441b657e05d1f23c43, type: 3}
+    Illustration: {fileID: 21300000, guid: 1c701bdeb7104694f973c01aa85d15db, type: 3}
+  - CardId: f
+    Art: {fileID: 21300000, guid: 3b6a9f2dde3953a4f83195c4fb446c91, type: 3}
+    Illustration: {fileID: 21300000, guid: f1e989de4c7beea4d945bcaeafc2d946, type: 3}
+  - CardId: g
+    Art: {fileID: 21300000, guid: bb368649a7c8b32428180ae989d371a4, type: 3}
+    Illustration: {fileID: 21300000, guid: 683143c627f9f5e4793e3d4629978a69, type: 3}
+  - CardId: h
+    Art: {fileID: 21300000, guid: bebbecbe4577a774ea18a441d71ed5cd, type: 3}
+    Illustration: {fileID: 21300000, guid: cf024a83b6b634b489f71e5f69547a00, type: 3}
+  - CardId: i
+    Art: {fileID: 21300000, guid: 605f6f34a4564674ab24a62d9803707d, type: 3}
+    Illustration: {fileID: 21300000, guid: 2a80821cc9ace994b90a2bc3b25a4674, type: 3}
+  - CardId: j
+    Art: {fileID: 21300000, guid: 2f3fccf2090a88c459150c489304a393, type: 3}
+    Illustration: {fileID: 21300000, guid: a780c035ab128094da63814826b2d1ba, type: 3}
+  - CardId: k
+    Art: {fileID: 21300000, guid: 00fe9989e0bfca44696a29a8d23899fc, type: 3}
+    Illustration: {fileID: 21300000, guid: c8fcbe3c6dd45094184c1caaebf7072c, type: 3}
+  - CardId: l
+    Art: {fileID: 21300000, guid: 9700b36bdc2a785429933d7cf057ba18, type: 3}
+    Illustration: {fileID: 21300000, guid: 4617dc908d7a19f459bbcbee92157fa1, type: 3}
+  - CardId: m
+    Art: {fileID: 21300000, guid: 76d126a76a03470408a50b85bdcf018d, type: 3}
+    Illustration: {fileID: 21300000, guid: 5c112a340997c604a8636b247df81b7e, type: 3}
+  - CardId: n
+    Art: {fileID: 21300000, guid: bc6ccd10f759885409301ffc01b9daad, type: 3}
+    Illustration: {fileID: 21300000, guid: 546200c2b8a54034b8041809d2d94b72, type: 3}
+  - CardId: o
+    Art: {fileID: 21300000, guid: 2ec45c1ce8b3d6e4b93251173fb2a9e2, type: 3}
+    Illustration: {fileID: 21300000, guid: dee47127adb5f8643a7bc2b86576de71, type: 3}
+  - CardId: p
+    Art: {fileID: 21300000, guid: ad7ca898e15e1904eadf991a6fe3619c, type: 3}
+    Illustration: {fileID: 21300000, guid: 4360559fbae6880429643433c78979c2, type: 3}
+  - CardId: q
+    Art: {fileID: 21300000, guid: 0f4ae63a2badf0c488994b8aa37cfe62, type: 3}
+    Illustration: {fileID: 21300000, guid: 7bf8e4e68273ed6479a48500faa529a3, type: 3}
+  - CardId: r
+    Art: {fileID: 21300000, guid: a51c736282c4b1c4d913686890e8939d, type: 3}
+    Illustration: {fileID: 21300000, guid: db632e5226cdd794c87ebacaf6a30013, type: 3}
+  - CardId: s
+    Art: {fileID: 21300000, guid: b37e574da860cd044ac2c369171cb464, type: 3}
+    Illustration: {fileID: 21300000, guid: 5e97780db4264a142ba83c01e69e61ba, type: 3}
+  - CardId: t
+    Art: {fileID: 21300000, guid: 872ca499570c41841a42049bded1ec5b, type: 3}
+    Illustration: {fileID: 21300000, guid: 391b5c5f3e2cab04494741f5de196437, type: 3}
+  - CardId: u
+    Art: {fileID: 21300000, guid: f08af79fe3e43d24a9e88b560302f132, type: 3}
+    Illustration: {fileID: 21300000, guid: 41f8cb3a9ed9bbf4aad9ad93d17b365e, type: 3}
+  - CardId: v
+    Art: {fileID: 21300000, guid: 66b8d24f5e696954db0672fd77b607b8, type: 3}
+    Illustration: {fileID: 21300000, guid: 1ca1c7accefb1034a9498ab72148158a, type: 3}
+  - CardId: w
+    Art: {fileID: 21300000, guid: 2b019eb11fe23b940b1d2236c13705a2, type: 3}
+    Illustration: {fileID: 21300000, guid: 94c7cc2bf372fcf478474656b7dec991, type: 3}
+  - CardId: x
+    Art: {fileID: 21300000, guid: d2eee47d4218cbe4d9498b60475e1179, type: 3}
+    Illustration: {fileID: 21300000, guid: 93eb404d8ea74df4e9b4418300c54c45, type: 3}
+  - CardId: y
+    Art: {fileID: 21300000, guid: 124d92b5b29477a49af6306eeed29eba, type: 3}
+    Illustration: {fileID: 21300000, guid: acead89cd393dde4b9c4311635f12dce, type: 3}
+  - CardId: z
+    Art: {fileID: 21300000, guid: f81dfddca98eafa4ea33b349a3a117b7, type: 3}
+    Illustration: {fileID: 21300000, guid: 73c3532a4107e334ba2d1b3675353593, type: 3}
+  - CardId: aa
+    Art: {fileID: 21300000, guid: 1d87a3a7b022b284890d1c8a53c405d4, type: 3}
+    Illustration: {fileID: 21300000, guid: 5c516f9b0ac292e42b3fb38c2104b882, type: 3}
+  - CardId: ab
+    Art: {fileID: 21300000, guid: 197649d30004f0a46a9b38c31ceeec14, type: 3}
+    Illustration: {fileID: 21300000, guid: 6032e7eb5ee116c48b97f7970c3ec51b, type: 3}
+  - CardId: ac
+    Art: {fileID: 21300000, guid: f226b4d6d87ed4f4cbb88f4b22185eb5, type: 3}
+    Illustration: {fileID: 21300000, guid: b062f13f072cf1f4a96dd65cf49faadd, type: 3}
+  - CardId: ad
+    Art: {fileID: 21300000, guid: 5f9f061ecac17874fbae735f1de990f9, type: 3}
+    Illustration: {fileID: 21300000, guid: 5fc161eff016ebe4e8e130d71507301d, type: 3}
+  - CardId: ae
+    Art: {fileID: 21300000, guid: 229e00a2c7a237548a5318c646f1a231, type: 3}
+    Illustration: {fileID: 21300000, guid: f829853401dc86e43bbbcdb61921fd77, type: 3}
+  - CardId: af
+    Art: {fileID: 21300000, guid: b48ff6aa402396542b15fd574f0431db, type: 3}
+    Illustration: {fileID: 21300000, guid: cc88b26d38dc0c749bbf7d2d316b9c6d, type: 3}
+  - CardId: ag
+    Art: {fileID: 21300000, guid: 688157317df3fe245a8232e28dc5edb8, type: 3}
+    Illustration: {fileID: 21300000, guid: a35f029b9475d494d80126c1c659113a, type: 3}
+  - CardId: ah
+    Art: {fileID: 21300000, guid: d11fc4a475ffdd04aa805beb8ccbe6c1, type: 3}
+    Illustration: {fileID: 21300000, guid: eaadcc4f6a128134f8102adb7db95130, type: 3}
+  - CardId: ai
+    Art: {fileID: 21300000, guid: 92349cb868e2777489a3b00701cec737, type: 3}
+    Illustration: {fileID: 21300000, guid: ae41ec0960e8e6e48a8dffe6a74f1d8f, type: 3}
+  - CardId: aj
+    Art: {fileID: 21300000, guid: 98bcdc1c483c0fb4f9b1e2c926e03225, type: 3}
+    Illustration: {fileID: 21300000, guid: 9ede1147c0b83c54a9c16202e53823d2, type: 3}
+  - CardId: ak
+    Art: {fileID: 21300000, guid: d19e5fe522ce9074ab1483bcb35f1bc4, type: 3}
+    Illustration: {fileID: 21300000, guid: b8a4f1bdc2877924fb811dc584d2065b, type: 3}
+  - CardId: al
+    Art: {fileID: 21300000, guid: c041f38b216e2d846ab8d3343f1f286c, type: 3}
+    Illustration: {fileID: 21300000, guid: bef89224f8104874291c53c58f1d325e, type: 3}
+  - CardId: am
+    Art: {fileID: 21300000, guid: 9a7b7ad74d8d05644a6953319417afa6, type: 3}
+    Illustration: {fileID: 21300000, guid: e6abfd6ad16ab1a47b2974ab976b6af3, type: 3}
+  - CardId: an
+    Art: {fileID: 21300000, guid: 325200d2eaa237f4b81b57a6ef3caa96, type: 3}
+    Illustration: {fileID: 21300000, guid: ef00407af9ad9c446afe7b9517359f7d, type: 3}

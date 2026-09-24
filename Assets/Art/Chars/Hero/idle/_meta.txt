@@ -1,0 +1,4 @@
+# Hero / idle
+# 画布 = 188x185（所有帧一致）
+# 锚点（身体中心 / 脚底）画布坐标 = (94, 178)
+# 生成方式见 Tools/art-audit/slice_hero_anim.py

@@ -1,0 +1,27 @@
+var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+var d=UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleDriver>();
+d.StopAllCoroutines();
+var engine=(MagicBrawl.Core.BattleEngine)typeof(MagicBrawl.App.BattleDriver).GetField("_engine",flags).GetValue(d);
+for(int i=0;i<20 && engine.Pending.Kind!=MagicBrawl.Core.RequestKind.ChooseAttackCard;i++){
+ engine.Submit(MagicBrawl.Core.DecisionResponse.Of(engine.Pending.Seat));engine.Advance();
+}
+var ui=UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleUi>();
+typeof(MagicBrawl.App.BattleDriver).GetField("_waitingPlayer",flags).SetValue(d,true);
+typeof(MagicBrawl.App.BattleDriver).GetField("_playerPicked",flags).SetValue(d,false);
+typeof(MagicBrawl.App.BattleUi).GetMethod("HandleDecision",flags).Invoke(ui,new object[]{MagicBrawl.Core.DecisionSnapshot.From(engine.Pending)});
+var hand=UnityEngine.Object.FindObjectOfType<MagicBrawl.App.HandView>();
+var cards=hand.GetComponentsInChildren<MagicBrawl.App.CardView>();
+var card=System.Array.Find(cards,c=>c.Card.Uid==engine.Pending.Options[0].Card.Uid);
+var pointer=new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
+pointer.button=UnityEngine.EventSystems.PointerEventData.InputButton.Left;
+card.GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+bool clickBlocked=!(bool)typeof(MagicBrawl.App.BattleDriver).GetField("_playerPicked",flags).GetValue(d);
+var inter=card.GetComponent<MagicBrawl.App.CardInteractor>();
+pointer.position=new UnityEngine.Vector2(-1000,-1000);
+inter.OnBeginDrag(pointer);inter.OnDrag(pointer);inter.OnEndDrag(pointer);
+bool invalidDropBlocked=!(bool)typeof(MagicBrawl.App.BattleDriver).GetField("_playerPicked",flags).GetValue(d);
+var zone=(UnityEngine.RectTransform)typeof(MagicBrawl.App.HandView).GetField("_playZone",flags).GetValue(hand);
+pointer.position=UnityEngine.RectTransformUtility.WorldToScreenPoint(null,zone.TransformPoint(zone.rect.center));
+inter.OnBeginDrag(pointer);inter.OnDrag(pointer);inter.OnEndDrag(pointer);
+bool validDropSubmitted=(bool)typeof(MagicBrawl.App.BattleDriver).GetField("_playerPicked",flags).GetValue(d);
+return new {clickBlocked,invalidDropBlocked,validDropSubmitted,card=card.Card.Name};

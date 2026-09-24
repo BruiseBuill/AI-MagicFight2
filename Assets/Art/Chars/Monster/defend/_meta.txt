@@ -1,0 +1,4 @@
+# Monster / defend
+# 画布 = 367x242（所有帧一致）
+# 锚点（身体中心 / 脚底）画布坐标 = (207, 235)
+# 生成方式见 Tools/art-audit/slice_char_sheets.py

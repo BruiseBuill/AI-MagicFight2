@@ -1,0 +1,4 @@
+# Hero / death
+# 画布 = 325x254（所有帧一致）
+# 锚点（身体中心 / 脚底）画布坐标 = (162, 247)
+# 生成方式见 Tools/art-audit/slice_hero_anim.py

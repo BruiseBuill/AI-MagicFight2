@@ -1,0 +1,24 @@
+fileFormatVersion: 2
+guid: ca61d606cc7bab24a829827b75e8b53d
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - LXGW 975 Gothic SC
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 05865bcffd7f29348aa2a3c4bca1b175, type: 3}
+  - {fileID: 12800000, guid: b697efe529dc8f942b16100ee4be784c, type: 3}
+  - {fileID: 12800000, guid: f6108de585f76da4d9f29ffcd1eb4a0c, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

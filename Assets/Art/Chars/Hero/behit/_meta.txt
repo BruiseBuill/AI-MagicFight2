@@ -1,0 +1,4 @@
+# Hero / behit
+# 画布 = 289x272（所有帧一致）
+# 锚点（身体中心 / 脚底）画布坐标 = (144, 265)
+# 生成方式见 Tools/art-audit/slice_hero_anim.py

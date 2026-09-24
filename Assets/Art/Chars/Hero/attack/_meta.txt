@@ -1,0 +1,4 @@
+# Hero / attack
+# 画布 = 554x256（所有帧一致）
+# 锚点（身体中心 / 脚底）画布坐标 = (206, 249)
+# 生成方式见 Tools/art-audit/slice_hero_anim.py

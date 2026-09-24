@@ -1,0 +1,4 @@
+# Monster / idle
+# 画布 = 257x216（所有帧一致）
+# 锚点（身体中心 / 脚底）画布坐标 = (126, 209)
+# 生成方式见 Tools/art-audit/slice_char_sheets.py

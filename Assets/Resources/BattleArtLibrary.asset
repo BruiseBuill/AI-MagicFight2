@@ -1,0 +1,160 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 781c171bb32edfa46b9009b20e5444c5, type: 3}
+  m_Name: BattleArtLibrary
+  m_EditorClassIdentifier: 
+  _hudBar: {fileID: 21300000, guid: 8f47d35dfe08f944b98d1d130801e6bb, type: 3}
+  _hudAvatar: {fileID: 21300000, guid: 5e79e8d096e712b49b43938a2d372064, type: 3}
+  _buffIcons:
+  - {fileID: 21300000, guid: 491c603b5deeb73428594d772a9e7eee, type: 3}
+  - {fileID: 21300000, guid: a88cf4c61317a9f488ae56f37f685965, type: 3}
+  - {fileID: 21300000, guid: 8d7087949a516b44cabe149c26292507, type: 3}
+  - {fileID: 21300000, guid: 87584bb796ebab94485d9515991c15f3, type: 3}
+  - {fileID: 21300000, guid: c75da22c1ee89c94e8ce01c5a24002c7, type: 3}
+  _slotPlayerRow:
+  - {fileID: 21300000, guid: b20e7d18aa5356a4da7b818c960e20ad, type: 3}
+  - {fileID: 21300000, guid: 067f26ba766e46a47a128685e843a6ca, type: 3}
+  - {fileID: 21300000, guid: 9f5e721113169184089f303c58d10020, type: 3}
+  - {fileID: 21300000, guid: fe1019f697996bd459a59ecfa6498848, type: 3}
+  _slotEnemyRow:
+  - {fileID: 21300000, guid: 19db00572a39ad643b408c5b08367822, type: 3}
+  - {fileID: 21300000, guid: 34a3cd7b628dc624b8495914a24ea768, type: 3}
+  - {fileID: 21300000, guid: 2fe3a15ffaee0de479e0cb37f7b4453b, type: 3}
+  - {fileID: 21300000, guid: 8ca8bd1f000d3bc4c902c137ad1b5fd3, type: 3}
+  _background: {fileID: 21300000, guid: 03e2adf222ca88449aaf61aec5cd913d, type: 3}
+  _energyOrb: {fileID: 21300000, guid: a2315eead346bec4d920a067f9e79b2d, type: 3}
+  _hero:
+    Name: Hero
+    Portrait: {fileID: 21300000, guid: 66a58516ffc6ced40ad8f6f042fd9800, type: 3}
+    Idle:
+      Frames:
+      - {fileID: 21300000, guid: e11ce30f09834ee4b8d9be6f57e2c587, type: 3}
+      Fps: 10
+      Size: {x: 188, y: 185}
+      Pivot: {x: 0.5, y: 0.037837837}
+    Attack:
+      Frames:
+      - {fileID: 21300000, guid: fd2dc3ae17f44ad4996a5d87f69ae03b, type: 3}
+      - {fileID: 21300000, guid: 72e6625e864fe3446a0036d8fbd1ae0b, type: 3}
+      - {fileID: 21300000, guid: 97611b8a3f1472a4fb49f3940818a062, type: 3}
+      - {fileID: 21300000, guid: fab832c61699b0a43b8fe631d4362edf, type: 3}
+      - {fileID: 21300000, guid: ad9d1ca5988b06e41a405eeed9530718, type: 3}
+      - {fileID: 21300000, guid: 7c8a2aa028968c24c9fa88200cec52fb, type: 3}
+      - {fileID: 21300000, guid: 5926df2aec995c64385c1ec4088755ce, type: 3}
+      - {fileID: 21300000, guid: 5b186b2e603595e478bc568b3853899a, type: 3}
+      - {fileID: 21300000, guid: 5bc0f02db088d2742ac22e6c8adeaa59, type: 3}
+      - {fileID: 21300000, guid: 0c0b8007e8eff0f4ea96b41c02af4280, type: 3}
+      - {fileID: 21300000, guid: 1eccb3e74c0662c41987ce551b77bfdb, type: 3}
+      - {fileID: 21300000, guid: c2747096d7222044e830d86be9d714d7, type: 3}
+      Fps: 14
+      Size: {x: 554, y: 256}
+      Pivot: {x: 0.37184116, y: 0.02734375}
+    Defend:
+      Frames:
+      - {fileID: 21300000, guid: 7d415585288d4f94e9667dbce1e54b35, type: 3}
+      - {fileID: 21300000, guid: dc1a1e09aaba0e8408d2ed8ba251df06, type: 3}
+      - {fileID: 21300000, guid: ef30df2fde5ce7b48963f2b8646dc45a, type: 3}
+      - {fileID: 21300000, guid: 35644d35bdf526044b84fcfa2a39cbdf, type: 3}
+      - {fileID: 21300000, guid: 594b6006ae464004aaf5aa0fa9f9a0af, type: 3}
+      - {fileID: 21300000, guid: f89bb4ee595ed52478a0f0df10547407, type: 3}
+      - {fileID: 21300000, guid: cf8ac16e00002094ab6e1bc3fefe78e5, type: 3}
+      - {fileID: 21300000, guid: 2276afa3087012b42a9d50d949a2a586, type: 3}
+      - {fileID: 21300000, guid: 328208ddabe0f7f4e8247eefb90ee7be, type: 3}
+      - {fileID: 21300000, guid: c589e067507aaca4aaee29cd114980f1, type: 3}
+      - {fileID: 21300000, guid: 18a179dcc4693924db9171ba396a7a59, type: 3}
+      - {fileID: 21300000, guid: 46ba157fc386a524f9433bdfcbd034f3, type: 3}
+      Fps: 14
+      Size: {x: 388, y: 256}
+      Pivot: {x: 0.47938144, y: 0.02734375}
+    BeHit:
+      Frames:
+      - {fileID: 21300000, guid: e675844187e6f1e48a6784f3f65d26cb, type: 3}
+      - {fileID: 21300000, guid: 8d2b61ba7087c854495eda4e45e9b182, type: 3}
+      - {fileID: 21300000, guid: 2256a8aacd101d3459f82dfe3e30ca7e, type: 3}
+      - {fileID: 21300000, guid: cd487fa745571ed4a9675644ba1ba8a9, type: 3}
+      - {fileID: 21300000, guid: fd7bd74421590ae44896bc6291919d0d, type: 3}
+      - {fileID: 21300000, guid: 6b151de62ec16b0418aca8970ff6a2a2, type: 3}
+      - {fileID: 21300000, guid: 675430c5bb447b040ab2ef8fc0ac5ed5, type: 3}
+      - {fileID: 21300000, guid: a4a9139bbeb009347a9910af7b07fdc2, type: 3}
+      - {fileID: 21300000, guid: 09560b11174b16c4fab4ee1ac7f5194f, type: 3}
+      - {fileID: 21300000, guid: 060e8e5102888de409f647ca65be319d, type: 3}
+      - {fileID: 21300000, guid: f83e78a54d8254946917f10a35b6c0ca, type: 3}
+      - {fileID: 21300000, guid: 140f68283005a314083165da794b6136, type: 3}
+      Fps: 18
+      Size: {x: 289, y: 272}
+      Pivot: {x: 0.4982699, y: 0.025735294}
+    Death:
+      Frames:
+      - {fileID: 21300000, guid: 97093d0b555a863478398fbe0236a274, type: 3}
+      - {fileID: 21300000, guid: 3d49a223e5173b64493d7c4d951b6354, type: 3}
+      - {fileID: 21300000, guid: f05d84c9c10b29a44877ae9e8489cde9, type: 3}
+      - {fileID: 21300000, guid: 8bef32c4ee2bd7b489732e1fbe68c0ed, type: 3}
+      - {fileID: 21300000, guid: c33e5613c3f258b429343dfcca8dc789, type: 3}
+      - {fileID: 21300000, guid: a955f939232aaf6409d2ea8f90c686e6, type: 3}
+      - {fileID: 21300000, guid: d43ec254563b89a438f19c9e351e1a17, type: 3}
+      - {fileID: 21300000, guid: 2023f8462f247dd4aa18284b950c58b5, type: 3}
+      - {fileID: 21300000, guid: 09c2fb1c816c1bb42adafc1cfd385d62, type: 3}
+      - {fileID: 21300000, guid: 85dd2777f0aa66f42bf9191e884acf52, type: 3}
+      - {fileID: 21300000, guid: daa0fb4d7ee7d624e94281cf58632ed0, type: 3}
+      - {fileID: 21300000, guid: 941f11529e1274547ae02866392904d2, type: 3}
+      Fps: 9
+      Size: {x: 325, y: 254}
+      Pivot: {x: 0.49846154, y: 0.027559055}
+  _monster:
+    Name: Monster
+    Portrait: {fileID: 0}
+    Idle:
+      Frames:
+      - {fileID: 21300000, guid: c4a87ca1d8f7bdb459d40f1f6e597389, type: 3}
+      - {fileID: 21300000, guid: e604cddda0365684c858f29754400dcf, type: 3}
+      - {fileID: 21300000, guid: 236e15aa02ed2bf4d8be74d7c0974885, type: 3}
+      - {fileID: 21300000, guid: 7b837fa86ecaeba4fb56b5c0ad806621, type: 3}
+      - {fileID: 21300000, guid: 995f5e6c43423b64abf60f8f37361960, type: 3}
+      - {fileID: 21300000, guid: f51c1b87f13eedd439e5ea9d74463738, type: 3}
+      Fps: 10
+      Size: {x: 257, y: 216}
+      Pivot: {x: 0.49027237, y: 0.032407407}
+    Attack:
+      Frames:
+      - {fileID: 21300000, guid: 66668bad279becb4d90447993046156a, type: 3}
+      - {fileID: 21300000, guid: dcf633a50d9c7754c8923068c833b85f, type: 3}
+      - {fileID: 21300000, guid: f91e404d29c149d4081e4281bfb13930, type: 3}
+      - {fileID: 21300000, guid: d0ce06220051ddc4f8903b2aa9eafd65, type: 3}
+      - {fileID: 21300000, guid: 6b962e81702ed1942a9752c28b2549ca, type: 3}
+      Fps: 14
+      Size: {x: 558, y: 205}
+      Pivot: {x: 0.53046596, y: 0.034146342}
+    Defend:
+      Frames:
+      - {fileID: 21300000, guid: bbf291c4079fe4d43bb3dd16e36badb6, type: 3}
+      - {fileID: 21300000, guid: 168c56d40aba68149852681ba1f8ea6d, type: 3}
+      - {fileID: 21300000, guid: 6d66b6e6b3da68b4b87450e259122367, type: 3}
+      - {fileID: 21300000, guid: 124917051f870e44dae31af2398c5028, type: 3}
+      - {fileID: 21300000, guid: f305631e98bc5e946ab907abf449de89, type: 3}
+      Fps: 14
+      Size: {x: 367, y: 242}
+      Pivot: {x: 0.5640327, y: 0.02892562}
+    BeHit:
+      Frames: []
+      Fps: 8
+      Size: {x: 100, y: 100}
+      Pivot: {x: 0.5, y: 0}
+    Death:
+      Frames: []
+      Fps: 8
+      Size: {x: 100, y: 100}
+      Pivot: {x: 0.5, y: 0}
+  _peekPanel: {fileID: 21300000, guid: 4bf95f46fa3e01049aeb7a89d37f0508, type: 3}
+  _peekPanelSmall: {fileID: 21300000, guid: d4f00fd6f43499f45bdf8452de66ea8e, type: 3}
+  _peekBanner: {fileID: 21300000, guid: 5200ac6e6fc580b4fb0f00509f46fc1f, type: 3}
+  _peekFrame: {fileID: 21300000, guid: b94c415d1d66efa42a7c51bed54beaf9, type: 3}
+  _peekCardBack: {fileID: 21300000, guid: e9645eb471445e541898e0a55f58f699, type: 3}

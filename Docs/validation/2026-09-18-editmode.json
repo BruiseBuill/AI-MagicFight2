@@ -1,0 +1,42 @@
+{
+  "result": {
+    "success": true,
+    "message": "Test job status retrieved.",
+    "error": null,
+    "data": {
+      "job_id": "4549584a320e4d54864b91777534eede",
+      "status": "succeeded",
+      "mode": "EditMode",
+      "started_unix_ms": 1789709690469,
+      "finished_unix_ms": 1789709692696,
+      "last_update_unix_ms": 1789709692696,
+      "progress": {
+        "completed": 23,
+        "total": 23,
+        "current_test_full_name": null,
+        "current_test_started_unix_ms": 1789709692288,
+        "last_finished_test_full_name": "MagicBrawl.Tests.CoreSmokeTests.规则_进攻决策不给放弃选项",
+        "last_finished_unix_ms": 1789709692294,
+        "stuck_suspected": false,
+        "editor_is_focused": false,
+        "blocked_reason": null,
+        "failures_so_far": [],
+        "failures_capped": false
+      },
+      "error": null,
+      "result": {
+        "mode": "EditMode",
+        "summary": {
+          "total": 23,
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "durationSeconds": 0.8340931,
+          "resultState": "Passed"
+        },
+        "results": []
+      }
+    },
+    "hint": null
+  }
+}
