@@ -1,0 +1,579 @@
+引用来源 1154 个文本文件
+
+=== 被文本引用的待删文件: 46 ===
+  E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\ubridge.mjs
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-18.md
+  E:\UnityProject\Unity_AI_CardFight2\Assets\Screenshots
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-18.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-19.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-20.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-22.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-23.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-25.md
+  E:\UnityProject\Unity_AI_CardFight2\Assets\_TrashArt
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-21.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-25.md
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\behit_verify.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-21.md
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\effect_icons_sheet.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-21.md
+        <- Tools/art-audit/split_effect_icons.py
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\hero2_idle.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-21.md
+  E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\backup_BattleCanvas_20260919.prefab
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-25.md
+  E:\WebApplicationByAI\WorkBuddy\Unity_CardFight2\=
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-16.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-17.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-18.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-19.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-20.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-21.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-22.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-23.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-25.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/MEMORY.md
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/PITFALLS.md
+        <- Docs/00-当前基线.md
+        <- Docs/archive/工程规划.md
+        <- Docs/archive/规则待确认清单.md
+        <- Docs/engineering/03-工程规划.md
+        <- Docs/engineering/04-架构与接口.md
+        <- Docs/engineering/06-美术与字体规范.md
+        <- Docs/implementation/08-UiKit实现说明.md
+        <- Docs/implementation/09-BattleUi实现说明.md
+        <- Docs/implementation/10-DealUi实现说明.md
+        <- Docs/implementation/11-美术层实现说明.md
+        <- Docs/implementation/12-手牌交互实现说明.md
+        <- Docs/implementation/13-主角动画替换说明.md
+        <- Docs/implementation/14-M15光环图标与交互改动说明.md
+        <- Docs/implementation/15-M17组成式卡面与图文混排.md
+        <- Docs/implementation/16-运行时UI预建与行动提示.md
+        <- Docs/implementation/17-静态UI位置改由场景槽位决定.md
+        <- Docs/implementation/18-光环落区改回手牌区与飞入动画.md
+        <- Docs/implementation/19-M20出牌展示与手牌数与AI目标.md
+        <- Docs/implementation/20-M21光环摆位与取消手势.md
+        <- Docs/implementation/21-M22光环触发符号与冷却槽校准.md
+        <- Docs/implementation/22-M24基础冷却与区域点选与卡面统一.md
+        <- Docs/implementation/23-M25查看对方手牌弹窗.md
+        <- Docs/implementation/24-M26区域选择改成点冷却槽.md
+        <- Docs/implementation/25-M27手牌选择弹窗.md
+        <- Docs/implementation/26-M28按住查看怪物手牌与齿轮重开.md
+        <- Docs/implementation/27-M29修复开局黑屏与角色不显示.md
+        <- Docs/implementation/28-M30手牌选择弹窗美术化与多选修复.md
+        <- Docs/implementation/29-M31漩涡选择弹窗与确认键固定宽度.md
+        <- Docs/implementation/30-M32充能循环修复与选牌弹窗三处收口.md
+        <- Docs/implementation/31-M33地震条件减速与拖拽辉光与双发选两张.md
+        <- Docs/implementation/32-M34取消光环飞回动画与齿轮接线修复.md
+        <- Docs/implementation/33-M35头顶出牌展示双方化与飞向冷却槽.md
+        <- Docs/implementation/34-M36瀑流互斥收口与冷却区不可选提示与怪物效果提示.md
+        <- Docs/implementation/35-M37雪崩双效果与模仿复制放宽与沉重打击显示.md
+        <- Docs/implementation/36-M38卡面统一到单一Prefab.md
+        <- Docs/implementation/README.md
+        <- Docs/implementation/光环与拖动交互.md
+        <- Docs/operations/Unity-MCP.md
+        <- Docs/rules/01-规则基线.md
+        <- Docs/rules/05-决策记录.md
+        <- Docs/validation/07-M0自测报告.md
+        <- Docs/validation/2026-09-18-card-ui-update.md
+        <- Docs/validation/2026-09-23-光环取消动画与齿轮点击.md
+        <- Library/PackageCache/com.unity.2d.animation@9.0.2/Documentation~/AssetUpgrader.md
+        <- Library/PackageCache/com.unity.2d.animation@9.0.2/Documentation~/PreparingArtwork.md
+        <- Library/PackageCache/com.unity.2d.animation@9.0.2/Documentation~/SL-Editor-UI.md
+        <- Library/PackageCache/com.unity.2d.animation@9.0.2/Documentation~/ex-runtime-swap.md
+        <- Library/PackageCache/com.unity.2d.animation@9.0.2/Documentation~/ex-skeleton-sharing.md
+        <- Library/PackageCache/com.unity.2d.animation@9.0.2/Documentation~/ex-sprite-swap.md
+        <- Library/PackageCache/com.unity.2d.animation@9.0.2/Samples~/AnimationSamples/README.md
+        <- Library/PackageCache/com.unity.2d.pixel-perfect@5.0.3/Documentation~/index.md
+        <- Library/PackageCache/com.unity.2d.psdimporter@8.0.2/Documentation~/PSD-importer-properties.md
+        <- Library/PackageCache/com.unity.2d.psdimporter@8.0.2/Documentation~/PSD-override.md
+        <- Library/PackageCache/com.unity.2d.sprite@1.0.0/Documentation~/DataProvider.md
+        <- Library/PackageCache/com.unity.2d.spriteshape@9.0.2/Documentation~/CustomGeometry.md
+        <- Library/PackageCache/com.unity.2d.tilemap.extras@3.1.0/Documentation~/AnimatedTile.md
+        <- Library/PackageCache/com.unity.2d.tilemap.extras@3.1.0/Documentation~/CustomRulesForRuleTile.md
+        <- Library/PackageCache/com.unity.2d.tilemap.extras@3.1.0/Documentation~/RuleTile.md
+        <- Library/PackageCache/com.unity.2d.tilemap.extras@3.1.0/README.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/CHANGELOG.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/aliasing-noalias.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/aliasing.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/building-aot-settings.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/building-projects.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/compilation-burstcompile-assembly.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/compilation-burstdiscard.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/compilation-generic-jobs.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/compilation-synchronous.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/compilation-warnings.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-burst-intrinsics-dllimport.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-burst-intrinsics-processors.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-calling-burst-code.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-function-pointers.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-hpc-overview.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-shared-static.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-static-read-only-support.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-string-support.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/csharp-type-support.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/debugging-profiling-tools.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/editor-burst-inspector.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/editor-burst-menu.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/getting-started.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/index.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/modding-support.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/optimization-assumerange.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/optimization-constant.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/optimization-loop-vectorization.md
+        <- Library/PackageCache/com.unity.burst@1.8.4/Documentation~/optimization-skiplocalsinit.md
+        <- Library/PackageCache/com.unity.collab-proxy@2.12.4/CHANGELOG.md
+        <- Library/PackageCache/com.unity.collab-proxy@2.12.4/Third Party Notices.md
+        <- Library/PackageCache/com.unity.collections@1.2.4/CHANGELOG.md
+        <- Library/PackageCache/com.unity.collections@1.2.4/Documentation~/issues.md
+        <- Library/PackageCache/com.unity.collections@1.2.4/README.md
+        <- Library/PackageCache/com.unity.ide.rider@3.0.18/CHANGELOG.md
+        <- Library/PackageCache/com.unity.mathematics@1.2.6/Documentation~/mathematics.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/Common/lens-flare-data-driven-asset.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/Look-Dev-Environment-Library.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/Look-Dev.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/adding-properties.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/custom-material-inspector.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/generating-shader-includes.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/render-graph-writing-a-render-pipeline.md
+        <- Library/PackageCache/com.unity.render-pipelines.core@14.0.7/Documentation~/rthandle-system-using.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/CHANGELOG.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/2DLightProperties.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/2d-pixelperfect.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/InstallURPIntoAProject.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/LightBlendStyles.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/Lights-2D-intro.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/VolumeOverrides.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/Volumes.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/anti-aliasing.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/baked-lit-shader.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/camera-component-reference.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/camera-stacking.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/camera-types-and-render-type.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/cameras-advanced.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/decal-shader.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/faq.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/features/rendering-debugger.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/features/rendering-layers.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/features/rp-converter.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/integration-with-post-processing.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/known-issues.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/light-component.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/lit-shader.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/package-sample-urp-package-samples.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/particles-lit-shader.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/post-processing-ssao.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/post-processing/post-processing-custom-effect-low-code.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/renderer-feature-decal.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/renderer-features/how-to-custom-effect-render-objects.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/renderer-features/how-to-fullscreen-blit.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/renderer-features/renderer-feature-render-objects.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/rendering-to-a-render-texture.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/rendering-to-the-same-render-target.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/rendering/deferred-rendering-path.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/rendering/forward-plus-rendering-path.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/shader-complex-lit.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/shared/lens-flare/lens-flare-asset.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/simple-lit-shader.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/universal-additional-camera-data.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/universalrp-asset.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/upgrade-guide-2022-1.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/upgrade-guide-2022-2.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/upgrade-guide-7-2-0.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/upgrading-your-shaders.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/urp-shaders/urp-shaderlab-pass-tags.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/using-begincamerarendering.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/writing-shaders-urp-basic-unlit-structure.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/writing-shaders-urp-reconstruct-world-position.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/writing-shaders-urp-unlit-color.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/writing-shaders-urp-unlit-normals.md
+        <- Library/PackageCache/com.unity.render-pipelines.universal@14.0.7/Documentation~/writing-shaders-urp-unlit-texture.md
+        <- Library/PackageCache/com.unity.searcher@4.9.2/README.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/CHANGELOG.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Absolute-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Add-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/All-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Ambient-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/And-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Any-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Arccosine-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Arcsine-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Arctangent-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Arctangent2-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Baked-GI-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Blackbody-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Blend-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Boolean-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Branch-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Camera-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Ceiling-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Channel-Mask-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Channel-Mixer-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Checkerboard-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Clamp-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Color-Mask-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Color-Modes.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Color-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Colorspace-Conversion-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Combine-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Comparison-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Constant-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Contrast-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Cosine-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Cross-Product-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Custom-Function-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/DDX-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/DDXY-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/DDY-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Degrees-To-Radians-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Dielectric-Specular-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Diffusion-Profile-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Distance-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Dither-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Divide-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Dot-Product-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Ellipse-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Emission-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Exponential-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Fade-Transition-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/First-Shader-Graph.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Flip-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Flipbook-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Float.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Floor-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Fraction-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Fresnel-Effect-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Fresnel-Equation-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Getting-Started.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Gradient-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Gradient-Noise-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/HD-Custom-Color-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/HD-Custom-Depth-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Hue-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Hyperbolic-Cosine-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Hyperbolic-Sine-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Hyperbolic-Tangent-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Integer-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Inverse-Lerp-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Invert-Colors-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Is-Infinite-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Is-NaN-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Keywords.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Length-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Lerp-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Log-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Matrix-2x2-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Matrix-3x3-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Matrix-4x4-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Matrix-Construction-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Matrix-Determinant-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Matrix-Split-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Matrix-Transpose-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Maximum-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Metal-Reflectance-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Minimum-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Modulo-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Multiply-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Nand-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Negate-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Noise-Sine-Wave-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Normal-Blend-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Normal-From-Height-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Normal-From-Texture-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Normal-Reconstruct-Z-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Normal-Strength-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Normal-Unpack-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Normalize-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Not-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Object-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/One-Minus-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Or-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Parallax-Mapping-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Parallax-Occlusion-Mapping-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Polar-Coordinates-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Polygon-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Position-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Posterize-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Power-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Preview-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Projection-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Property-Types.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Radial-Shear-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Radians-To-Degrees-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Random-Range-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Reciprocal-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Reciprocal-Square-Root-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Rectangle-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Reflection-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Reflection-Probe-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Refract-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Rejection-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Remap-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Replace-Color-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Rotate-About-Axis-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Rotate-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Round-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Rounded-Polygon-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Rounded-Rectangle-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Cubemap-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Gradient-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Reflected-Cubemap-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Texture-2D-Array-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Texture-2D-LOD-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Texture-2D-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Texture-3D-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sample-Virtual-Texture-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sampler-State-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Saturate-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Saturation-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sawtooth-Wave-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Scene-Color-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Scene-Depth-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Screen-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sign-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Simple-Noise-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sine-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Slider-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Smoothstep-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/SpeedTree8-SubGraphAssets.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sphere-Mask-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Spherize-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Split-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Square-Root-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Square-Wave-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Step-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Sticky-Notes.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Subtract-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Swizzle-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Tangent-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Texture-Size-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Tiling-And-Offset-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Time-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Transform-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Transformation-Matrix-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Triangle-Wave-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Triplanar-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Truncate-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Twirl-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Upgrade-Guide-10-0-x.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Vector-2-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Vector-3-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Vector-4-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/Voronoi-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/White-Balance-Node.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/snippets/nodes-all-contexts.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/snippets/sample-nodes/nodes-sample-mip-bias-sample-mode-table.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/snippets/sample-nodes/nodes-sample-mip-mode-table.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/Documentation~/surface-options.md
+        <- Library/PackageCache/com.unity.shadergraph@14.0.7/README.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/extension-get-test-results.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/extension-retrieve-test-list.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/extension-run-tests.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-attribute-conditionalignore.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-attribute-testmustexpectalllogs.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-attribute-testplayerbuildmodifier.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-attribute-unitytest.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-command-line.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-comparer-color.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-comparer-equals.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-comparer-float.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-comparer-quaternion.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-comparer-vector2.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-comparer-vector3.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-comparer-vector4.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-custom-constraints.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-custom-yield-instructions.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-icallbacks.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-itest-run-settings.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-recompile-scripts.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-setup-and-cleanup.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-test-runner-api.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-test-utils.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-tests-parameterized.md
+        <- Library/PackageCache/com.unity.test-framework@1.1.33/Documentation~/reference-unitysetup-and-unityteardown.md
+        <- Library/PackageCache/com.unity.textmeshpro@3.0.6/CHANGELOG.md
+        <- Library/PackageCache/com.unity.textmeshpro@3.0.6/Documentation~/TextMeshPro.md
+        <- Library/PackageCache/com.unity.timeline@1.7.4/Documentation~/smpl_custom_annotation.md
+        <- Library/PackageCache/com.unity.timeline@1.7.4/Documentation~/smpl_custom_tween.md
+        <- Library/PackageCache/com.unity.timeline@1.7.4/Documentation~/tl_play_cntrls.md
+        <- Library/PackageCache/com.unity.ugui@1.0.0/Documentation~/HOWTO-UIScreenTransition.md
+        <- Library/PackageCache/com.unity.ugui@1.0.0/Documentation~/HOWTO-UIWorldSpace.md
+        <- Library/PackageCache/com.unity.ugui@1.0.0/Documentation~/MessagingSystem.md
+        <- Library/PackageCache/com.unity.ugui@1.0.0/Documentation~/StyledText.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/snippets/input-system/nodes-input-action-change.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/snippets/nodes-coroutine.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/snippets/vs-graph-inspector-tip-html.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-add-variable-graph.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-capture-player-input-add-component.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-capture-player-input.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-capturing-player-inputs-new.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-capturing-player-inputs-old.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-configuration.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-custom-drawer.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-custom-node-add-docs.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-custom-node-add-logic.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-custom-node-add-ports.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-custom-node-add-relations.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-custom-node-attributes-reference.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-own-custom-event-listen-code.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-own-custom-event-node.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-own-custom-event-send-node.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-create-state.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-developers-guide.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-formula.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-interface-overview.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nesting-add-state-unit.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nesting-add-subgraph.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nesting-add-triggers-data-graph.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nodes-events-input-system-float.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nodes-events-input-system-vector2.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nodes-events-on-button-input.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nodes-events-on-keyboard-input.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nodes-events-on-mouse-input.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-nodes.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-refactor-add-attribute.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-scripts-reference.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-set-preferences.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-states-reference.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-types.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-variables-api.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-variables-reference.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-variables.md
+        <- Library/PackageCache/com.unity.visualscripting@1.8.0/Documentation~/vs-version-control.md
+        <- Packages/com.singularitygroup.hotreload/README.md
+        <- Packages/com.singularitygroup.hotreload/Third Party Notices.md
+        <- Tools/RuleSelfTest/bin/Debug/net9.0/RuleSelfTest.deps.json
+        <- Tools/art-audit/analyze_new_art.py
+        <- Tools/art-audit/ascii_preview.py
+        <- Tools/art-audit/build_card_box.py
+        <- Tools/art-audit/build_tmp_icon_sheet.py
+        <- Tools/art-audit/check_refs.py
+        <- Tools/art-audit/crop_peek_kit.py
+        <- Tools/art-audit/crop_zoom.py
+        <- Tools/art-audit/probe_peek_bbox.py
+        <- Tools/art-audit/probe_peek_kit.py
+        <- Tools/art-audit/render_art_sheets.py
+        <- Tools/art-audit/render_icon_sheet.py
+        <- Tools/art-audit/slice_char_sheets.py
+        <- Tools/art-audit/slice_handpick_kit.py
+        <- Tools/art-audit/slice_hero_anim.py
+        <- Tools/art-audit/slice_icons.py
+        <- Tools/art-audit/slice_peek_kit.py
+        <- Tools/art-audit/slice_ui_kit.py
+        <- Tools/art-audit/split_effect_icons.py
+        <- Tools/art-audit/verify_layout.py
+        <- Tools/font-audit/audit_fonts.py
+        <- Tools/font-audit/make_report.py
+        <- Tools/font-audit/migrate_to_indexed.py
+        <- Tools/font-audit/rename_cards.py
+        <- Tools/font-audit/render_card_sheet.py
+        <- Tools/font-audit/render_font_samples.py
+        <- Tools/font-audit/verify_titles.py
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m7_uikit_02.png
+        <- Docs/engineering/03-工程规划.md
+        <- Docs/implementation/08-UiKit实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_01_replace.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-16.md
+        <- Docs/engineering/03-工程规划.md
+        <- Docs/implementation/09-BattleUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_04_result.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-16.md
+        <- Docs/engineering/03-工程规划.md
+        <- Docs/implementation/09-BattleUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_badge.png
+        <- Docs/engineering/项目目录规范.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m7_uikit_01.png
+        <- Docs/implementation/08-UiKit实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_02_detail.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-16.md
+        <- Docs/implementation/09-BattleUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_03_midgame.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-16.md
+        <- Docs/implementation/09-BattleUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_03b_emptyhand.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-16.md
+        <- Docs/implementation/09-BattleUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m9_deal_01_open.png
+        <- Docs/implementation/10-DealUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m9_deal_02_three_marked.png
+        <- Docs/implementation/10-DealUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m9_deal_03_join_replace.png
+        <- Docs/implementation/10-DealUi实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_01_first.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-17.md
+        <- Docs/implementation/11-美术层实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_03_battle.png
+        <- Docs/implementation/11-美术层实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_04_cooldown.png
+        <- Docs/implementation/11-美术层实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_06_cooldown_rows.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-17.md
+        <- Docs/implementation/11-美术层实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_01_arc.png
+        <- Docs/implementation/12-手牌交互实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_02_arrow_attack.png
+        <- Docs/implementation/12-手牌交互实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_06_arrow_defend.png
+        <- Docs/implementation/12-手牌交互实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_08_foe_card_visual-1.png
+        <- Docs/implementation/12-手牌交互实现说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m15_ui_01_hudbuff.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-18.md
+        <- Docs/implementation/14-M15光环图标与交互改动说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m15_ui_02_tip.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-18.md
+        <- Docs/implementation/14-M15光环图标与交互改动说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m15_ui_03_drag.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-18.md
+        <- Docs/implementation/14-M15光环图标与交互改动说明.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m17_ui_01_hand_cards.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-19.md
+        <- Docs/implementation/15-M17组成式卡面与图文混排.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m17_ui_02_cooling_mini.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-19.md
+        <- Docs/implementation/15-M17组成式卡面与图文混排.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m20_01_head_1card.png
+        <- Docs/implementation/19-M20出牌展示与手牌数与AI目标.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m20_02_head_2cards.png
+        <- Docs/implementation/19-M20出牌展示与手牌数与AI目标.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_02_aura_default_rows.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-20.md
+        <- Docs/implementation/20-M21光环摆位与取消手势.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_03_prepared_markers_and_hint.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-20.md
+        <- Docs/implementation/20-M21光环摆位与取消手势.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_05_drophint_shape_temp45.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-20.md
+        <- Docs/implementation/20-M21光环摆位与取消手势.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_06_all_combined.png
+        <- ../../WebApplicationByAI/WorkBuddy/Unity_CardFight2/.workbuddy/memory/2026-09-20.md
+        <- Docs/implementation/20-M21光环摆位与取消手势.md
+  E:\UnityProject\Unity_AI_CardFight2\Captures\2026-09-18-aura-regression\hudbuff-long-press-1.png
+        <- Docs/validation/2026-09-18-交互与光环回归.md
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\card_box_preview.png
+        <- Tools/art-audit/build_card_box.py
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\tmp_icon_sheet_preview.png
+        <- Tools/art-audit/build_tmp_icon_sheet.py
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\peek_sheet_grid.png
+        <- Tools/art-audit/crop_peek_kit.py
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_atlas_annotated.png
+        <- Tools/art-audit/slice_ui_kit.py
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_hud_erase.png
+        <- Tools/art-audit/slice_ui_kit.py
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_hud_fixed_1x.png
+        <- Tools/art-audit/slice_ui_kit.py
+  E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_orb_erase.png
+        <- Tools/art-audit/slice_ui_kit.py
+
+=== 未被任何文本引用（可安全删）: 286 ===
+   A1-.workbuddy/tmp      143
+   A2-art-audit 中间图       84
+   A3-自测日志                15
+   A5-工作区临时图              1
+   B1-文件名带 stale          5
+   B2-重复采样                2
+   B3-_refcrop            10
+   B4-早期模块界面              26
+
+可删清单 -> E:\UnityProject\_tmp_build\safe_delete.txt (286)
+被引用保留 -> E:\UnityProject\_tmp_build\blocked.txt (46)

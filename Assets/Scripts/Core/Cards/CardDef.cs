@@ -16,6 +16,8 @@ namespace MagicBrawl.Core
 
         /// <summary>卡名，如「暴风雪」。</summary>
         public readonly string Name;
+        public readonly string ArtId;
+        public readonly int Version;
 
         /// <summary>力量值。模仿（x）此字段恒为 1，卡面显示见 <see cref="HiddenPower"/>。</summary>
         public readonly int Power;
@@ -39,15 +41,21 @@ namespace MagicBrawl.Core
             int power,
             int cooldown,
             IReadOnlyList<EffectDef> effects,
-            bool hiddenPower = false)
+            bool hiddenPower = false, string artId = null, int version = 1)
         {
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) throw new System.ArgumentException("Card ID and name are required.");
+            if (cooldown < 1 || power < 0 || version < 1) throw new System.ArgumentException("Invalid card values.");
             Index = index;
             Id = id;
             Name = name;
             Power = power;
             Cooldown = cooldown;
-            Effects = effects ?? new EffectDef[0];
+            var copy = new List<EffectDef>(effects ?? new EffectDef[0]);
+            if (copy.Contains(null)) throw new System.ArgumentException("Null card effect.");
+            Effects = copy.AsReadOnly();
             HiddenPower = hiddenPower;
+            ArtId = string.IsNullOrWhiteSpace(artId) ? id : artId;
+            Version = version;
         }
 
         /// <summary>卡面力量文案（模仿显示 "X"）。</summary>

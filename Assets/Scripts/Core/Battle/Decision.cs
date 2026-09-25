@@ -42,6 +42,8 @@ namespace MagicBrawl.Core
         /// <summary>同优先级效果的结算顺序。</summary>
         ResolveOrder = 10,
 
+        ChooseCooldownEffects = 12,
+
         /// <summary>
         /// 查看对方一张手牌（雷云 / 狂躁蘑菇的第 2 个 α 效果，2026-09-21）。
         ///
@@ -84,6 +86,8 @@ namespace MagicBrawl.Core
     /// <summary>一个合法选项。UI 只渲染 <see cref="Label"/>，AI 只读结构字段。</summary>
     public sealed class Option
     {
+        public int EffectExecutionId;
+        internal Option Copy() { return (Option)MemberwiseClone(); }
         /// <summary>选项序号（回填 <see cref="DecisionResponse"/> 用）。</summary>
         public int Index;
 
@@ -140,6 +144,15 @@ namespace MagicBrawl.Core
     /// </summary>
     public sealed class DecisionRequest
     {
+        public long RequestId;
+        public IReadOnlyList<int> EnemySeats = new int[0];
+        public bool AurasPrepared;
+        public bool IsEnemy(int seat)
+        {
+            for (int i = 0; i < EnemySeats.Count; i++) if (EnemySeats[i] == seat) return true;
+            return false;
+        }
+
         /// <summary>谁要决策。</summary>
         public int Seat;
 
@@ -257,6 +270,7 @@ namespace MagicBrawl.Core
     /// <summary>外部回填的决策。</summary>
     public sealed class DecisionResponse
     {
+        public long RequestId;
         public int Seat;
 
         /// <summary>选中的「主选择」选项序号（出哪张牌 / 区域 k 值 / 放弃；单选时长度为 1）。</summary>

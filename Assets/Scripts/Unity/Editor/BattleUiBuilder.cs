@@ -26,7 +26,7 @@ namespace MagicBrawl.App.EditorTools
         private const string CanvasName = "BattleCanvas";
         private const string PrefabDir = "Assets/Prefabs/Ui";
         private const string HandCardPrefabPath = PrefabDir + "/CardView_Hand.prefab";
-        private const string MiniCardPrefabPath = PrefabDir + "/CardView_Mini.prefab";
+        private const string MiniCardPrefabPath = HandCardPrefabPath;
 
         private const string BodyFontPath = "Assets/Font/Black/Google-Regular.asset";
         private const string TitleFontPath = "Assets/Font/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
@@ -273,6 +273,8 @@ namespace MagicBrawl.App.EditorTools
             {
                 logPanel.SetActive(false);
             }
+
+            SettingsUiBuilder.Ensure(canvas);
 
             // ── 保存 ──────────────────────────────────────────
             PrefabUtility.SaveAsPrefabAssetAndConnect(canvas, PrefabDir + "/" + CanvasName + ".prefab",

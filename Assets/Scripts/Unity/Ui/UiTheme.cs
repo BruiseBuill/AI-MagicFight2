@@ -242,8 +242,13 @@ namespace MagicBrawl.App
         /// <summary>卡框描边（暖白细边）。</summary>
         public static readonly Color CardFaceEdge = new Color(1f, 0.95f, 0.86f, 0.55f);
 
-        /// <summary>卡名条底色（比卡底更实，否则名字压在插画上读不出来）。</summary>
-        public static readonly Color CardNameBarBackdrop = new Color(0.07f, 0.06f, 0.08f, 0.62f);
+        /// <summary>
+        /// 卡名条底色（比卡底更实，否则名字压在插画上读不出来）。
+        ///
+        /// <para>⚠ 2026-09-25：用户在手牌 Prefab 上把它<b>加深</b>（α 0.62 → 0.7686）——
+        /// 加粗后的卡名压在浅色插画上仍然偏灰。口径固化在这里，重建时不会退回。</para>
+        /// </summary>
+        public static readonly Color CardNameBarBackdrop = new Color(0.07f, 0.06f, 0.08f, 0.76862746f);
 
         /// <summary>效果文字框底色。</summary>
         public static readonly Color CardTextBoxBackdrop = new Color(0.07f, 0.06f, 0.08f, 0.90f);

@@ -12,6 +12,7 @@ namespace MagicBrawl.Core
     /// </summary>
     public struct AuraTokenSnapshot
     {
+        public int TokenId;
         /// <summary>光环类型。</summary>
         public AuraKind Kind;
 
@@ -34,6 +35,8 @@ namespace MagicBrawl.Core
     /// </summary>
     public struct CardSnapshot
     {
+        public CardDef Definition;
+        public string ArtId;
         /// <summary>卡 ID（a–an），用于查卡面美术。</summary>
         public string CardId;
 
@@ -103,6 +106,8 @@ namespace MagicBrawl.Core
 
             return new CardSnapshot
             {
+                Definition = card.Def,
+                ArtId = card.Def.ArtId,
                 CardId = card.Def.Id,
                 Name = card.Def.Name,
                 Power = card.EffectivePower,
@@ -132,22 +137,12 @@ namespace MagicBrawl.Core
                 return EmptyAuras;
             }
 
-            List<EffectDef> all = AuraResolver.AuraEffectsOf(card.Def);
-            if (all.Count == 0)
+            var list = new List<AuraTokenSnapshot>();
+            foreach (AuraToken token in card.ActiveAuras)
             {
-                return EmptyAuras;
-            }
-
-            int start = System.Math.Max(0, all.Count - remaining);
-            var list = new List<AuraTokenSnapshot>(all.Count - start);
-            for (int e = start; e < all.Count; e++)
-            {
-                list.Add(new AuraTokenSnapshot
-                {
-                    Kind = all[e].Aura,
-                    Value = all[e].A,
-                    Text = all[e].Text,
-                    CardName = card.Def.Name,
+                list.Add(new AuraTokenSnapshot {
+                    TokenId = token.Id, Kind = token.Definition.Aura, Value = token.Definition.A,
+                    Text = token.Definition.Text, CardName = card.Def.Name
                 });
             }
 
@@ -159,6 +154,8 @@ namespace MagicBrawl.Core
         {
             return new CardSnapshot
             {
+                Definition = def,
+                ArtId = def.ArtId,
                 CardId = def.Id,
                 Name = def.Name,
                 Power = def.Power,
@@ -180,6 +177,11 @@ namespace MagicBrawl.Core
     /// <summary>玩家的只读快照。</summary>
     public struct PlayerSnapshot
     {
+        public string CharacterId;
+        public int InitialHp;
+        public int MinimumCardCount;
+        public int RemainingDeck;
+        public int Team;
         public int Seat;
         public string Name;
         public int Hp;
@@ -217,6 +219,11 @@ namespace MagicBrawl.Core
                 Hp = p.Hp,
                 MaxHp = p.MaxHp,
                 IsAi = p.IsAi,
+                CharacterId = p.Definition.Id,
+                InitialHp = p.InitialHp,
+                MinimumCardCount = p.Definition.MinimumCardCount,
+                RemainingDeck = p.Deck.Remaining,
+                Team = p.Team,
                 HandCount = p.Hand.Count,
                 AuraTokensReady = aura,
             };
@@ -258,6 +265,7 @@ namespace MagicBrawl.Core
     /// </summary>
     public struct DecisionSnapshot
     {
+        public long RequestId;
         public int Seat;
         public RequestKind Kind;
         public string Prompt;
@@ -291,6 +299,7 @@ namespace MagicBrawl.Core
 
             return new DecisionSnapshot
             {
+                RequestId = r.RequestId,
                 Seat = r.Seat,
                 Kind = r.Kind,
                 Prompt = r.Prompt,

@@ -8,6 +8,9 @@ namespace MagicBrawl.Core
     /// </summary>
     public sealed class BattleState
     {
+        private int _nextCardUid = 1;
+        internal CardInstance CreateCard(CardDef definition, int seat)
+        { return new CardInstance(definition, seat, _nextCardUid++); }
         // ── 规则常量（`Docs/rules/01-规则基线.md` §1）───────────────
         public const int InitialHp = 4;
         public const int HandLimit = 8;
@@ -15,15 +18,15 @@ namespace MagicBrawl.Core
         public const int ReplaceLimitInitial = 3;
         public const int DrawTurnsMax = 3;
 
-        /// <summary>玩家座位。先手（决策 D3）。</summary>
+        /// <summary>兼容默认 1v1 的本地座位；通用逻辑应使用 BattleSetup。</summary>
         public const int SeatPlayer = 0;
 
-        /// <summary>AI 座位。</summary>
+        /// <summary>兼容默认 1v1 的对手座位；AI 可绑定任意座位。</summary>
         public const int SeatAi = 1;
 
-        internal BattleState(Deck deck, Rng rng)
+        internal BattleState(Rng rng, IBattleMode mode)
         {
-            Deck = deck;
+            Mode = mode;
             Rng = rng;
             Players = new List<PlayerState>();
             TurnNumber = 0;
@@ -31,8 +34,8 @@ namespace MagicBrawl.Core
             WinnerSeat = -1;
         }
 
-        /// <summary>牌池。</summary>
-        public Deck Deck { get; private set; }
+        public IBattleMode Mode { get; private set; }
+        public BattleOutcome Outcome { get; private set; }
 
         /// <summary>本局的随机源（显式种子，保证确定性）。</summary>
         public Rng Rng { get; private set; }
@@ -81,10 +84,10 @@ namespace MagicBrawl.Core
 
         public PlayerState OpponentOf(int seat)
         {
-            return Players[1 - seat];
+            return Of(Mode.SelectDefender(this, seat));
         }
 
-        /// <summary>双方合计损失的生命点数（灼烧取合计，决策 C3）。</summary>
+        /// <summary>全体角色合计损失的生命点数；具体效果范围由 IBattleMode 决定。</summary>
         public int TotalHpLost
         {
             get
@@ -100,7 +103,7 @@ namespace MagicBrawl.Core
         }
 
         /// <summary>终局：判定胜负并落库。</summary>
-        internal void Finish(int winnerSeat, string reason)
+        internal void Finish(BattleOutcome outcome)
         {
             if (IsOver)
             {
@@ -108,8 +111,9 @@ namespace MagicBrawl.Core
             }
 
             IsOver = true;
-            WinnerSeat = winnerSeat;
-            EndReason = reason;
+            Outcome = outcome;
+            WinnerSeat = outcome.WinnerSeats.Count == 1 ? outcome.WinnerSeats[0] : -1;
+            EndReason = outcome.Reason;
         }
 
         /// <summary>人类可读的单行局面摘要（自测日志用）。</summary>

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>魔法乱斗 1.3 · 过时内容审计报告（2026-09-25）</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#1a1d21; --ink2:#555c66; --ink3:#8a929c;
+  --line:#e3e6ea; --line2:#eef0f3;
+  --red:#c0392b; --amb:#b7791f; --grn:#1f7a4d; --blu:#2c5f9e;
+  --redbg:#fdf3f2; --ambbg:#fdf8ee; --grnbg:#f1f8f3; --blubg:#f2f6fc;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 24px 72px}
+h1{font-size:24px;margin:0 0 6px;letter-spacing:.3px}
+.sub{color:var(--ink3);font-size:13px;margin-bottom:24px}
+h2{font-size:17px;margin:36px 0 12px;padding-left:11px;border-left:4px solid var(--blu)}
+h3{font-size:14.5px;margin:22px 0 8px;color:var(--ink2)}
+p{margin:8px 0}
+code{background:#eef1f4;padding:1.5px 5px;border-radius:3px;font-size:12.5px;
+  font-family:Consolas,"Cascadia Mono",monospace;color:#2c3138}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:18px 20px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.kpi .n{font-size:26px;font-weight:700;letter-spacing:-.5px;line-height:1.2}
+.kpi .l{font-size:12px;color:var(--ink3);margin-top:4px}
+.kpi .d{font-size:12px;color:var(--ink2);margin-top:6px}
+.n-red{color:var(--red)} .n-amb{color:var(--amb)} .n-grn{color:var(--grn)} .n-blu{color:var(--blu)}
+table{width:100%;border-collapse:collapse;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+th{background:#f0f2f5;text-align:left;padding:9px 12px;font-weight:600;
+  color:var(--ink2);font-size:12.5px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+.mono{font-family:Consolas,"Cascadia Mono",monospace;font-size:12px;color:#3a424c;word-break:break-all}
+.tag{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11.5px;
+  font-weight:600;white-space:nowrap;line-height:1.6}
+.t-red{background:var(--redbg);color:var(--red)}
+.t-amb{background:var(--ambbg);color:var(--amb)}
+.t-grn{background:var(--grnbg);color:var(--grn)}
+.t-blu{background:var(--blubg);color:var(--blu)}
+.note{border-left:3px solid var(--amb);background:var(--ambbg);padding:11px 15px;
+  border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+.note.ok{border-color:var(--grn);background:var(--grnbg)}
+.note.bad{border-color:var(--red);background:var(--redbg)}
+ol,ul{margin:8px 0;padding-left:22px}
+li{margin:3px 0}
+details{margin:8px 0}
+summary{cursor:pointer;color:var(--blu);font-size:13px;user-select:none}
+.bar{height:9px;background:#e9ecf0;border-radius:5px;overflow:hidden;margin-top:5px}
+.bar>i{display:block;height:100%;border-radius:5px}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);
+  color:var(--ink3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>魔法乱斗 1.3 · 过时内容审计报告</h1>
+<div class="sub">
+  工程 <code>E:\UnityProject\Unity_AI_CardFight2</code> · 审计日期 2026-09-25 ·
+  范围 Assets / Docs / Captures / Tools / .workbuddy · 只读扫描，未改动任何文件
+</div>
+
+<div class="grid">
+  <div class="kpi"><div class="n n-grn">224 MB</div><div class="l">本次已清理（走回收站，可恢复）</div>
+    <div class="d">临时产物 118.6 + 历史截图 105.3</div></div>
+  <div class="kpi"><div class="n n-red">157 MB</div><div class="l">仍可回收 · 等你拍板</div>
+    <div class="d">无引用资源 92 + 其余零散</div></div>
+  <div class="kpi"><div class="n n-amb">14 项</div><div class="l">需要你拍板</div>
+    <div class="d">字体去留 / 图标库 / DOTween / 32 个死常量</div></div>
+  <div class="kpi"><div class="n n-grn">0 处</div><div class="l">文档断链</div>
+    <div class="d">Docs 内链全部有效</div></div>
+  <div class="kpi"><div class="n n-blu">2 处</div><div class="l">文档口径落后于代码</div>
+    <div class="d">Docs/README 与 00-当前基线</div></div>
+</div>
+
+<div class="note ok" style="border-left-width:5px">
+  <b>本报告已执行：2026-09-25 · 仅清理「临时产物 + 历史截图」，58 个顶层条目 / 223.98 MB，已送回收站（可恢复）。</b><br>
+  实际删除：第 1 节<b>全部</b> + 第 2 节中<b>未被任何文档引用</b>的部分。<br>
+  ⚠ 第 2 节里有 <b>33 张截图正被 Docs 引用</b>（含 <code>engineering/03-工程规划.md</code>、
+  <code>implementation/15-M17…md</code>、<code>engineering/项目目录规范.md</code> 三篇<b>现行</b>文档）
+  —— 这些<b>已全部保留</b>，删掉会让文档图片悬挂。<br>
+  清理后复查：Docs 内部断链仍为 <b>0</b>；Unity 强制 refresh 后控制台 <b>0 error / 0 warning</b>；空目录 <b>0 个</b>。<br>
+  第 3–5 节（无引用资源 / 代码逻辑债 / 文档口径落后）<b>未动</b>，仍等你逐项拍板。
+</div>
+
+<h2>0. 一句话结论</h2>
+<div class="card">
+<p>工程里真正「过时」的东西分两种，性质完全不同：</p>
+<ol>
+<li><b>堆出来的物理垃圾</b>（约 <b>381 MB</b>）—— Unity 会话临时文件、历史验证截图、切图中间产物。
+    这类有 <b>零风险</b> 的判据（无引用 / 已在别处有正片），删了不影响任何功能。</li>
+<li><b>换代留下的逻辑债</b>（代码常量、文档口径、资源族）—— 例如 M38 把卡面统一到一份 Prefab 之后，
+    <code>UiLayout</code> 里一批 <code>SlotMini*</code> / <code>FontSizeMini*</code> 常量已经没有引用；
+    而 <code>Docs/README.md</code> 还写着「下一个实现记录编号是 33-」（实际已到 36-）。</li>
+</ol>
+<p>另有一批 <b>「看着像垃圾、其实是活的」</b> 需要避开：<code>Assets/Resources/*.asset</code>（按名加载）、
+<code>PolySprite</code>（构建器在用）、<code>MagicCardKit</code>（卡面版式参考来源）。报告里已逐个标出。</p>
+</div>
+
+<h2>1. 零风险：临时产物（已清理 118.6 MB）</h2>
+<p>这些是工具链自己写出来的中间文件，不属于工程内容。</p>
+<table>
+<thead><tr><th>路径</th><th>内容</th><th class="num">体积</th><th>判据</th></tr></thead>
+<tbody>
+<tr><td class="mono">.workbuddy/tmp/</td>
+    <td>Unity MCP 会话临时：<code>probe*.json/cs</code>、<code>inline_*.png</code>（22 张）、
+        <code>shots/*.png</code>（12 张）、<code>crop_*.png</code>、<code>verify*.json</code>、<code>flow*.py</code></td>
+    <td class="num">82.15 MB<br><span style="font-weight:400;color:var(--ink3)">145 个</span></td>
+    <td>无任何代码 / 资产引用；<code>shots/</code> 里还留着 <code>Screenshots.meta</code>，
+        说明原本挂在 <code>Assets/Screenshots</code> 下、后来被挪出来</td></tr>
+<tr><td class="mono">Tools/art-audit/_work<br>Tools/art-audit/_tmp</td>
+    <td>切图 / 拼版的中间预览图（85 + 9 张）</td>
+    <td class="num">35.97 MB<br><span style="font-weight:400;color:var(--ink3)">94 个</span></td>
+    <td>正片已进 <code>Assets/Art</code>，这些只是核对用的一次性产物</td></tr>
+<tr><td class="mono">Tools/RuleSelfTest/*.log<br>trace_*.txt</td>
+    <td>跑过的自测日志与事件流 trace（<code>run_m37_*.log</code> 等）</td>
+    <td class="num">0.10 MB<br><span style="font-weight:400;color:var(--ink3)">15 个</span></td>
+    <td>结论已写进 <code>Docs/00-当前基线.md</code> §3 与 M37 文档</td></tr>
+<tr><td class="mono">Assets/Screenshots/<br>Assets/_TrashArt/</td>
+    <td>两个空目录（各自只剩一个 <code>.meta</code>）</td>
+    <td class="num">~0</td>
+    <td>内容已迁出，目录壳是残留</td></tr>
+<tr><td class="mono">工作区 <code>=</code> 文件<br>工作区 .workbuddy/zoom_marker.png</td>
+    <td>误建的空文件 + 一张临时标记图</td>
+    <td class="num">0.43 MB</td>
+    <td>与工程无关</td></tr>
+</tbody>
+</table>
+<div class="note ok"><b>这一级的唯一注意点</b>：<code>.workbuddy/tmp/backup_BattleCanvas_20260919.prefab</code>（453 KB）
+  是 09-19 的 BattleCanvas 备份。当前 M38 之后 <code>BattleCanvas.prefab</code> 已大改，
+  这份备份既不是「当前状态」也不足以回滚，但它确实是唯一的旧快照 —— 建议先移走再清目录。</div>
+
+<h2>2. 历史验证截图（原本 384 MB → 已清理 105 MB，保留 67 MB）</h2>
+<p><code>Captures/</code> 原本 133 个文件 / 384.45 MB，是纯图片目录，不影响构建。问题在<b>信号密度</b>：
+旧版本的界面截图和当前截图混在一起，找一张「现状」要翻很久。
+本次按两条判据清理 ——「文件名自证作废」与「未被任何文档引用」——
+清理后 <b>90 个文件 / 279.1 MB</b>。</p>
+
+<h3>2.1 本次已删除：43 张 / 105.33 MB</h3>
+<div class="note ok">下表是<b>实际执行值</b> —— 初版报告里的估算数字（34 MB / 6 张 / ~5 MB 等）已按扫描结果校正。</div>
+<table>
+<thead><tr><th>模式</th><th>例子</th><th class="num">实际数量/体积</th><th>处理</th></tr></thead>
+<tbody>
+<tr><td>文件名带 <code>-stale</code>（作者自标作废）</td>
+    <td class="mono">m27_handpick_02_multi3-stale.png<br>m27_handpick_03_cibao_3cards{,-1,-2}-stale.png<br>m27_handpick_05_backdrop_on-stale.png</td>
+    <td class="num">5 张<br>24.04 MB</td><td><span class="tag t-grn">已删</span></td></tr>
+<tr><td>重复采样（<code>-1</code> 后缀，同目录有同名正片）</td>
+    <td class="mono">m12_ui_04_peek-1.png · m36_floattip_pop-1.png</td>
+    <td class="num">2 张<br>8.05 MB</td><td><span class="tag t-grn">已删</span></td></tr>
+<tr><td>参考图对位临时裁剪</td>
+    <td class="mono">art-review/_refcrop/ 整目录（ref_* · cur_* · m12_*）</td>
+    <td class="num">10 张<br>8.31 MB</td><td><span class="tag t-grn">已删</span></td></tr>
+<tr><td>早期模块界面且无文档引用<br>
+    <span style="font-size:12px;color:var(--ink3)">M7 / M8 / M9 / M11 / M12 / M13 / M15 / M16 / M18 / M20 的一部分</span></td>
+    <td class="mono">m11_ui_02_midgame.png · m12_ui_01_first.png<br>m13_ui_03_played_above_head.png · m18_ui_01_action_banner.png …</td>
+    <td class="num">26 张<br>64.93 MB</td><td><span class="tag t-grn">已删</span></td></tr>
+</tbody>
+</table>
+
+<h3>2.1b 因被文档引用而保留：31 张 / 66.92 MB <span class="tag t-amb">未删</span></h3>
+<p>这 31 张正被 12 篇文档引用，其中三篇是<b>现行</b>档 —— 删掉会让文档图片悬挂。
+清理后复查 Docs 断链仍为 <b>0</b>。明细：</p>
+<ul>
+<li><b>32.4 MB</b> — <code>m7_uikit_*</code> · <code>m8_uikit_*</code> · <code>m9_deal_*</code> ·
+    <code>m11_ui_01/03/04/06</code> · <code>m13_ui_01/02/06/08-1</code> · <code>m13_badge</code>，
+    被 <code>engineering/03-工程规划.md</code>（现行）、<code>engineering/项目目录规范.md</code>（现行）
+    与 08/09/10/11/12 号实现文档引用</li>
+<li><b>23.5 MB</b> — <code>m20_01</code> · <code>m20_02</code> · <code>m21_02/03/05/06</code>，
+    被 19 号（M20）、20 号（M21）文档引用</li>
+<li><b>10.0 MB</b> — <code>m15_ui_01/02/03</code> · <code>2026-09-18-aura-regression/hudbuff-long-press-1.png</code>，
+    被 14 号（M15）与 <code>validation/2026-09-18-交互与光环回归.md</code> 引用</li>
+<li><b>1.0 MB</b> — <code>m17_ui_01_hand_cards.png</code> · <code>m17_ui_02_cooling_mini.png</code>，
+    被 <code>implementation/15-M17组成式卡面与图文混排.md</code>（现行）引用</li>
+</ul>
+
+<h3>2.2 结果：早期模块截图净减 64.93 MB</h3>
+<p>M7–M21 的截图记录的是<b>旧版界面</b>。M22–M38 把这批界面几乎全部重写过 ——
+冷却区点选、光环摆位、选择弹窗族、头顶出牌、卡面统一都发生在之后。
+这批图共 55 张：<b>26 张无文档引用 → 已删</b>（64.93 MB），<b>29 张被文档引用 → 原地保留</b>（60.69 MB）。
+可见「旧版界面截图」不能一概而论地清空 —— 其中一半仍是现行/历史文档的一部分。</p>
+
+<h3>2.3 清理后保留清单（90 个文件 / 279.1 MB）</h3>
+<ul>
+<li><b>M22 及以后的界面截图</b>（<code>m25</code>–<code>m38</code>）—— 与当前代码同代，是「现状」的唯一视觉依据</li>
+<li><b>2.1b 列出的 31 张</b> —— 被 12 篇文档引用（含 3 篇现行档），删了会悬挂</li>
+<li><code>art-review/</code> 下的<b>参考资料</b>：字体对比 8 张、新素材总览 7 张、卡牌总览 1 张 —— 属美术决策依据</li>
+<li><code>Captures/_prefab_baseline.txt</code>（M38 的 Prefab 基线快照）</li>
+</ul>
+<p style="color:var(--ink3);font-size:13px">（初版报告里那张「模块 → 被谁取代 → 体积」的表已由上面的执行结果取代：
+按模块看，<b>m7 / m8 / m9 那批因全部被文档引用而整组保留</b>，m11–m21 则各有删留。
+精确分类见 2.1 / 2.1b，不在此重复。）</p>
+
+<h2>3. 已无引用的资源（≈ 92 MB）</h2>
+<div class="note"><b>判据</b>：对 Assets 下 677 个资产做 GUID 反向引用扫描（全工程 <code>.cs / .prefab / .unity / .asset / .mat / .asmdef</code> 中检索），
+  并对代码里<b>按字符串路径加载</b>的资产做人工排除。<code>Assets/Resources/</code> 下按名加载的 5 个 <code>.asset</code>
+  已识别为「误报」并剔出。</div>
+
+<h3>3.1 字体 —— 最大的一块（Assets/Font 共 230 MB）</h3>
+<p>工程里总共 18 款源字体、14 个 TMP SDF 资产，但<b>代码真正点名的只有 4 款</b>：</p>
+<table>
+<thead><tr><th>在用字体</th><th class="num">SDF 体积</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td class="mono">Font/Black/Google-Regular.asset</td><td class="num">8.22 MB</td><td>正文 / 标题黑体（三个构建器都点名）</td></tr>
+<tr><td class="mono">Font/BlackLike/站酷仓耳渔阳体-W03 SDF.asset</td><td class="num">2.06 MB</td><td>卡名</td></tr>
+<tr><td class="mono">Font/HandWriting/千图马克手写体 SDF.asset</td><td class="num">2.02 MB</td><td>卡面力量 / 冷却数字（M35 固化）</td></tr>
+<tr><td class="mono">Font/English-Handwriting-Italy/ZCOOL Addict Italic 02 SDF.asset</td><td class="num">0.26 MB</td><td>英文点缀</td></tr>
+</tbody>
+</table>
+<p>其余 <b>13 个 TMP SDF 资产</b>（≈ <b>58 MB</b>）既未被任何 Prefab / 场景引用，也不在代码点名的路径里：</p>
+<details>
+<summary>展开 13 个零引用字体资产</summary>
+<table style="margin-top:8px">
+<tbody>
+<tr><td class="mono">Font/HandWriting/HappyZcool-2016.asset</td><td class="num">32.07 MB</td></tr>
+<tr><td class="mono">Font/Black/Lxgw975GoSC-400W SDF.asset</td><td class="num">4.07 MB</td></tr>
+<tr><td class="mono">Font/BlackLike/字体圈伟君黑-W1 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/BlackLike/站酷仓耳渔阳体-W02 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/BlackLike/爱点风雅黑 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/XiaolaiSC-Regular SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/XiaolaiMonoSC-Regular SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/清松手写体1 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/站酷快乐体（开源版）推荐 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/素材集市康康体3.0 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/摄图摩登小方体(免费商用) SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/cjkFonts_allseto_v1.11 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td class="mono">Font/HandWriting/也字工厂小石头 SDF.asset</td><td class="num">2.02 MB</td></tr>
+<tr><td colspan="2" style="color:var(--ink3)">另：<code>Font/Black/Google-Normal.otf</code>（7.95 MB）与
+  <code>Google-Normal SDF.asset</code> 属同一批候选 —— 后者被 TMP Settings 兜底引用，需单独确认</td></tr>
+</tbody>
+</table>
+</details>
+<div class="note"><b>需你确认</b>：删字体前建议先在 Unity 里对 Font 目录执行一次
+  <code>右键 → Find References In Scene</code>，或直接看 <code>TMP Settings.asset</code> 的默认字体字段。
+  这批「备用字体」当初是为挑字体导入的，一旦选定就不需要留在工程里 —— 但如果是你打算以后回头换字体，那就该留着。</div>
+
+<h3>3.2 美术源图与草稿（≈ 30 MB）</h3>
+<table>
+<thead><tr><th>路径</th><th>内容</th><th class="num">体积</th><th>为什么算过时</th></tr></thead>
+<tbody>
+<tr><td class="mono">Art/CardArt/_Draft/</td><td>9 张草稿（电力转换 / 剧毒种子 / 毒刺 / 鬼火 / 共振 / 振荡 / 次声波 / 裂变 / 雾隐）</td>
+    <td class="num">4.28 MB</td><td>这 9 张在卡表里<b>没有对应卡牌</b>（卡表 40 张，编号 a…an 均已配图）</td></tr>
+<tr><td class="mono">Art/Chars/_Source/</td><td>角色动画切帧源图 14 个，含 2 张 UUID 命名的 AI 生图</td>
+    <td class="num">9.52 MB</td><td>帧已切进 <code>Chars/Hero|Monster/</code>，源图不再参与构建</td></tr>
+<tr><td class="mono">Art/Icons/_Source/<br>Art/Ui/_Source/</td><td><code>IconSheet_盾剑特殊_三合一.png</code>、<code>Icon_效果七合一.png</code>、<code>542f45c2-….png</code> 等拼版原图</td>
+    <td class="num">6.46 MB</td><td>已切分成单图，源拼版留档用</td></tr>
+<tr><td class="mono">Art/_Reference/</td><td>Reference.png / Reference-2.png 等参考图</td>
+    <td class="num">3.91 MB</td><td>美术参考；若美术规范里已写清可不留原图</td></tr>
+<tr><td class="mono">Art/148cae8c-….png<br>Art/661ca76a-….png<br>Art/ae67a6sgshbf-…(realesrgan-x4plus x3).png<br>Art/Reference-3.png</td>
+    <td>直接下载到 <code>Art/</code> 根目录的 AI 生图与参考图，文件名是原始 UUID / 放大参数</td>
+    <td class="num">≈ 4 MB</td>
+    <td>未纳入任何库；其中 <code>661ca76a-….png</code> 与 <code>Art/Ui/_Source/</code> 下的那份<b>内容完全相同</b>（1.5 MB 纯重复）</td></tr>
+<tr><td class="mono">Art/Icons/Icon_04…Icon_10</td>
+    <td>力量增加 / 防御增加 / 连击 / 免疫 / 虚弱 / 脆弱 / 加速（7 张）</td>
+    <td class="num">1.60 MB</td><td>从「效果七合一」切出来，但<b>没有进入任何图标库</b> ——
+        <code>TriggerIconLibrary.asset</code> 只有 3 个条目（剑 / 盾 / 感叹号）</td></tr>
+<tr><td class="mono">Art/Ui/HandPick_Confirm.png<br>Art/Ui/Hud_Bar_Raw.png<br>Art/Ui/Orb_Energy_Raw.png<br>Art/Ui/SlotR_CD1_Raw.png</td>
+    <td>UI 套件的 Raw 原图</td><td class="num">≈ 1 MB</td>
+    <td>同类切片已进 <code>Art/Ui/</code> 并按 prefab 引用；Rw 原图无引用</td></tr>
+</tbody>
+</table>
+<div class="note ok"><b>不算过时的（已排除）</b>：<code>Art/Cards/</code> 40 张成品卡面整图（<code>PlayedCardView</code> /
+  <code>CardTransitView</code> 在用）、<code>Art/CardArt/</code> 40 张卡插画（选牌弹窗族在用）、
+  <code>Art/Ui/</code> 的切片、<code>ThirdParty/PolySprite</code>（<code>BattleArtLayerBuilder.LoadPolySprite</code> 在用）、
+  <code>ThirdParty/MagicCardKit</code>（卡面版式的照抄来源）、<code>PolylineScript</code> 形状包。
+  —— 这几族在 A 段扫描里也显示「guid 无引用」，但属于编辑器按路径加载，不能删。</div>
+
+<h3>3.3 第三方与模板（≈ 5.6 MB）</h3>
+<table>
+<thead><tr><th>路径</th><th class="num">体积</th><th>判据</th></tr></thead>
+<tbody>
+<tr><td class="mono">Assets/Plugins/Demigiant/（DOTween + DOTweenPro + DemiLib + Examples）</td>
+    <td class="num">1.69 MB<br>351 个文件</td>
+    <td><b>确认未使用</b>。代码注释三处明确写着「<code>UiTween</code> 自研、不引 DOTween」、
+        「动画这一层保持零第三方依赖」。包含 3 个 DOTweenPro 示例场景</td></tr>
+<tr><td class="mono">Assets/Settings/Lit2DSceneTemplate.scenetemplate<br>Assets/Settings/Scenes/URP2DSceneTemplate.unity</td>
+    <td class="num">3.86 MB</td>
+    <td>Unity 新建场景用的模板，工程全程只用 <code>Scenes/SampleScene.unity</code></td></tr>
+</tbody>
+</table>
+
+<h2>4. 代码层的过时（逻辑债，0 字节但要命）</h2>
+
+<h3>4.1 死常量 32 个 <span class="tag t-amb">需确认</span></h3>
+<p>判据：<code>public const / static readonly</code> 声明后，在<b>声明文件以外</b>的任何 <code>.cs</code> 里都搜不到，
+且在声明文件内部也<b>只出现在声明那一行</b>。集中在这两个文件：</p>
+<table>
+<thead><tr><th>文件</th><th>组</th><th class="num">个数</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td class="mono">Ui/UiLayout.cs</td><td><code>SlotMini*</code>（SlotMiniChipHeight / SlotMiniNameHeight /
+    SlotMiniPad / SlotMiniCooldownBaseHeight / SlotMiniCooldownChipWidth / SlotMiniCooldownExtra /
+    SlotMiniPipRowHeight / SlotMiniPipRowWidth / SlotMiniPowerChipWidth / SlotEnemyHeight / SlotRowTop）</td>
+    <td class="num">11</td>
+    <td><b>M38 的直接后果</b>：迷你卡不再有独立 Prefab，改由 <code>CardView_Hand</code> 缩放，
+        这批「迷你卡版式常量」随之失去引用</td></tr>
+<tr><td class="mono">Ui/UiLayout.cs</td><td><code>FontSizeMini*</code>（MiniCooldown / MiniCooldownBase /
+    MiniName / MiniNameMin / MiniPower）+ <code>FontSizeCardName / FontSizeHandBadge / FontSizeCoolingNumber /
+    FontSizeDetailName / FontSizeDetailMeta</code></td>
+    <td class="num">10</td>
+    <td>同上：字号改由 prefab 上的 TMP 设置 + 运行时 <code>SetFaceWidth</code> 缩放决定，
+        常量层已不参与</td></tr>
+<tr><td class="mono">Ui/UiLayout.cs</td><td><code>PlayedCardDefenseHold</code></td>
+    <td class="num">1</td>
+    <td>注释自己写着「<b>本常量已无引用</b>……保留定义只为不让文档里的旧引用变成悬空」</td></tr>
+<tr><td class="mono">Ui/UiLayout.cs</td><td><code>CardSpaceEdgeWidth / CardSpaceRadius / DragStartDistance /
+    HandCardArtScale / HandDealStagger / HandPickDisabledDim / HandPickInnerFrameInset /
+    HandPickRemoveSeconds / PeekSidePadding / AuraPipSize / BuffIconReadyEdgeWidth / BuffTipGap</code></td>
+    <td class="num">12</td>
+    <td>零散残留：其中 <code>HandPick*</code> 一组是 M30/M31 选牌弹窗改造时被 <code>HandPick*</code>
+        新常量取代的旧值；<code>DragStartDistance</code> / <code>HandDealStagger</code>
+        的阈值实际写在 <code>HandView</code> / <code>DealUi</code> 里</td></tr>
+<tr><td class="mono">Ui/UiTheme.cs</td><td><code>AuraSpent / BadgeBackdrop / CooldownNumber /
+    MiniCardEdge / PanelEdge / TextOnArt</code></td><td class="num">6</td>
+    <td>颜色常量。与「提示色只写 prefab <code>Image.color</code>」的铁律一致 —— 这些是早期在代码里
+        定义色值的遗留，现已不参与</td></tr>
+</tbody>
+</table>
+<div class="note"><b>为什么没直接删</b>：<code>UiLayout</code> / <code>UiTheme</code> 是「版式账」文件，
+  里面的常量同时充当文档。删掉它们前要确认两件事：① 没有经反射 / 序列化读取（可能性很低但不为零）；
+  ② <code>UiKitBuilder</code> 重建时不会因为缺常量而编译失败（它不是引用关系，编译期就能发现）。
+  建议做法：先把这批常量集中挪到一个 <code>#region 已废弃（保留只作文档）</code> 里，跑一次 M7 构建验证，
+  连跑两轮无异常再物理删除。</div>
+
+<h3>4.2 无调用方的成员</h3>
+<table>
+<thead><tr><th>位置</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td class="mono">BattleUi.SetLogVisible(bool)<br>BattleUi.ToggleLog()</td>
+    <td><code>ToggleLog</code> 是 <b>private 且从未被调用</b>；<code>SetLogVisible</code> 只被 <code>ToggleLog</code> 调用。
+        代码注释也承认「等 M10 设置面板落地再接回去」。同时 <code>BattleUiBuilder</code> 仍在生成
+        <code>LogPanel</code> 节点（默认关闭，永远不显示）—— 这是 <b>M10 未做</b> 留下的三件套</td></tr>
+<tr><td class="mono">Core/Ai/IAgent.cs → <code>PassiveAgent</code></td>
+    <td>全工程无任何引用（既没被 <code>new</code>、也没出现在类型判断里）。属于早期为「无 AI 模式」预留的类</td></tr>
+</tbody>
+</table>
+
+<h3>4.3 看着像死代码、其实不是（避免误删）<span class="tag t-grn">重要</span></h3>
+<ul>
+<li><code>BattleBootstrap</code> —— guid 未被 prefab / 场景引用，但它是运行时入口（由 <code>SampleScene</code> 的 MonoBehaviour guid 指向，扫描口径不同）</li>
+<li><code>UiTween</code> / <code>ZoneSlotClickCatcher</code> —— 由代码在运行时 <code>AddComponent</code></li>
+<li><code>ArtOnboarding</code> / <code>TriggerIconBuilder</code> / <code>TriggerSpriteAssetBuilder</code> —— 编辑器菜单类，靠 <code>[MenuItem]</code> 触发</li>
+<li><code>Core/</code> 下所有 <code>.cs</code> —— 纯逻辑层，类之间用类名互相引用、不走 GUID，扫描器一律报「无引用」</li>
+<li><code>Assets/Resources/</code> 的 5 个 <code>.asset</code>（含 <code>TriggerIconLibrary</code> 与 <code>TriggerIconSprite</code>，
+    <b>两个都在用</b>：前者给光环图标取剑 / 盾 / 感叹号，后者给卡面效果文字提供 α / β / γ 的 TMP sprite）—— <code>Resources.Load</code> 按名加载</li>
+<li><code>BattleUiBuilder</code> 里的「历史节点清理名单」（<code>PromptBar / PickerPanel / ZoneHighlight …</code>）——
+    这是<b>故意保留</b>的：重跑构建时要靠它把老场景里的化石节点删干净</li>
+</ul>
+
+<h2>5. 文档层的过时（口径落后）</h2>
+<table>
+<thead><tr><th>文件</th><th>问题</th><th>建议</th></tr></thead>
+<tbody>
+<tr><td class="mono">Docs/README.md</td>
+    <td>「最后核对 <b>2026-09-23（M34）</b>」；维护约定里仍写「当前最大 <code>32-</code>，下一个 <b><code>33-</code></b>」
+        —— 实际已到 <code>36-</code>（M38）。「按任务找文档」表里没有 M37 / M38 的入口</td>
+    <td>更新到 M38；编号改为「下一个 <code>37-</code>」</td></tr>
+<tr><td class="mono">Docs/00-当前基线.md</td>
+    <td>抬头写「最后核对 2026-09-25（<b>M37</b> 落地当日）」，但 §2 模块表里已经有 M38 一行；
+        §3「验证程度」表的最近一次验证仍只写到 M37。§4 里「M35 同帧起飞没截图」等条目
+        与 M38 后的状态需要复核</td>
+    <td>抬头与 §3 补 M38，§4 遗留项按当前状态重排</td></tr>
+<tr><td class="mono">Docs/implementation/08 ~ 14<br>（7 篇）</td>
+    <td>已被索引标为「<b>历史</b>」，但里面写着具体坐标 / 尺寸 / 节点名，容易被误当现行依据</td>
+    <td>保持现状即可（索引已声明）；若要更保险，在每篇开头加一行醒目的「已历史化」横幅</td></tr>
+<tr><td class="mono">Docs/archive/（2 篇）<br>Docs/operations/Unity-MCP.md<br>Docs/art-review/README.md</td>
+    <td>体量极小（合计 0.04 MB），内容已明确标注「草稿 / 指针」。<code>Unity-MCP.md</code> 停留在 2026-09-18</td>
+    <td>不必删；<code>Unity-MCP.md</code> 若要继续用就核对一遍当前连接方式</td></tr>
+<tr><td colspan="3"><b>文档里点名、但工程中已不存在的资产（3 处）</b>
+    <table style="margin-top:6px">
+    <tbody>
+    <tr><td class="mono">Assets/Art/Reference-2.png</td><td>被 <code>23-M25查看对方手牌弹窗.md</code> 引用，实际在 <code>Art/_Reference/Reference-2.png</code></td><td>路径写错</td></tr>
+    <tr><td class="mono">Assets/Prefabs/Ui/CardView_Mini.prefab</td><td>M38 已删除 —— 出现在 08（历史）、36（M38 说明里是「已删」）、validation/09-18 三处</td><td>无需修</td></tr>
+    <tr><td class="mono">Tools/RuleSelfTest.csproj</td><td>被 <code>04-架构与接口.md</code> 引用，实际路径是 <code>Tools/RuleSelfTest/RuleSelfTest.csproj</code></td><td>路径写错</td></tr>
+    </tbody></table></td></tr>
+</tbody>
+</table>
+<div class="note ok"><b>文档体系的整体健康度是好的</b>：48 篇 Markdown、内部链接
+  <b>0 处断链</b>，三层读法（现状 / 路由 / 追溯）与「一件事只有一个来源」的约定都真的在执行。
+  问题只在于<b>两份入口文档的「最后核对」日期没跟上最近两个模块</b> —— 这是最容易累积成
+  「文档说 A、代码是 B」的地方。</div>
+
+<h2>6. 不在审计范围（但占空间）</h2>
+<table>
+<thead><tr><th>目录</th><th class="num">体积</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td class="mono">Library/</td><td class="num">1.97 GB</td><td>Unity 导入缓存，删了会全量重导（38246 个文件）</td></tr>
+<tr><td class="mono">.git/</td><td class="num">604 MB</td><td>含历史大图。若要瘦身需 <code>git gc</code> / 重写历史，属独立议题</td></tr>
+<tr><td class="mono">obj/ · Temp/ · Logs/ · .vs/</td><td class="num">≈ 2.4 MB</td><td>可安全清，Unity 会重建</td></tr>
+<tr><td class="mono">Assets/Settings/ 的 URP asset</td><td class="num">—</td><td>现役配置，勿动</td></tr>
+</tbody>
+</table>
+
+<h2>7. 执行状态</h2>
+<ol>
+<li><span class="tag t-grn">已完成</span> <b>零风险清理</b>（第 1 节，<b>118.6 MB</b>）：<code>.workbuddy/tmp/</code>、
+    <code>Tools/art-audit/_work|_tmp</code>、15 个自测日志、<code>Assets/Screenshots/</code> 与
+    <code>Assets/_TrashArt/</code>（连 <code>.meta</code>）、工程根空 <code>_TrashArt/</code>、
+    工作区误建的 <code>=</code> 与 <code>zoom_marker.png</code>。<br>
+    两个有保留价值的文件<b>已先转移到工程外</b>：
+    <code>backup_BattleCanvas_20260919.prefab</code> → <code>_CardFight2_Backups/pre-m39-cleanup-2026-09-25/</code>；
+    MCP 桥脚本 <code>ubridge.mjs</code> → <code>.workbuddy/ubridge.mjs</code>。</li>
+<li><span class="tag t-grn">已完成</span> <b>历史截图清理</b>（第 2 节，<b>105.33 MB</b>）：
+    删 43 张（作废自证 + 无文档引用），留 31 张（被文档引用，见 2.1b）。
+    <b>没有采用「整目录归档」</b>—— 因为被引用的那部分本来就必须留在原位，剩下的才是真垃圾。</li>
+<li><span class="tag t-amb">待定</span> <b>无引用资源</b>（第 3 节，92 MB）—— 每一项都等你点头：
+    字体（先确认不换字体了）、<code>_Draft</code> 草稿、<code>_Source</code> 源图、DOTween、场景模板。</li>
+<li><span class="tag t-amb">待定</span> <b>逻辑债</b>（第 4 / 5 节）：先把死常量收进废弃区、
+    把两份入口文档补到 M38，跑一轮 M7 构建回归与 <code>10000 20261700</code> 内核自测确认无副作用，再物理删除。</li>
+</ol>
+<div class="note ok"><b>本次执行的验证</b>：① Docs 内部断链 —— 清理前后均为 <b>0</b>，未被引用截图全部保留后仍为 0；
+  ② Unity 清空控制台 + 强制全量 refresh → <b>0 error / 0 warning</b>
+  （此前控制台里那批 <code>NullReferenceException</code> 全是 <code>TMP_SubMeshUI.UpdateMaterial</code> 的历史累积噪声，与本次删除无关）；
+  ③ <code>Assets</code> / <code>Tools</code> / <code>Captures</code> / <code>Docs</code> 下空目录 <b>0 个</b>。<br>
+  删除均走<b>回收站</b>（<code>SHFileOperation</code> + <code>FOF_ALLOWUNDO</code>），随时可恢复；
+  确认无误后清空回收站即真正释放空间。</div>
+
+<footer>
+本报告由只读扫描生成，未修改工程中任何文件。<br>
+扫描脚本已放在 <code>Tools/stale-audit/01-scan-size.py</code> … <code>06-scan-docs.py</code>，可随时重跑复核
+（<code>python 0N-*.py &lt;工程根路径&gt;</code>，纯标准库、无需 Unity 操作）。<br>
+判据口径：孤儿 = 资产 GUID 在全工程引用源中零命中（已排除 <code>Resources/</code> 按名加载与代码字符串路径加载）；
+死常量 = 声明外零命中且声明内仅出现 1 次。
+</footer>
+
+</div>
+</body>
+</html>

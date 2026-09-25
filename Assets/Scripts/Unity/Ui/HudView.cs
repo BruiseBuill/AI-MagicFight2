@@ -15,7 +15,7 @@ namespace MagicBrawl.App
     ///
     /// <para><b>槽位映射</b>（本作没有「金币」概念，用最接近的资源顶替，别当成参考图的抄写）：</para>
     /// <list type="bullet">
-    /// <item>❤ 数字 = <c>Hp/MaxHp</c>（规则固定 4 点，显示成 3/4 而不是参考图的 72/80）</item>
+    /// <item>❤ 数字 = <c>Hp/MaxHp</c>（按角色配置显示）</item>
     /// <item>💰 数字 = 冷却区里未使用的光环指示物数（本作唯一的「可消耗资源」）</item>
     /// <item>名字下的小字 = 手牌数（对方手牌数本来就是公开信息）</item>
     /// <item>能量球 = 当前进攻出牌次数 / 最大出牌次数（1）</item>
@@ -35,7 +35,7 @@ namespace MagicBrawl.App
         //   （语义一直是「前 2 个常态 + 未用光环数点亮」），用户要求把光环<b>真正</b>
         //   摆出来之后，它们就变成了同一件事的第二套假实现 —— 见 Ui/HudBuffView.cs。
 
-        /// <summary>齿轮 = 设置入口（当前接的是战斗日志开关，M10 接真正的设置面板）。</summary>
+        /// <summary>齿轮打开设置面板，重开与卡池测试位于面板内。</summary>
         public event Action GearClicked;
 
         public void Configure(TMP_Text name, TMP_Text subtitle, TMP_Text hpNumber,

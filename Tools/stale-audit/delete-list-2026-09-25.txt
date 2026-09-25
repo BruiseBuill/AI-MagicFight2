@@ -1,0 +1,334 @@
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\.ubridge_sid	32
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\backup_BattleCanvas_20260919.prefab	464197
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\clean.cs	264
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\clean.json	302
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\crop_1card.png	207337
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\crop_2cards.png	415758
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\crop_hc.png	533592
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\crop_hudbuff.png	99512
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\crop_icons.png	105385
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\crop_monster.png	519293
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\diag1.json	578
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\drive.mjs	1050
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\dump.json	533
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final1.json	443
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final2.json	2051
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final3.json	2037
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final4.json	1720
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final4b.json	1496
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final5.json	1938
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final6.json	1542
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final_shot.py	1756
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\final_shot2.py	2289
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_A_hc.png	281014
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_A_head.png	237201
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_B_hc.png	1563
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_B_head.png	1680
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_full.png	2725
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_hc.png	289589
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_head_def.png	2927
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\fin_head_def2.png	2010
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\flow.py	3933
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\flow2.py	3201
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\flow3.py	1371
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inject.json	1927
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789696833658_1.png	857136
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789696849542_1.png	1657306
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789697524585_1.png	1686739
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698000570_1.png	2498634
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698025246_1.png	2498634
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698039584_1.png	2470450
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698060874_1.png	2303410
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698301997_1.png	2428339
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698309978_1.png	27184
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698333719_1.png	2262970
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789698349740_1.png	2262970
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789803239329_1.png	2496431
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789803397932_1.png	2546641
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789864636756_1.png	2499202
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789867782482_1.png	2502957
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789867836642_1.png	2521733
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789867854665_1.png	2514967
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789868628641_1.png	27184
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789868631781_1.png	2532122
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789868648788_1.png	2508985
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\inline_1789868678534_1.png	27184
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\logscan.py	428
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\pg.json	109
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\prep2.json	445
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\prep3.json	2084
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe1.json	1793
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe10.json	614
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe11.json	1197
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe12.json	223
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe13.json	314
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe14.json	2060
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe15.json	1116
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe2.cs	1418
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe2.json	1742
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe3.cs	1716
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe3.json	1562
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe4.cs	2364
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe4.json	2125
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe5.json	2141
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe6.json	1668
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe7.json	1869
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe8.json	1394
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe9.json	1358
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probeC.json	3236
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probeD.json	4169
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probeE.json	2505
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probeF.json	1504
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probeG.json	1167
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_bg.json	159
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_fc.json	125
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_inner.json	950
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_pause.json	451
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_show15.json	1258
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_show4.json	1230
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_state.json	927
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\probe_vis.json	526
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\proc2.py	1658
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\proc3.py	1066
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\slot1.cs	2678
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\slot1.json	2821
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\ss.json	96
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\step.json	1342
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\ubridge.mjs	4422
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\verify1.cs	1602
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\verify1.json	1712
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\verify2.cs	1372
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\verify2.json	1483
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\verify3.cs	2827
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\verify3.json	2987
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\v_def_hc.png	2071
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\v_def_head.png	3781
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\v_full.png	745673
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\v_full2.png	2725
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\v_hc.png	273740
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\v_hc_final.png	376710
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\v_head_full.png	969
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\win.py	619
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\_first.json	1347
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\_flow.json	102
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\_skip.json	204
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\_status.json	1937
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-100033.png	2725729
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-100033.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-100049.png	3179235
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-100049.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-101204.png	3257306
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-101204.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-101910.png	2666503
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-101910.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-101959.png	3249355
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-101959.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102024.png	3249355
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102024.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102038.png	3168442
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102038.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102100.png	3043609
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102100.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102501.png	3128253
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102501.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102509.png	38666
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102509.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102533.png	3001143
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102533.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102549.png	3001143
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\screenshot-20260918-102549.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots\Screenshots.meta	172
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots_moved\screenshot-20260919-153358.png	3256061
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots_moved\screenshot-20260919-153358.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots_moved\screenshot-20260919-153637.png	3316718
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots_moved\screenshot-20260919-153637.png.meta	3885
+A1-.workbuddy/tmp	E:\UnityProject\Unity_AI_CardFight2\.workbuddy\tmp\shots_moved\Screenshots.meta	172
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\after_zone_check.png	38677
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim2_Hero_attack.png	733973
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim2_Monster_attack.png	665937
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim2_Monster_defend.png	794225
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim2_Monster_idle.png	733077
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim_Hero_attack.png	339286
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim_Hero_defend.png	254793
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim_Hero_idle.png	259306
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim_Monster_attack.png	394588
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim_Monster_defend.png	342390
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\anim_Monster_idle.png	335208
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\behit_verify.png	6185766
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\card_box_preview.png	11962
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_badge.png	57658
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_card1.png	265726
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_card2.png	258807
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_cool2.png	581000
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_coolL.png	269293
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_hand.png	766631
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_hand2.png	1705635
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_mini2.png	968962
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\chk_mini3.png	85866
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\effect_icons_sheet.png	1410206
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\face_line1_grid.png	22030
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\face_textbox.png	281773
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\final_hand.png	1605372
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\hero2_attack.png	651942
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\hero2_behit.png	719419
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\hero2_death.png	663926
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\hero2_defend.png	957472
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\hero2_idle.png	505128
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\mon_atk_wide.png	383479
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\mon_head_idle.png	130817
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\peek_a_topleft.png	406505
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\peek_b_topright.png	254032
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\peek_c_botleft.png	119350
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\peek_d_botmid.png	62341
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\peek_e_botright.png	105600
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\peek_sheet_grid.png	465990
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ref_buffs.png	44933
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ref_orb.png	73488
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ref_slotL.png	205966
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ref_slotR.png	200730
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ref_stage.png	303538
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ref_top.png	80032
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\row_hero_0.png	351165
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\row_hero_1.png	308266
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\row_hero_2.png	251577
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\row_mon_0.png	504557
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\row_mon_1.png	466450
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\row_mon_2.png	490407
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\slotr_cd1_fix.png	69578
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\title_probe.png	23949
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\tmp_icon_sheet_preview.png	116885
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_atlas_annotated.png	1752598
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_comps.png	319897
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_hand.png	566889
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_hud.png	119744
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_hud_erase.png	172340
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_hud_erase_1x.png	63784
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_hud_fixed_1x.png	77991
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_icons.png	61736
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_minicard.png	42271
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_orb.png	67861
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_orb_erase.png	65736
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_slotL1.png	45947
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_slotL4.png	44283
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\ui_slotR1.png	46491
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_a.png	566400
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_b.png	469560
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_buffs.png	24612
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_energy.png	59469
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_field_a.png	34160
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_field_b.png	15262
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_field_up.png	16316
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_hud.png	92659
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_slot_left.png	394881
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_slot_right.png	384681
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_slot_right_bottom.png	32060
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_sprite_align.png	60041
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\zoom_topright.png	1253
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\z_after_gold.png	24655
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\z_after_hp.png	25615
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\z_before_gold.png	28831
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work\z_before_hp.png	31787
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\attack_span.png	196351
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\boundary_r2c34.png	320344
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\boundary_r3c12.png	216165
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\orient_check.png	741124
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\prev_Attack.png	310250
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\prev_BeHit.png	531790
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\prev_Death.png	511777
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\prev_defense.png	461495
+A2-art-audit 中间图	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp\prev_Idle.png	432843
+A2-目录	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_work	0
+A2-目录	E:\UnityProject\Unity_AI_CardFight2\Tools\art-audit\_tmp	0
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\mass.log	2583
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\negctrl.log	6064
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\run.log	2570
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\run_m37.log	5165
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\run_m37_10000.log	5178
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\run_m37_3000.log	5299
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\run_m37_3000b.log	5173
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_1.txt	11643
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_2.txt	4398
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_3.txt	4813
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_4.txt	13889
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_5.txt	12474
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_6.txt	13062
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_7.txt	8535
+A3-自测日志	E:\UnityProject\Unity_AI_CardFight2\Tools\RuleSelfTest\trace_8.txt	4672
+A4-空目录	E:\UnityProject\Unity_AI_CardFight2\Assets\Screenshots	0
+A4-空目录	E:\UnityProject\Unity_AI_CardFight2\Assets\_TrashArt	0
+A5-工作区临时图	E:\WebApplicationByAI\WorkBuddy\Unity_CardFight2\.workbuddy\zoom_marker.png	443112
+A5-工作区误建	E:\WebApplicationByAI\WorkBuddy\Unity_CardFight2\=	0
+B1-文件名带 stale	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m27_handpick_02_multi3-stale.png	6298582
+B1-文件名带 stale	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m27_handpick_03_cibao_3cards-1-stale.png	4701818
+B1-文件名带 stale	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m27_handpick_03_cibao_3cards-2-stale.png	4756382
+B1-文件名带 stale	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m27_handpick_03_cibao_3cards-stale.png	4696469
+B1-文件名带 stale	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m27_handpick_05_backdrop_on-stale.png	4756679
+B2-重复采样	E:\UnityProject\Unity_AI_CardFight2\Captures\2026-09-18-aura-regression\hudbuff-long-press-1.png	3307363
+B2-重复采样	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m12_ui_04_peek-1.png	3185181
+B2-重复采样	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_08_foe_card_visual-1.png	3229458
+B2-重复采样	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m36_floattip_pop-1.png	5258005
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\cur_cool_left.png	1152350
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\cur_cool_right.png	1015502
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\cur_hand.png	1094071
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\m12_cool_left.png	718478
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\m12_cool_right.png	614813
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\m12_hand.png	2025622
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\ref_cool_left.png	496635
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\ref_cool_right.png	490005
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\ref_hand_arc.png	775907
+B3-_refcrop	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\_refcrop\ref_hud.png	326940
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\m15_01_layout.png	2607835
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\m15_02_hudbuff.png	2607835
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\m15_03_magenta.png	1909315
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\m15_04_icons.png	1910324
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\m15_05_probe.png	1910324
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\m15_06_repaint.png	1902911
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_01_first.png	3168581
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_02_midgame.png	3171111
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_03_battle.png	3265033
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_04_cooldown.png	3153517
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_05_deal.png	3164260
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m11_ui_06_cooldown_rows.png	3144065
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m12_ui_01_first.png	3221832
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m12_ui_02_midgame.png	3322833
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m12_ui_03_cooldown.png	3212443
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m12_ui_04_peek.png	38666
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m12_ui_05_peek_cooling.png	3122236
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m12_ui_06_late.png	3197330
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_badge.png	2707850
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_before_play.png	3220213
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_01_arc.png	3225087
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_02_arrow_attack.png	3315365
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_03_played_above_head.png	3259644
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_04_played_card_badge.png	3259694
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_05_played_foe_badge.png	3262782
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_06_arrow_defend.png	3245936
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_07_foe_card_above_head.png	3209586
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m13_ui_08_foe_card_visual.png	3207685
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m15_ui_01_hudbuff.png	2498634
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m15_ui_02_tip.png	2428339
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m15_ui_03_drag.png	2262970
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m16_ui_01_prepared_marker.png	3258050
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m16_ui_02_prepared_three.png	3120672
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m17_ui_01_hand_cards.png	731112
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m17_ui_02_cooling_mini.png	274860
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m18_ui_01_action_banner.png	3225642
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m18_ui_02_prepared_zone.png	3164062
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m20_01_head_1card.png	199737
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m20_02_head_2cards.png	251246
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m20_03_handcount_v1.png	297426
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m20_04_handcount_v2.png	297740
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_02_aura_default_rows.png	6325261
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_03_prepared_markers_and_hint.png	6056377
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_05_drophint_shape_temp45.png	5793640
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m21_06_all_combined.png	6034680
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m7_uikit_01.png	926097
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m7_uikit_02.png	926104
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_01_replace.png	606270
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_02_detail.png	620696
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_03_midgame.png	437663
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_03b_emptyhand.png	52992
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m8_uikit_04_result.png	65501
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m9_deal_01_open.png	607959
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m9_deal_02_three_marked.png	744402
+B4-早期模块界面	E:\UnityProject\Unity_AI_CardFight2\Captures\art-review\m9_deal_03_join_replace.png	565226

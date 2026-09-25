@@ -30,7 +30,9 @@ namespace MagicBrawl.Core
     /// </summary>
     public sealed class CardInstance
     {
-        private static int _nextUid = 1;
+        private static int _nextFixtureUid;
+        internal readonly System.Collections.Generic.List<AuraToken> ActiveAuras = new System.Collections.Generic.List<AuraToken>();
+        private int _nextAuraId;
 
         /// <summary>实例唯一编号（自测与事件流里便于追踪）。</summary>
         public readonly int Uid;
@@ -41,10 +43,12 @@ namespace MagicBrawl.Core
         /// <summary>所有者座位（0 = 玩家 · 1 = AI）。</summary>
         public readonly int OwnerSeat;
 
-        internal CardInstance(CardDef def, int ownerSeat)
+        internal CardInstance(CardDef def, int ownerSeat) : this(def, ownerSeat, System.Threading.Interlocked.Decrement(ref _nextFixtureUid)) { }
+
+        internal CardInstance(CardDef def, int ownerSeat, int uid)
         {
-            Uid = _nextUid++;
-            Def = def;
+            Uid = uid;
+            Def = def ?? throw new ArgumentNullException(nameof(def));
             OwnerSeat = ownerSeat;
             AuraTokens = def.AuraTokenCount;
             Zone = CardZone.Deck;
@@ -54,7 +58,19 @@ namespace MagicBrawl.Core
         public int RemainingCooldown { get; internal set; }
 
         /// <summary>尚未消耗的光环指示物数（双光环 = 2）。</summary>
-        public int AuraTokens { get; internal set; }
+        public int AuraTokens
+        {
+            get { return ActiveAuras.Count; }
+            internal set
+            {
+                ActiveAuras.Clear();
+                var effects = AuraResolver.AuraEffectsOf(Def);
+                for (int i = Math.Max(0, effects.Count - value); i < effects.Count; i++)
+                    ActiveAuras.Add(new AuraToken(_nextAuraId++, effects[i]));
+            }
+        }
+        internal void AddAura(EffectDef effect)
+        { ActiveAuras.Add(new AuraToken(_nextAuraId++, effect)); AuraLive = true; }
 
         /// <summary>光环是否已激活 —— 本牌进入冷却区之后才为 true（免疫只对之后的防御生效）。</summary>
         public bool AuraLive { get; internal set; }
@@ -110,5 +126,12 @@ namespace MagicBrawl.Core
         {
             return "#" + Uid + " " + Def.Id + Def.Name + "(CD" + RemainingCooldown + ")";
         }
+    }
+
+    internal sealed class AuraToken
+    {
+        public readonly int Id;
+        public readonly EffectDef Definition;
+        public AuraToken(int id, EffectDef definition) { Id = id; Definition = definition; }
     }
 }

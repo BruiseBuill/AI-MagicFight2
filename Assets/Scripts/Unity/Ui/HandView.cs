@@ -30,6 +30,13 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class HandView : MonoBehaviour, ICardGestureHost
     {
+        public int LocalSeat { get; private set; }
+        public int OpponentSeat { get; private set; } = 1;
+        public void ConfigureSeats(int localSeat, int opponentSeat)
+        {
+            LocalSeat = localSeat; OpponentSeat = opponentSeat;
+        }
+
         /// <summary>悬停/选中趋近速度（越大越跟手）。</summary>
         private const float SmoothSpeed = 16f;
 
@@ -93,8 +100,8 @@ namespace MagicBrawl.App
         private bool _restrict;
 
         /// <summary>
-        /// 当前这一拍「拖牌出牌」的方向：<see cref="BattleState.SeatAi"/> = 进攻（箭头指对手）、
-        /// <see cref="BattleState.SeatPlayer"/> = 防御（箭头指自己）、-1 = 这一阵没有拖拽出牌的语义。
+        /// 当前这一拍「拖牌出牌」的方向：<see cref="OpponentSeat"/> = 进攻（箭头指对手）、
+        /// <see cref="LocalSeat"/> = 防御（箭头指自己）、-1 = 这一阵没有拖拽出牌的语义。
         ///
         /// <para><b>谁来定</b>：<see cref="BattleUi"/> 按 <c>DecisionSnapshot.Kind</c> 翻译
         /// （ChooseAttackCard → 敌、ChooseDefense → 己）。本类**不判断规则**，
@@ -897,7 +904,7 @@ namespace MagicBrawl.App
                 return;
             }
 
-            CharacterView target = _dragHoverSeat == BattleState.SeatPlayer ? _selfTarget : _enemyTarget;
+            CharacterView target = _dragHoverSeat == LocalSeat ? _selfTarget : _enemyTarget;
             if (target == null)
             {
                 _arrow.Hide();
@@ -909,7 +916,7 @@ namespace MagicBrawl.App
             Vector2 feetScreen = RectTransformUtility.WorldToScreenPoint(null, target.transform.position);
 
             _arrow.Show(fromWorld, feetScreen + new Vector2(0f, UiLayout.DropArrowAimLift),
-                _dragHoverSeat == BattleState.SeatAi);
+                _dragHoverSeat == OpponentSeat);
         }
 
         private void HideArrow()
@@ -924,12 +931,12 @@ namespace MagicBrawl.App
         {
             if (_selfTarget != null)
             {
-                _selfTarget.SetHighlight(seat == BattleState.SeatPlayer);
+                _selfTarget.SetHighlight(seat == LocalSeat);
             }
 
             if (_enemyTarget != null)
             {
-                _enemyTarget.SetHighlight(seat == BattleState.SeatAi);
+                _enemyTarget.SetHighlight(seat == OpponentSeat);
             }
         }
 

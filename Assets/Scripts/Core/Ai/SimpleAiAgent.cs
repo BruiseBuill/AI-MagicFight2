@@ -119,7 +119,7 @@ namespace MagicBrawl.Core
                 return DecisionResponse.WithAuras(req.Seat, null, new[] { immune });
             }
 
-            if (req.ContextDefenseBonus <= 0)
+            if (!req.AurasPrepared)
             {
                 int[] prep = AuraIndices(req, true);
                 if (prep.Length > 0)
@@ -271,12 +271,11 @@ namespace MagicBrawl.Core
         private Option PickStrongestOpponentCooling(DecisionRequest req)
         {
             Option best = null;
-            int opponent = 1 - req.Seat;
 
             for (int i = 0; i < req.Options.Count; i++)
             {
                 Option o = req.Options[i];
-                if (!IsCardOption(o) || o.Card.OwnerSeat != opponent)
+                if (!IsCardOption(o) || !req.IsEnemy(o.Card.OwnerSeat))
                 {
                     continue;
                 }
@@ -318,7 +317,7 @@ namespace MagicBrawl.Core
                 }
 
                 bool favorable = o.Seat == -1
-                                 || (req.ContextHaste ? o.Seat == req.Seat : o.Seat != req.Seat);
+                                 || (req.ContextHaste ? o.Seat == req.Seat : req.IsEnemy(o.Seat));
 
                 if (!favorable || o.Count <= bestScore)
                 {
@@ -346,13 +345,12 @@ namespace MagicBrawl.Core
         /// </summary>
         private Option PickRefreshTarget(DecisionRequest req)
         {
-            int want = req.ContextHaste ? req.Seat : 1 - req.Seat;
             Option best = null;
 
             for (int i = 0; i < req.Options.Count; i++)
             {
                 Option o = req.Options[i];
-                if (!IsCardOption(o) || o.Card.OwnerSeat != want)
+                if (!IsCardOption(o) || !(req.ContextHaste ? o.Card.OwnerSeat == req.Seat : req.IsEnemy(o.Card.OwnerSeat)))
                 {
                     continue;
                 }

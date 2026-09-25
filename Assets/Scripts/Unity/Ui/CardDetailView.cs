@@ -34,6 +34,11 @@ namespace MagicBrawl.App
         /// <summary>放大的组成式卡面（与手牌同款）。</summary>
         [SerializeField] private CardView _card;
 
+        /// <summary>
+        /// 卡面尺寸是否已经对过一次（同一份 Prefab 服务所有尺寸，见 <see cref="CardView.SetFaceWidth"/>）。
+        /// </summary>
+        private bool _faceSized;
+
         /// <summary>显示某张牌的放大卡面；传 default 快照则隐藏。</summary>
         public void Show(CardSnapshot card)
         {
@@ -47,6 +52,16 @@ namespace MagicBrawl.App
 
             if (_card != null)
             {
+                // 卡面统一（2026-09-25）：放大卡面与手牌 / 冷却迷你卡共用**同一份 Prefab**，
+                // 尺寸靠 CardRoot 的缩放适配 —— 这里按放大卡宽下一次。
+                // 只下一次就够（尺寸是常量，但 Show 每帧可能被调，重复写 localScale
+                // 会让 TMP 反复重排，所以用 _faceSized 兜住）。
+                if (!_faceSized)
+                {
+                    _card.SetFaceWidth(UiLayout.DetailFaceWidth);
+                    _faceSized = true;
+                }
+
                 // 手牌形态：与手牌上那张牌逐项一致（卡名 / 力量 / 基础冷却 / 效果文字）。
                 _card.Bind(card, CardView.ViewMode.Hand, 0);
             }

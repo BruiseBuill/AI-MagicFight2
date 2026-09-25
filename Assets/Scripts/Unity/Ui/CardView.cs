@@ -100,9 +100,9 @@ namespace MagicBrawl.App
             SlotIndex = slotIndex;
             HasCard = true;
 
-            CardDef def = Lookup(card.CardId);
+            CardDef def = card.Definition ?? Lookup(card.CardId);
 
-            ApplyIllustration(card.CardId);
+            ApplyIllustration(string.IsNullOrEmpty(card.ArtId) ? card.CardId : card.ArtId);
 
             if (_name != null)
             {
@@ -425,6 +425,57 @@ namespace MagicBrawl.App
             }
 
             return true;
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  卡面整体缩放 · 「一份 Prefab 服务所有尺寸」（2026-09-25）
+        // ══════════════════════════════════════════════════════
+        //
+        //  组成式卡面整棵树画在**固定设计空间**（CardSpaceWidth × CardSpaceHeight）里，
+        //  对外只靠 `CardRoot` 这一个节点的 localScale 去适配目标卡宽
+        //  （构建期由 UiKitBuilder.BuildCardSurface → UiLayout.CardSpaceScale 算出）。
+        //
+        //  ⚠ <b>为什么要有这个方法</b>：构建期算缩放意味着「一份卡宽 = 一份 Prefab」——
+        //  历史上手牌与冷却迷你卡因此各有一份（CardView_Hand / CardView_Mini），
+        //  用户在手牌 Prefab 上手工调好的卡名样式**不会**出现在迷你卡上。
+        //  用户 2026-09-25 要求「所有卡面显示统一」之后，两者合并回**同一份** Prefab，
+        //  尺寸改由本方法在运行时给：以后只改那一份，手牌 / 冷却区 / 放大查看一起变。
+        //
+        //  ⚠ 根节点的 <c>sizeDelta</c>（占位尺寸）**不在这里改**：谁实例化谁决定 ——
+        //  冷却区用 SlotMiniCard*、放大查看用 DetailFace*，各自有各自的口径。
+
+        private RectTransform _faceRoot;
+
+        /// <summary>设计空间容器（惰性按名字找 —— 不值得为它加一个序列化字段）。</summary>
+        private RectTransform FaceRoot
+        {
+            get
+            {
+                if (_faceRoot == null)
+                {
+                    _faceRoot = transform.Find("CardRoot") as RectTransform;
+                }
+
+                return _faceRoot;
+            }
+        }
+
+        /// <summary>
+        /// 把整张卡面的内部缩放对到目标卡宽（单位与 <see cref="UiLayout.HandCardWidth"/> 一致）。
+        ///
+        /// <para>同一份 Prefab 因此可以画成手牌 / 冷却迷你卡 / 放大卡 / 演出卡 —— 差别只在
+        /// 缩放，版式本身只有一份定义。</para>
+        /// </summary>
+        public void SetFaceWidth(float cardWidth)
+        {
+            RectTransform root = FaceRoot;
+            if (root == null || cardWidth <= 0f)
+            {
+                return;
+            }
+
+            float s = UiLayout.CardSpaceScale(cardWidth);
+            root.localScale = new Vector3(s, s, 1f);
         }
     }
 }

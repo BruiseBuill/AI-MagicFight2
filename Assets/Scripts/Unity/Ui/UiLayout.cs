@@ -9,6 +9,17 @@ namespace MagicBrawl.App
     /// </summary>
     public static class UiLayout
     {
+        // M39 设置 / 卡池编辑（1920 x 1080 参考画布）。
+        public const float SettingsWidth = 660f;
+        public const float SettingsHeight = 570f;
+        public const float CardPoolPanelWidth = 1700f;
+        public const float CardPoolPanelHeight = 960f;
+        public const float CardPoolCardWidth = 224f;
+        public const float CardPoolCardHeight = 314f;
+        public const int CardPoolColumns = 6;
+        public const float CardPoolCellWidth = 248f;
+        public const float CardPoolCellHeight = 362f;
+
         // ── 参考分辨率 ────────────────────────────────────────
         public const float ReferenceWidth = 1920f;
         public const float ReferenceHeight = 1080f;
@@ -1099,11 +1110,15 @@ namespace MagicBrawl.App
         public const float CardCoolTextOffsetX = 0f;
         public const float CardCoolTextOffsetY = 6f;
 
-        // ── 卡名：prefab `Name` 301.2×93.6 @ 锚(0.5,1) pivot(0.5,1) pos(50.7, −47.1) ──
-        //    偏右 50.7 —— 给左边的徽标让位。
-        public const float CardNameWidth = 301.2f;
+        // ── 卡名：prefab `Name` 356.6×93.6 @ 锚(0.5,1) pivot(0.5,1) pos(52.5, −47.1) ──
+        //    偏右 52.5 —— 给左边的徽标让位。
+        //
+        //  ⚠ 2026-09-25 用户在手牌 Prefab 上把这一格**加宽并右移**（301.2 → 356.6 / 50.7 → 52.5）：
+        //    四字卡名原来会被挤到自动缩号，加宽之后不用缩了。口径固化在这里，
+        //    以后重建出来的卡面与手工改的那份就是同一组数。
+        public const float CardNameWidth = 356.6f;
         public const float CardNameHeight = 93.6f;
-        public const float CardNameOffsetX = 50.7f;
+        public const float CardNameOffsetX = 52.5f;
         public const float CardNameOffsetY = -47.1f;
 
         /// <summary>卡名左右各留多少（免得名字顶到衬底边）。</summary>

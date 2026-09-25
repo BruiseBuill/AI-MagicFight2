@@ -9,6 +9,13 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class CardTransitView : MonoBehaviour
     {
+        public int LocalSeat { get; private set; }
+        public int OpponentSeat { get; private set; } = 1;
+        public void ConfigureSeats(int localSeat, int opponentSeat)
+        {
+            LocalSeat = localSeat; OpponentSeat = opponentSeat;
+        }
+
         private struct Pose
         {
             public Vector3 Center;
@@ -141,11 +148,11 @@ namespace MagicBrawl.App
             IReadOnlyList<CardSnapshot> playerCooling, IReadOnlyList<CardSnapshot> enemyCooling)
         {
             if (_layer == null) return;
-            Capture(hand, true, BattleState.SeatPlayer, _previousHand, _handOrigins);
-            Capture(playerCooling, false, BattleState.SeatPlayer,
-                _previousCooling[BattleState.SeatPlayer], _coolingOrigins[BattleState.SeatPlayer]);
-            Capture(enemyCooling, false, BattleState.SeatAi,
-                _previousCooling[BattleState.SeatAi], _coolingOrigins[BattleState.SeatAi]);
+            Capture(hand, true, LocalSeat, _previousHand, _handOrigins);
+            Capture(playerCooling, false, LocalSeat,
+                _previousCooling[0], _coolingOrigins[0]);
+            Capture(enemyCooling, false, OpponentSeat,
+                _previousCooling[1], _coolingOrigins[1]);
         }
 
         /// <summary>
@@ -207,12 +214,12 @@ namespace MagicBrawl.App
 
                 Pose from = _coolingOrigins[fromSeat][hand[i].Uid];
                 _coolingOrigins[fromSeat].Remove(hand[i].Uid);
-                Launch(hand[i], from, true, returning++ * 0.07f, BattleState.SeatPlayer);
+                Launch(hand[i], from, true, returning++ * 0.07f, LocalSeat);
             }
 
             // ② 手牌 / 头顶 → 冷却区（两侧各走一趟）
-            DepartCooling(playerCooling, BattleState.SeatPlayer);
-            DepartCooling(enemyCooling, BattleState.SeatAi);
+            DepartCooling(playerCooling, LocalSeat);
+            DepartCooling(enemyCooling, OpponentSeat);
 
             // Snapshot refreshes must not reveal the destination before the moving face arrives.
             for (int i = 0; i < _flights.Count; i++)
@@ -230,8 +237,8 @@ namespace MagicBrawl.App
         /// </summary>
         private void DepartCooling(IReadOnlyList<CardSnapshot> cooling, int seat)
         {
-            HashSet<int> previous = _previousCooling[seat];
-            Dictionary<int, Pose> origins = _coolingOrigins[seat];
+            HashSet<int> previous = _previousCooling[seat == LocalSeat ? 0 : 1];
+            Dictionary<int, Pose> origins = _coolingOrigins[seat == LocalSeat ? 0 : 1];
 
             for (int i = 0; i < cooling.Count; i++)
             {
@@ -267,7 +274,7 @@ namespace MagicBrawl.App
             {
                 if (_coolingOrigins[seat].ContainsKey(uid))
                 {
-                    return seat;
+                    return seat == 0 ? LocalSeat : OpponentSeat;
                 }
             }
 

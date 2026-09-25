@@ -43,6 +43,11 @@ namespace MagicBrawl.App
         [Tooltip("勾上则玩家座位也交给 AI 决策（调试 / 截图用，不用手点）。")]
         [SerializeField] private bool _autoPlay = false;
 
+        [Header("参战角色（留空使用默认玩家和怪物）")]
+        [SerializeField] private BattleParticipantConfig[] _participants = new BattleParticipantConfig[0];
+        [SerializeField] private CardCatalogAsset _cardCatalog;
+        [SerializeField] private int _localSeat;
+
         [Header("演出节奏")]
         [Tooltip("节拍总倍率：0 = 关闭演出（事件仍逐条发，只不等待）。")]
         [SerializeField] private float _beatScale = 1f;
@@ -58,7 +63,23 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
 
         private BattleEngine _engine;
-        private IAgent _ai;
+        private readonly Dictionary<int, IParticipantController> _controllers = new Dictionary<int, IParticipantController>();
+        private IParticipantController _activeController;
+        private BattleSetup _setup;
+        private PlayerCardPoolStore _poolStore;
+        private bool _paused;
+        public Func<IBattleMode> ModeFactory { get; set; }
+        public Func<EffectRegistry> EffectRegistryFactory { get; set; }
+        public Func<int, ParticipantSetup, IParticipantController> ControllerFactory { get; set; }
+        public int LocalSeat { get { return _localSeat; } }
+        public int ParticipantCount { get { return _engine == null ? 0 : _engine.State.Players.Count; } }
+        public bool IsPaused { get { return _paused; } }
+        public string CardPoolSavePath { get { return PoolStore.FilePath; } }
+        private PlayerCardPoolStore PoolStore { get { return _poolStore ?? (_poolStore = new PlayerCardPoolStore()); } }
+        public void SetPaused(bool paused) { _paused = paused; }
+        public int OpponentSeat { get { return _engine == null ? (_localSeat == 0 ? 1 : 0) : _engine.State.Mode.SelectDefender(_engine.State, _localSeat); } }
+        public BattleOutcome Outcome { get { return _engine == null ? null : _engine.State.Outcome; } }
+
         private Coroutine _routine;
 
         /// <summary>本轮 <see cref="BattleEngine.Advance"/> / <c>Submit</c> 累积的待演出事件。</summary>
@@ -67,23 +88,7 @@ namespace MagicBrawl.App
         private readonly List<string> _log = new List<string>();
 
         private bool _waitingPlayer;
-        private bool _playerPicked;
-        private int[] _playerPick;
-
-        /// <summary>本次回填里「在判定区准备使用的光环」选项序号（2026-09-18）。</summary>
-        private int[] _playerAuraPick;
-
-        /// <summary>
-        /// 这次回填是「只更新准备使用的光环」还是「连同主选择一起提交」。
-        ///
-        /// <para><b>必须区分</b>：前者**不消费**当前这一拍（引擎按新的准备集合重发一次），
-        /// 后者才是真正的出牌 / 放弃。两者都靠 <c>AuraOptionIndices</c> 传光环，
-        /// 只有这个标志能告诉引擎该走哪条路。</para>
-        /// </summary>
-        private bool _playerAuraPrepOnly;
-
         private DecisionSnapshot _pending;
-        private int _aiSeat = BattleState.SeatAi;
 
         // ── 事件 ───────────────────────────────────────────────
 
@@ -205,13 +210,7 @@ namespace MagicBrawl.App
             StartBattle();
         }
 
-        private void OnDestroy()
-        {
-            if (_engine != null)
-            {
-                _engine.OnEvent -= HandleEvent;
-            }
-        }
+        private void OnDestroy() { StopBattle(); }
 
         /// <summary>开一局（可在 Inspector 里重跑菜单触发）。种子按 <see cref="_randomSeed"/> 决定。</summary>
         [ContextMenu("开一局")]
@@ -242,25 +241,31 @@ namespace MagicBrawl.App
 
         public void StartBattle(int seed)
         {
-            LastSeed = seed;
+            BattleSetup setup = BuildSetup();
+            BattleEngine engine = BattleEngine.Create(seed, setup);
+            var controllers = new Dictionary<int, IParticipantController>();
+            for (int seat = 0; seat < setup.Participants.Count; seat++)
+            {
+                ParticipantSetup participant = setup.Participants[seat];
+                IParticipantController controller = ControllerFactory == null ? null : ControllerFactory(seat, participant);
+                if (controller == null)
+                    controller = participant.Control == ControlKind.Human && !_autoPlay
+                        ? (IParticipantController)new HumanController()
+                        : new AiController(new SimpleAiAgent { UseAuras = _aiUseAuras, BlindPickSeed = unchecked(seed + seat) });
+                controllers.Add(seat, controller);
+            }
             StopBattle();
-
-            _engine = BattleEngine.Create(seed);
+            LastSeed = seed;
+            _setup = setup;
+            _engine = engine;
+            foreach (var pair in controllers) _controllers.Add(pair.Key, pair.Value);
             _engine.OnEvent += HandleEvent;
-
-            var ai = new SimpleAiAgent();
-            ai.UseAuras = _aiUseAuras;
-            _ai = ai;
+            _paused = false;
 
             _log.Clear();
             _buffer.Clear();
             _pending = default(DecisionSnapshot);
             _waitingPlayer = false;
-            _playerPicked = false;
-            _playerPick = null;
-            _playerAuraPick = null;
-            _playerAuraPrepOnly = false;
-
             if (OnStarted != null)
             {
                 OnStarted();
@@ -284,6 +289,11 @@ namespace MagicBrawl.App
             }
 
             _waitingPlayer = false;
+            _pending = default(DecisionSnapshot);
+            _activeController = null;
+            foreach (IParticipantController controller in _controllers.Values) controller.Cancel();
+            _controllers.Clear();
+            _paused = false;
         }
 
         /// <summary>关掉节拍等待，把整局瞬间跑完（「跳过演出」）。</summary>
@@ -298,11 +308,13 @@ namespace MagicBrawl.App
 
         private IEnumerator CoRun()
         {
+            while (_paused) yield return null;
             _engine.Start();
 
             int guard = 0;
             while (!_engine.IsOver)
             {
+                while (_paused) yield return null;
                 if (++guard > 5000)
                 {
                     Debug.LogError("[MagicBrawl] BattleDriver 决策轮次超过 5000，疑似死循环");
@@ -330,19 +342,7 @@ namespace MagicBrawl.App
                     yield break;
                 }
 
-                if (req.Seat == _aiSeat || _autoPlay)
-                {
-                    if (_beatScale > 0f && _aiThinkSeconds > 0f)
-                    {
-                        yield return new WaitForSecondsRealtime(_aiThinkSeconds);
-                    }
-
-                    _engine.Submit(_ai.Decide(req));
-                }
-                else
-                {
-                    yield return CoWaitPlayer(req);
-                }
+                yield return CoDecision(req);
             }
 
             // 终局：把最后一拍演完再报结果
@@ -356,51 +356,43 @@ namespace MagicBrawl.App
             }
         }
 
-        private IEnumerator CoWaitPlayer(DecisionRequest req)
+        private IEnumerator CoDecision(DecisionRequest request)
         {
-            _pending = DecisionSnapshot.From(req);
-            _playerPicked = false;
-            _playerPick = null;
-            _playerAuraPick = null;
-            _playerAuraPrepOnly = false;
-            _waitingPlayer = true;
-
-            if (OnPlayerDecision != null)
+            IParticipantController controller = _controllers[request.Seat];
+            while (_paused) yield return null;
+            if (!controller.UsesLocalInput && _beatScale > 0f)
+                yield return CoWaitSeconds(_aiThinkSeconds);
+            controller.BeginDecision(request);
+            _activeController = controller;
+            _waitingPlayer = controller.UsesLocalInput;
+            if (_waitingPlayer)
             {
-                OnPlayerDecision(_pending);
+                _pending = DecisionSnapshot.From(request);
+                if (OnPlayerDecision != null) OnPlayerDecision(_pending);
             }
 
-            while (!_playerPicked)
+            DecisionResponse response;
+            while (true)
             {
+                while (_paused) yield return null;
+                if (controller.TryTakeResponse(out response)) break;
                 yield return null;
             }
-
             _waitingPlayer = false;
+            _activeController = null;
             _pending = default(DecisionSnapshot);
-
-            // 回填后立刻广播一次状态，让 UI 把「选项高亮」清掉
             RaiseStateChanged();
+            _engine.Submit(response);
+        }
 
-            int[] pick = _playerPick ?? new int[0];
-            int[] auras = _playerAuraPick ?? new int[0];
-
-            DecisionResponse resp;
-            if (_playerAuraPrepOnly)
+        private IEnumerator CoWaitSeconds(float seconds)
+        {
+            float elapsed = 0f;
+            while (elapsed < seconds || _paused)
             {
-                // 只报备准备使用的光环，请引擎按新集合重发这一拍
-                resp = DecisionResponse.PrepAuras(req.Seat, auras);
+                yield return null;
+                if (!_paused) elapsed += Time.unscaledDeltaTime;
             }
-            else if (auras.Length > 0)
-            {
-                // 出牌 + 准备的光环一起提交（同一拍里的两条通道）
-                resp = DecisionResponse.WithAuras(req.Seat, pick, auras);
-            }
-            else
-            {
-                resp = DecisionResponse.Of(req.Seat, pick);
-            }
-
-            _engine.Submit(resp);
         }
 
         /// <summary>逐拍回放缓冲里的事件。</summary>
@@ -423,6 +415,7 @@ namespace MagicBrawl.App
 
             for (int i = 0; i < beats.Count; i++)
             {
+                while (_paused) yield return null;
                 BattleEvent e = beats[i];
 
                 _log.Add(e.Describe());
@@ -443,7 +436,7 @@ namespace MagicBrawl.App
                 float wait = Mathf.Max(BeatDuration(e), BeatHold == null ? 0f : BeatHold(e)) * _beatScale;
                 if (wait > 0f)
                 {
-                    yield return new WaitForSecondsRealtime(wait);
+                    yield return CoWaitSeconds(wait);
                 }
                 else
                 {
@@ -480,32 +473,15 @@ namespace MagicBrawl.App
         /// </summary>
         public void SubmitPlayerDecision(int[] optionIndices, int[] auraIndices)
         {
-            if (!_waitingPlayer)
-            {
-                return;
-            }
-
-            _playerPick = optionIndices ?? new int[0];
-            _playerAuraPick = auraIndices ?? new int[0];
-            _playerPicked = true;
+            if (!_waitingPlayer || _paused || _activeController == null) return;
+            _activeController.Submit(DecisionResponse.WithAuras(_pending.Seat,
+                optionIndices ?? new int[0], auraIndices ?? new int[0]));
         }
 
-        /// <summary>
-        /// 玩家只是在判定区加 / 减了一枚「准备使用」的光环 —— 只报备这枚变动，
-        /// <b>不提交主选择</b>。引擎会按新的准备集合把本拍决策重发一次
-        /// （防御牌的合法性依赖这份集合，必须由引擎重算）。
-        /// </summary>
         public void SubmitPlayerAuraPrep(int[] auraIndices)
         {
-            if (!_waitingPlayer)
-            {
-                return;
-            }
-
-            _playerPick = new int[0];
-            _playerAuraPick = auraIndices ?? new int[0];
-            _playerAuraPrepOnly = true;
-            _playerPicked = true;
+            if (!_waitingPlayer || _paused || _activeController == null) return;
+            _activeController.Submit(DecisionResponse.PrepAuras(_pending.Seat, auraIndices ?? new int[0]));
         }
 
         /// <summary>玩家点「放弃」（等价于回填 Skip 选项）。</summary>
@@ -535,6 +511,83 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
         //  内部
         // ══════════════════════════════════════════════════════
+
+        private CharacterDefinition BaseDefinition(int seat)
+        {
+            CardCatalogAsset catalogAsset = _cardCatalog == null ? Resources.Load<CardCatalogAsset>("CardCatalog") : _cardCatalog;
+            ICardCatalog catalog = catalogAsset == null ? null : catalogAsset.CreateCatalog();
+            if (_participants == null || _participants.Length == 0)
+                return new CharacterDefinition(seat == 0 ? "player.default" : "monster.default", seat == 0 ? "你" : "怪物",
+                    seat == 0 ? CharacterKind.Player : CharacterKind.Monster, 4, 4, 8,
+                    CardPool.AllCards(catalog));
+            if (seat < 0 || seat >= _participants.Length || _participants[seat] == null || _participants[seat].character == null)
+                throw new InvalidOperationException("参战角色配置不完整。");
+            return _participants[seat].character.CreateDefinition(catalog);
+        }
+
+        private BattleSetup BuildSetup(CardPool localOverride = null)
+        {
+            int count = _participants == null || _participants.Length == 0 ? 2 : _participants.Length;
+            if (_localSeat < 0 || _localSeat >= count) throw new InvalidOperationException("本地玩家座位无效。");
+            var participants = new List<ParticipantSetup>();
+            for (int seat = 0; seat < count; seat++)
+            {
+                CharacterDefinition character = BaseDefinition(seat);
+                if (seat == _localSeat)
+                {
+                    CardPool pool;
+                    string error;
+                    if (localOverride != null) pool = localOverride;
+                    else if (!PoolStore.TryLoad(character, out pool, out error)) Debug.LogWarning(error + " 本局使用角色默认卡池。");
+                    character = character.WithCardPool(pool);
+                }
+                bool defaults = _participants == null || _participants.Length == 0;
+                participants.Add(new ParticipantSetup(character,
+                    defaults ? (seat == _localSeat ? ControlKind.Human : ControlKind.Ai) : _participants[seat].control,
+                    defaults ? seat : _participants[seat].team));
+            }
+            return new BattleSetup(participants, ModeFactory == null ? new DuelMode() : ModeFactory(),
+                EffectRegistryFactory == null ? null : EffectRegistryFactory());
+        }
+
+        public CardPool GetDefaultLocalCardPool() { return BaseDefinition(_localSeat).CreateCardPool(); }
+
+        public ICardCatalog GetCardCatalog()
+        {
+            CardCatalogAsset catalog = _cardCatalog == null ? Resources.Load<CardCatalogAsset>("CardCatalog") : _cardCatalog;
+            return catalog == null ? CardCatalog.Builtin() : catalog.CreateCatalog();
+        }
+
+        public CardPool GetAllCardPool() { return CardPool.AllCards(GetCardCatalog()); }
+
+        public CardInstance CreateGeneratedCard(CardDefinitionAsset definition, int seat = -1)
+        {
+            if (_engine == null) throw new InvalidOperationException("请先开局。");
+            if (definition == null) throw new ArgumentNullException(nameof(definition));
+            int targetSeat = seat < 0 ? _localSeat : seat;
+            return _engine.GenerateCard(definition.CreateDefinition(10000 + targetSeat), targetSeat);
+        }
+
+        public CharacterDefinition GetLocalCharacterDefinition()
+        {
+            return _setup == null ? BuildSetup().Participants[_localSeat].Character : _setup.Participants[_localSeat].Character;
+        }
+
+        public bool TrySaveCardPoolAndRestart(CardPool pool, out string error)
+        {
+            error = null;
+            if (pool == null) { error = "卡池不能为空。"; return false; }
+            BattleSetup setup;
+            try { setup = BuildSetup(pool); }
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException)
+            {
+                error = ex.Message;
+                return false;
+            }
+            if (!PoolStore.TrySave(setup.Participants[_localSeat].Character, pool, out error)) return false;
+            StartBattle();
+            return true;
+        }
 
         private void HandleEvent(BattleEvent e)
         {

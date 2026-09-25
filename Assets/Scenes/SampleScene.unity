@@ -773,13 +773,37 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1060254599427318481, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060254599427318481, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2402748117890132754, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
       propertyPath: m_Sprite
       value: 
       objectReference: {fileID: 197121160}
+    - target: {fileID: 3476349133027351580, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3476349133027351580, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6126655338907034345, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 183.79999
+      objectReference: {fileID: 0}
     - target: {fileID: 6589231674372889282, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
       propertyPath: m_Name
       value: BattleCanvas
+      objectReference: {fileID: 0}
+    - target: {fileID: 6602287084953291110, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 183.79999
       objectReference: {fileID: 0}
     - target: {fileID: 7413563370092074170, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
       propertyPath: m_Pivot.x

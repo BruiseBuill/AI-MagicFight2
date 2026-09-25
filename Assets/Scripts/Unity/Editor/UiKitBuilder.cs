@@ -105,10 +105,16 @@ namespace MagicBrawl.App.EditorTools
 
             RebuildCardArtLibraryInternal();
 
+            // ── 卡面只有一份（2026-09-25 用户口径：「所有卡面显示统一」）──────────
+            //  手牌 / 冷却迷你卡 / 放大查看 / 出牌演出**共用同一个 Prefab**，尺寸差别
+            //  由 `CardView.SetFaceWidth` 在运行时给（它改 CardRoot 的 localScale）。
+            //
+            //  ⚠ 不再产出 `CardView_Mini.prefab`：它存在的唯一原因是「构建期把卡宽算进了
+            //    CardRoot 的 localScale」—— 于是用户在手牌 Prefab 上手工调好的卡名样式
+            //    永远传不到迷你卡上。那个限制已经解除，第二份 Prefab 只会制造下一次不一致。
             CardView handPrefab = BuildHandCardPrefab(body, title);
-            CardView miniPrefab = BuildMiniCardPrefab(body, title);
 
-            GameObject canvas = BuildCanvasInActiveScene(handPrefab, miniPrefab);
+            GameObject canvas = BuildCanvasInActiveScene(handPrefab, handPrefab);
 
             PrefabUtility.SaveAsPrefabAssetAndConnect(
                 canvas, PrefabDir + "/" + CanvasName + ".prefab", InteractionMode.AutomatedAction);
@@ -121,8 +127,7 @@ namespace MagicBrawl.App.EditorTools
 
             Debug.Log("[UiKit] 构建完成：\n"
                       + "  · Prefab  " + PrefabDir + "/" + CanvasName + ".prefab\n"
-                      + "  · Prefab  " + PrefabDir + "/CardView_Hand.prefab\n"
-                      + "  · Prefab  " + PrefabDir + "/CardView_Mini.prefab\n"
+                      + "  · Prefab  " + PrefabDir + "/CardView_Hand.prefab（**唯一的卡面**：手牌 / 冷却迷你卡 / 放大 / 演出共用）\n"
                       + "  · 美术映射 " + ResourcesDir + "/" + CardArtLibrary.ResourcePath + ".asset\n"
                       + "  版式数值全部在 UiLayout.cs，改完重跑本菜单即可重建。");
         }
@@ -361,11 +366,8 @@ namespace MagicBrawl.App.EditorTools
                 body, title, true);
         }
 
-        private static CardView BuildMiniCardPrefab(TMP_FontAsset body, TMP_FontAsset title)
-        {
-            return BuildCardPrefab("CardView_Mini", UiLayout.SlotMiniCardWidth, UiLayout.SlotMiniCardHeight,
-                body, title, false);
-        }
+        // ⚠ `BuildMiniCardPrefab` 已于 2026-09-25 删除 —— 卡面只剩一份（见 BuildUiKit 里的说明）。
+        //   想再要一个尺寸，用 `CardView.SetFaceWidth(宽)`，不要再加第二份 Prefab。
 
         /// <summary>
         /// 造一张卡：外层是「布局占位 + 交互」，内层是一棵 622×872 设计空间的组成式卡面。
@@ -551,6 +553,18 @@ namespace MagicBrawl.App.EditorTools
             parts.Name.fontSizeMin = UiLayout.CardFontSizeNameMin;
             parts.Name.fontSizeMax = UiLayout.CardFontSizeName;
             parts.Name.overflowMode = TextOverflowModes.Ellipsis;
+
+            // 卡面文字**一律加粗**（2026-09-25 用户在手牌 Prefab 上手工调的口径）。
+            //
+            // <para>为什么必须写进构建器（同 CardNumberFontPath 的理由）：粗体是用户
+            // 在那份 Prefab 上改的，而 TMP 的 fontStyle 是构建器重跑时会整体覆盖的东西 ——
+            // 不固化在这里，哪天跑一次 M7 就会默默变回常规体，而且零报错。</para>
+            //
+            // 只加粗「卡名 + 力量 + 冷却」三个数，**效果文字不加** —— 那一段本来就小，
+            // 加粗会糊成一片（用户的改动里也没有它）。
+            parts.Name.fontStyle = FontStyles.Bold;
+            parts.Power.fontStyle = FontStyles.Bold;
+            parts.Cool.fontStyle = FontStyles.Bold;
 
             // ── ⑥ 效果面板 + 效果文字（prefab `Content` 的两个子节点）──
             // 面板与文字是**兄弟**（prefab 里它们同属一个 `Content` 容器节点，这里把那层拉平了），

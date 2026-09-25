@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace MagicBrawl.Core
 {
     /// <summary>
-    /// 牌池。一副 40 张、双方共用（决策 D1）。
+    /// 本局有限牌堆，每名角色独立持有。
     /// 替换时从剩余池随机取，被换掉的牌<strong>回池</strong>；第 2、3 回合补牌同池。
     /// </summary>
     public sealed class Deck

@@ -114,7 +114,7 @@ namespace MagicBrawl.App
                 }
 
                 bool withinLimit = i < p.MaxHp;
-                dot.gameObject.SetActive(i < UiLayout.HpDotCount);
+                dot.gameObject.SetActive(p.MaxHp <= _hpDots.Length && i < UiLayout.HpDotCount);
 
                 if (!withinLimit)
                 {

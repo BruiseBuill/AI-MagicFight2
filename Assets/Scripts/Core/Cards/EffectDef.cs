@@ -23,8 +23,7 @@ namespace MagicBrawl.Core
         public const string Special = "γ";
 
         /// <summary>
-        /// 取某个时机的符号。<see cref="EffectTrigger.Passive"/>（常驻）**没有符号**，
-        /// 返回空串 —— 调用方需自行处理「不留符号位」，不要画成空方块。
+        /// 取某个时机的符号。三种触发时机均有唯一符号，未知值返回空串。
         /// </summary>
         public static string Of(EffectTrigger trigger)
         {
@@ -57,8 +56,6 @@ namespace MagicBrawl.Core
         /// <summary>γ：特殊时机，由卡面文字说明（目前仅潮汐的「冷却完毕时」）。</summary>
         Special = 2,
 
-        /// <summary>常驻：无时机依赖。本批 40 张卡未使用，为后续扩展预留。</summary>
-        Passive = 3,
     }
 
     /// <summary>
@@ -125,7 +122,7 @@ namespace MagicBrawl.Core
         ResetCooldown = 7,
         /// <summary>漩涡：把己方冷却区一张牌永久移出游戏（可选），随后获得 A 次加速。</summary>
         RemoveFromGame = 8,
-        /// <summary>瀑流：己方每损失 1 点生命值（相较初始值 4），加速一张<em>不同</em>的牌。A = 每次的点数。</summary>
+        /// <summary>瀑流：己方每损失 1 点生命值（相较各角色本局初始生命），加速一张<em>不同</em>的牌。A = 每次的点数。</summary>
         HastePerHpLoss = 9,
 
         // ── 力量类（结算第 ①② 步）───────────────────────────
@@ -135,7 +132,7 @@ namespace MagicBrawl.Core
         DefPlus = 11,
         /// <summary>己方冷却区每有一张牌，本次进攻力量 +A（不含正在打出的这张）。</summary>
         AtkPlusPerCooling = 12,
-        /// <summary>双方每合计损失 1 点生命值（相较初始值 4），本次进攻力量 +A。</summary>
+        /// <summary>双方每合计损失 1 点生命值（相较各角色本局初始生命），本次进攻力量 +A。</summary>
         AtkPlusPerHpLoss = 13,
         /// <summary>本牌获得的<em>全部来源</em>额外进攻力量翻倍。</summary>
         DoubleAtkBonus = 14,
@@ -208,93 +205,82 @@ namespace MagicBrawl.Core
         SlowIfLastTwoHand = 31,
     }
 
-    /// <summary>效果定义（见 `Docs/engineering/04-架构与接口.md` §2）。</summary>
+    /// <summary>Immutable, serializable effect recipe. Handler identity is independent of card identity.</summary>
     public sealed class EffectDef
     {
-        /// <summary>LookAndCool 的方向参数：力量 ≥ 阈值。</summary>
         public const int LookAtLeast = 0;
-
-        /// <summary>LookAndCool 的方向参数：力量 ≤ 阈值。</summary>
         public const int LookAtMost = 1;
-
         public readonly EffectTrigger Trigger;
-        public readonly EffectOp Op;
-
-        /// <summary>参数 A：阈值 / 数值 / 次数，逐算子而异。</summary>
-        public readonly int A;
-
-        /// <summary>参数 B：方向 / 第二数值 / 目标范围。</summary>
-        public readonly int B;
-
-        /// <summary>参数 C：附加修正。</summary>
-        public readonly int C;
-
-        /// <summary>当 <see cref="Op"/> 为 <see cref="EffectOp.Aura"/> 时有意义。</summary>
+        public readonly string HandlerId;
+        public readonly string SpecialEvent;
+        public readonly EffectTargetScope Targets;
+        public readonly string DistinctTargetGroup;
+        public readonly System.Collections.Generic.IReadOnlyList<EffectCondition> Conditions;
+        public readonly System.Collections.Generic.IReadOnlyDictionary<string, int> Arguments;
         public readonly AuraKind Aura;
-
-        /// <summary>[强制] 效果不可选择不执行（仅过载 / 自燃的「恢复 1 点、上限 −1」）。</summary>
-        public readonly bool Mandatory;
-
-        /// <summary>卡面显示文本。</summary>
         public readonly string Text;
 
-        public EffectDef(
-            EffectTrigger trigger,
-            EffectOp op,
-            int a = 0,
-            int b = 0,
-            int c = 0,
-            AuraKind aura = AuraKind.None,
-            bool mandatory = false,
-            string text = null)
-        {
-            Trigger = trigger;
-            Op = op;
-            A = a;
-            B = b;
-            C = c;
-            Aura = aura;
-            Mandatory = mandatory;
-            Text = text ?? string.Empty;
-        }
+        // Legacy card tables and integrations can keep using the operator constructor.
+        public readonly EffectOp Op;
+        public readonly int A;
+        public readonly int B;
+        public readonly int C;
+        public bool CanSkip { get { return !Mandatory && (Op == EffectOp.Haste || Op == EffectOp.Slow
+            || Op == EffectOp.HasteZone || Op == EffectOp.SlowZone
+            || Op == EffectOp.HastePerHpLoss || Op == EffectOp.SlowIfLastTwoHand || Op == EffectOp.SlowIfUnblocked); } }
+        public readonly bool Mandatory;
 
-        /// <summary>
-        /// 本效果是否需要外部决策（供引擎判断是否走「暂停-恢复」）。
-        ///
-        /// <para>⚠ <see cref="EffectOp.SlowZoneBoth"/>（雪崩的强制区域减速）<b>不在</b>此列 ——
-        /// 它没有可选项，引擎在 ③ 阶段直接结算。</para>
-        /// </summary>
-        public bool NeedsDecision
+        public EffectDef(EffectTrigger trigger, EffectOp op, int a = 0, int b = 0, int c = 0,
+            AuraKind aura = AuraKind.None, bool mandatory = false, string text = null,
+            string distinctTargetGroup = null, System.Collections.Generic.IEnumerable<EffectCondition> conditions = null)
+            : this(trigger, op.ToString(), LegacyArguments(op, a, b, c), aura, text,
+                op == EffectOp.ReadyRefresh ? "cooldown.completed" : null,
+                EffectTargetScope.Participants, distinctTargetGroup, conditions, mandatory)
+        { }
+
+        public EffectDef(EffectTrigger trigger, string handlerId,
+            System.Collections.Generic.IDictionary<string, int> arguments = null,
+            AuraKind aura = AuraKind.None, string text = null, string specialEvent = null,
+            EffectTargetScope targets = EffectTargetScope.Participants, string distinctTargetGroup = null,
+            System.Collections.Generic.IEnumerable<EffectCondition> conditions = null, bool mandatory = false)
         {
-            get
+            if (!System.Enum.IsDefined(typeof(EffectTrigger), trigger)) throw new System.ArgumentException("Invalid trigger.");
+            if (string.IsNullOrWhiteSpace(handlerId)) throw new System.ArgumentException("Effect handler ID is required.");
+            Trigger = trigger; HandlerId = handlerId; Aura = aura; Text = text ?? string.Empty;
+            SpecialEvent = specialEvent ?? string.Empty; Targets = targets; DistinctTargetGroup = distinctTargetGroup ?? string.Empty;
+            var values = new System.Collections.Generic.Dictionary<string, int>(arguments ?? new System.Collections.Generic.Dictionary<string, int>());
+            Arguments = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(values);
+            System.Enum.TryParse(handlerId, out EffectOp legacy);
+            Op = legacy;
+            A = Arg(PrimaryArgument(legacy)); B = Arg("secondary"); C = Arg("cooldownAdjustment");
+            var rules = new System.Collections.Generic.List<EffectCondition>(conditions ?? new EffectCondition[0]);
+            if (legacy == EffectOp.SlowIfLastTwoHand && !rules.Exists(r => r.Id == "hand-at-play"))
+                rules.Add(new EffectCondition("hand-at-play", 2));
+            if (legacy == EffectOp.SlowIfUnblocked && !rules.Exists(r => r.Id == "unblocked"))
+                rules.Add(new EffectCondition("unblocked"));
+            if (rules.Contains(null)) throw new System.ArgumentException("Null effect condition.");
+            Conditions = rules.AsReadOnly();
+            Mandatory = mandatory || !(legacy == EffectOp.Haste || legacy == EffectOp.Slow
+                || legacy == EffectOp.HasteZone || legacy == EffectOp.SlowZone
+                || legacy == EffectOp.HastePerHpLoss || legacy == EffectOp.SlowIfLastTwoHand || legacy == EffectOp.SlowIfUnblocked);
+        }
+        public int Arg(string name, int fallback = 0) { return Arguments.TryGetValue(name, out int value) ? value : fallback; }
+        private static string PrimaryArgument(EffectOp op)
+        {
+            switch (op)
             {
-                switch (Op)
-                {
-                    case EffectOp.Haste:
-                    case EffectOp.Slow:
-                    case EffectOp.HasteZone:
-                    case EffectOp.SlowZone:
-                    case EffectOp.Refresh:
-                    case EffectOp.ResetCooldown:
-                    case EffectOp.RemoveFromGame:
-                    case EffectOp.HastePerHpLoss:
-                    case EffectOp.CoolHandForAtk:
-                    case EffectOp.CoolHandForCombo:
-                    case EffectOp.CoolHandForHaste:
-                    case EffectOp.Copy:
-                    case EffectOp.SlowIfUnblocked:
-                    case EffectOp.SlowIfLastTwoHand:
-                    case EffectOp.ReadyRefresh:
-                        return true;
-                    default:
-                        return false;
-                }
+                case EffectOp.Haste: case EffectOp.Slow: case EffectOp.RemoveFromGame:
+                case EffectOp.HastePerHpLoss: case EffectOp.SlowIfUnblocked: case EffectOp.SlowIfLastTwoHand: return "count";
+                case EffectOp.SlowZoneBoth: case EffectOp.LookAndCool: case EffectOp.Copy: return "threshold";
+                default: return "amount";
             }
         }
-
-        public override string ToString()
+        private static System.Collections.Generic.Dictionary<string, int> LegacyArguments(EffectOp op, int a, int b, int c)
         {
-            return Trigger + "/" + Op + "(A=" + A + ",B=" + B + ",C=" + C + ")";
+            return new System.Collections.Generic.Dictionary<string, int> {
+                { PrimaryArgument(op), a }, { "secondary", b }, { "cooldownAdjustment", c }
+            };
         }
+        public override string ToString() { return Trigger + "/" + HandlerId; }
     }
 }

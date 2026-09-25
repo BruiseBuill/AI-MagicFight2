@@ -20,6 +20,14 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class CooldownView : MonoBehaviour, ICardGestureHost
     {
+        public int LocalSeat { get; private set; }
+        public int OpponentSeat { get; private set; } = 1;
+        public void ConfigureSeats(int localSeat, int opponentSeat)
+        {
+            LocalSeat = localSeat; OpponentSeat = opponentSeat;
+            EnsureZoneClickCatchers();
+        }
+
         [Header("Prefab / 挂载点")]
         [SerializeField] private CardView _cardPrefab;
         [SerializeField] private RectTransform _playerRoot;
@@ -124,8 +132,8 @@ namespace MagicBrawl.App
         /// <summary>
         /// 点了<strong>某一侧某一行的冷却槽</strong>—— 区域加速 / 减速用（M26）。
         ///
-        /// <para>参数：<c>seat</c> = 哪一方（<see cref="BattleState.SeatPlayer"/> /
-        /// <see cref="BattleState.SeatAi"/>），<c>rowIndex</c> = 哪一行（0 = 冷却区4 … 3 = 冷却区1，
+        /// <para>参数：<c>seat</c> = 哪一方（<see cref="LocalSeat"/> /
+        /// <see cref="OpponentSeat"/>），<c>rowIndex</c> = 哪一行（0 = 冷却区4 … 3 = 冷却区1，
         /// 与 <see cref="CooldownView.BindGrouped"/> 的行号同口径）。</para>
         ///
         /// <para><b>为什么从「点整片」改成「点某一行」</b>：槽位徽标上写的就是这一行的含义
@@ -152,8 +160,8 @@ namespace MagicBrawl.App
             }
 
             _zonePickable = on;
-            ApplyZoneHighlight(BattleState.SeatPlayer);
-            ApplyZoneHighlight(BattleState.SeatAi);
+            ApplyZoneHighlight(LocalSeat);
+            ApplyZoneHighlight(OpponentSeat);
         }
 
         /// <summary>某一侧目前有没有可点的区域档（由 BattleUi 按 Options 告知，用来只点亮该点的那侧）。</summary>
@@ -179,8 +187,8 @@ namespace MagicBrawl.App
                 }
             }
 
-            ApplyZoneHighlight(BattleState.SeatPlayer);
-            ApplyZoneHighlight(BattleState.SeatAi);
+            ApplyZoneHighlight(LocalSeat);
+            ApplyZoneHighlight(OpponentSeat);
         }
 
         /// <summary>
@@ -236,7 +244,7 @@ namespace MagicBrawl.App
             RectTransform[] rows = RowsFor(seat);
             if (rows == null || rows[0] == null)
             {
-                return seat == BattleState.SeatPlayer ? _playerRoot : _enemyRoot;
+                return seat == LocalSeat ? _playerRoot : _enemyRoot;
             }
 
             RectTransform column = rows[0].parent as RectTransform;
@@ -329,8 +337,8 @@ namespace MagicBrawl.App
         /// </summary>
         private void EnsureZoneClickCatchers()
         {
-            AttachZoneCatcher(BattleState.SeatPlayer);
-            AttachZoneCatcher(BattleState.SeatAi);
+            AttachZoneCatcher(LocalSeat);
+            AttachZoneCatcher(OpponentSeat);
         }
 
         private void AttachZoneCatcher(int seat)
@@ -362,7 +370,7 @@ namespace MagicBrawl.App
 
         public CardView FindCard(int seat, int uid)
         {
-            var cards = seat == BattleState.SeatPlayer ? _playerShown : _enemyShown;
+            var cards = seat == LocalSeat ? _playerShown : _enemyShown;
             for (int i = 0; i < cards.Count; i++)
                 if (cards[i].HasCard && cards[i].Card.Uid == uid) return cards[i];
             return null;
@@ -378,9 +386,9 @@ namespace MagicBrawl.App
                 return;
             }
 
-            RectTransform root = seat == BattleState.SeatPlayer ? _playerRoot : _enemyRoot;
-            List<CardView> shown = seat == BattleState.SeatPlayer ? _playerShown : _enemyShown;
-            List<CardView> pool = seat == BattleState.SeatPlayer ? _playerPool : _enemyPool;
+            RectTransform root = seat == LocalSeat ? _playerRoot : _enemyRoot;
+            List<CardView> shown = seat == LocalSeat ? _playerShown : _enemyShown;
+            List<CardView> pool = seat == LocalSeat ? _playerPool : _enemyPool;
 
             if (root == null || _cardPrefab == null)
             {
@@ -448,8 +456,8 @@ namespace MagicBrawl.App
         /// <summary>双方一起绑（最常见的一次调用）。</summary>
         public void BindBoth(IReadOnlyList<CardSnapshot> player, IReadOnlyList<CardSnapshot> enemy)
         {
-            Bind(BattleState.SeatPlayer, player);
-            Bind(BattleState.SeatAi, enemy);
+            Bind(LocalSeat, player);
+            Bind(OpponentSeat, enemy);
         }
 
         // ══════════════════════════════════════════════════════
@@ -459,7 +467,7 @@ namespace MagicBrawl.App
         /// <summary>该侧是否配了 4 行挂载点；没配返回 null（走老的单一 Grid）。</summary>
         private RectTransform[] RowsFor(int seat)
         {
-            RectTransform[] rows = seat == BattleState.SeatPlayer ? _playerRows : _enemyRows;
+            RectTransform[] rows = seat == LocalSeat ? _playerRows : _enemyRows;
             if (rows == null || rows.Length == 0)
             {
                 return null;
@@ -492,9 +500,9 @@ namespace MagicBrawl.App
         /// </summary>
         private void BindGrouped(int seat, IReadOnlyList<CardSnapshot> cards, RectTransform[] rows)
         {
-            List<CardView> shown = seat == BattleState.SeatPlayer ? _playerShown : _enemyShown;
-            List<CardView> pool = seat == BattleState.SeatPlayer ? _playerPool : _enemyPool;
-            bool playerSide = seat == BattleState.SeatPlayer;
+            List<CardView> shown = seat == LocalSeat ? _playerShown : _enemyShown;
+            List<CardView> pool = seat == LocalSeat ? _playerPool : _enemyPool;
+            bool playerSide = seat == LocalSeat;
             int count = cards == null ? 0 : cards.Count;
 
             _reuse.Clear();
@@ -651,8 +659,8 @@ namespace MagicBrawl.App
             // 整片可点的态一并收掉（区域决策结束 / 玩家点了别处都会走到这里）
             _zoneSeats.Clear();
             _zonePickable = false;
-            ApplyZoneHighlight(BattleState.SeatPlayer);
-            ApplyZoneHighlight(BattleState.SeatAi);
+            ApplyZoneHighlight(LocalSeat);
+            ApplyZoneHighlight(OpponentSeat);
 
             Apply(_playerShown);
             Apply(_enemyShown);
@@ -720,6 +728,14 @@ namespace MagicBrawl.App
             // M12：迷你卡也要长按看牌。**不给拖拽**（Draggable=false）——
             // 冷却区的语义是「点选一个目标」，拖过来拖过去没有对应规则。
             CardInteractor.Attach(v.gameObject, this, v, false);
+
+            // 卡面统一（2026-09-25）：冷却迷你卡与手牌**共用同一份 CardView Prefab**
+            // （`CardView_Hand.prefab`），尺寸靠 CardRoot 的缩放适配 —— 所以每次取牌
+            // 都要下一次，池化复用的那几张也不例外。
+            //
+            // ⚠ 取牌路径已经在下面对卡根节点下 sizeDelta（见 BindGrouped 的 SlotMiniCard*），
+            //   两者分工：sizeDelta = 占位尺寸，本方法 = 卡面内部按这个宽度重排缩放。
+            v.SetFaceWidth(UiLayout.SlotMiniCardWidth);
             return v;
         }
 
@@ -766,12 +782,12 @@ namespace MagicBrawl.App
 
             if (_playerShown.Contains(card))
             {
-                return BattleState.SeatPlayer;
+                return LocalSeat;
             }
 
             if (_enemyShown.Contains(card))
             {
-                return BattleState.SeatAi;
+                return OpponentSeat;
             }
 
             return -1;

@@ -10,24 +10,39 @@ namespace MagicBrawl.Core
     /// </summary>
     public sealed class PlayerState
     {
-        /// <summary>座位号：0 = 玩家、1 = AI。</summary>
+        /// <summary>座位号，由对局配置决定，与控制器类型无关。</summary>
         public readonly int Seat;
 
         /// <summary>显示名。</summary>
         public readonly string Name;
 
-        /// <summary>是否由 AI 驱动。</summary>
-        public readonly bool IsAi;
+        public readonly CharacterDefinition Definition;
+        public readonly ControlKind Control;
+        public readonly int Team;
+        public readonly int InitialHp;
+        public readonly Deck Deck;
+        internal readonly List<ICharacterAbility> Abilities = new List<ICharacterAbility>();
+        public bool IsAi { get { return Control == ControlKind.Ai; } }
 
-        internal PlayerState(int seat, string name, bool isAi)
+        internal PlayerState(int seat, ParticipantSetup setup, Rng rng)
         {
             Seat = seat;
-            Name = name;
-            IsAi = isAi;
-            Hp = BattleState.InitialHp;
-            MaxHp = BattleState.InitialHp;
+            Definition = setup.Character;
+            Name = Definition.Name;
+            Control = setup.Control;
+            Team = setup.Team;
+            InitialHp = Definition.InitialHp;
+            Hp = InitialHp;
+            MaxHp = Definition.MaxHp;
+            Deck = new Deck(Definition.CreateCardPool().Resolve(), rng);
             Hand = new List<CardInstance>();
             CoolingZone = new List<CardInstance>();
+            foreach (ICharacterAbilityDefinition ability in Definition.Abilities)
+            {
+                ICharacterAbility runtime = ability.CreateRuntime();
+                if (runtime == null) throw new InvalidOperationException("能力未创建运行实例。");
+                Abilities.Add(runtime);
+            }
         }
 
         /// <summary>当前生命值。</summary>
@@ -54,10 +69,10 @@ namespace MagicBrawl.Core
             get { return Hand.Count >= BattleState.HandLimit; }
         }
 
-        /// <summary>相较初始值 4 已损失的生命点数（瀑流的基准固定为 4，决策 C2）。</summary>
+        /// <summary>相较本局初始生命损失的点数；回血后下降，下限为 0。</summary>
         public int HpLost
         {
-            get { return BattleState.InitialHp - Hp; }
+            get { return Math.Max(0, InitialHp - Hp); }
         }
 
         /// <summary>手牌中当前进攻可用的最高力量（AI 与 UI 都直接用这个值，不重复算）。</summary>

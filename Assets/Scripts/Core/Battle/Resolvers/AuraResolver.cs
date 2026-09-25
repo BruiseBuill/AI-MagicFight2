@@ -81,20 +81,10 @@ namespace MagicBrawl.Core
                     continue;
                 }
 
-                List<EffectDef> all = AuraEffectsOf(src.Def);
-                int total = all.Count;
-                int remaining = src.AuraTokens;
-
-                // 剩余指示物对应效果列表的尾部（已消耗的从头部扣）
-                int startIndex = total - remaining;
-                if (startIndex < 0)
+                for (int e = 0; e < src.ActiveAuras.Count; e++)
                 {
-                    startIndex = 0;
-                }
-
-                for (int e = startIndex; e < total; e++)
-                {
-                    EffectDef ef = all[e];
+                    AuraToken token = src.ActiveAuras[e];
+                    EffectDef ef = token.Definition;
                     if (!UsableIn(ef.Aura, ctx))
                     {
                         continue;
@@ -107,7 +97,7 @@ namespace MagicBrawl.Core
                         Card = src,
                         AuraSource = src,
                         AuraKind = ef.Aura,
-                        AuraTokenIndex = e - startIndex,
+                        AuraTokenIndex = token.Id,
                         Value = ef.A,
                         Label = AuraLabel(src, ef),
                     });
@@ -200,15 +190,14 @@ namespace MagicBrawl.Core
                     continue;
                 }
 
-                List<EffectDef> all = AuraEffectsOf(src.Def);
-                int startIndex = Math.Max(0, all.Count - src.AuraTokens);
-                for (int e = startIndex; e < all.Count; e++)
+                for (int e = 0; e < src.ActiveAuras.Count; e++)
                 {
-                    EffectDef ef = all[e];
+                    AuraToken token = src.ActiveAuras[e];
+                    EffectDef ef = token.Definition;
                     if (ef.Aura == AuraKind.ImmuneHigh && attackPower >= ef.A)
                     {
                         source = src;
-                        tokenIndex = e - startIndex;
+                        tokenIndex = token.Id;
                         kind = AuraKind.ImmuneHigh;
                         return true;
                     }
@@ -216,7 +205,7 @@ namespace MagicBrawl.Core
                     if (ef.Aura == AuraKind.ImmuneLow && attackPower <= ef.A)
                     {
                         source = src;
-                        tokenIndex = e - startIndex;
+                        tokenIndex = token.Id;
                         kind = AuraKind.ImmuneLow;
                         return true;
                     }
@@ -236,17 +225,13 @@ namespace MagicBrawl.Core
         }
 
         /// <summary>真正的消耗动作：指示物 −1（光环来源牌仍在冷却区，不影响其冷却）。</summary>
-        internal static void Consume(CardInstance src)
+        internal static bool Consume(CardInstance src, int tokenId = -1)
         {
-            if (src == null)
-            {
-                return;
-            }
-
-            if (src.AuraTokens > 0)
-            {
-                src.AuraTokens--;
-            }
+            if (src == null || src.ActiveAuras.Count == 0) return false;
+            int index = tokenId < 0 ? 0 : src.ActiveAuras.FindIndex(t => t.Id == tokenId);
+            if (index < 0) return false;
+            src.ActiveAuras.RemoveAt(index);
+            return true;
         }
     }
 }

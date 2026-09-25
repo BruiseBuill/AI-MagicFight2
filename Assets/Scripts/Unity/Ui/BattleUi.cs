@@ -26,6 +26,18 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class BattleUi : MonoBehaviour
     {
+        [SerializeField] private SettingsView _settings;
+        private int LocalSeat { get { return _driver == null ? 0 : _driver.LocalSeat; } }
+        private int OpponentSeat { get { return _driver == null ? 1 : _driver.OpponentSeat; } }
+
+        private void BindSeats()
+        {
+            if (_hand != null) _hand.ConfigureSeats(LocalSeat, OpponentSeat);
+            if (_cooldown != null) _cooldown.ConfigureSeats(LocalSeat, OpponentSeat);
+            if (_transit != null) _transit.ConfigureSeats(LocalSeat, OpponentSeat);
+        }
+
+
         [Header("驱动")]
         [SerializeField] private BattleDriver _driver;
 
@@ -229,10 +241,7 @@ namespace MagicBrawl.App
         private bool _zonePickMode;
 
         /// <summary>本拍的区域档，按座位分组（下标 = 座位；<c>Seat = -1</c> 的选项单独放 <see cref="_zoneBothOptions"/>）。</summary>
-        private readonly List<Option>[] _zoneBySeat =
-        {
-            new List<Option>(), new List<Option>(),
-        };
+        private readonly Dictionary<int, List<Option>> _zoneBySeat = new Dictionary<int, List<Option>>();
 
         /// <summary>区域档里座位为「双方」的那些（雪崩）。它们没有「点哪一片」可言。</summary>
         private readonly List<Option> _zoneBothOptions = new List<Option>();
@@ -262,7 +271,7 @@ namespace MagicBrawl.App
         /// <c>TurnStartedEvent.Seat</c> 与 <c>AttackDeclaredEvent.Seat</c> 给出，
         /// 而 ③ 阶段永远发生在进攻方的半场里。</para>
         /// </summary>
-        private int _actorSeat = BattleState.SeatPlayer;
+        private int _actorSeat;
 
         /// <summary>
         /// 这一批「区域类冷却改动」是否已经报过一次（M36）。
@@ -374,6 +383,7 @@ namespace MagicBrawl.App
                 _transit.Configure(_hand, _cooldown);
             }
 
+            BindSeats();
             WireArtLayer();
 
             // M13：两侧角色交给手牌区，只做「进了判定区 → 点亮目标」的高亮反馈；
@@ -419,12 +429,10 @@ namespace MagicBrawl.App
 
         private void WireArtLayer()
         {
-            // 顶栏那颗齿轮 = 设置入口。M10 还没做设置面板，M28 起按用户要求改成「重开一局」
-            // （等效结算面板的「再来一局」）。战斗日志开关因此暂时没有入口，
-            // ToggleLog / SetLogVisible 仍然保留，等 M10 设置面板落地再接回去。
+            // 齿轮只打开设置；重开与测试卡池入口由 SettingsView 管理。
             if (_hud != null)
             {
-                _hud.GearClicked += OnAgainClicked;
+                _hud.GearClicked += OnSettingsClicked;
             }
 
             BattleArtLibrary art = BattleArtLibrary.Instance;
@@ -513,6 +521,8 @@ namespace MagicBrawl.App
 
         private void HandleStarted()
         {
+            BindSeats();
+            _actorSeat = LocalSeat;
             _attacksRemaining = 0;
             if (_hand != null) _hand.ResetOrder();
             if (_transit != null) _transit.ResetPresentation();
@@ -624,7 +634,7 @@ namespace MagicBrawl.App
                 // 它一直常驻到这张牌进入冷却区为止，那才是收牌时机（见 DetectPlayedDepartures）。
                 if (ad.Card != null)
                 {
-                    if (ad.Seat == BattleState.SeatAi)
+                    if (ad.Seat == OpponentSeat)
                     {
                         // M28：怪物亮出来的进攻牌 → 玩家从此知道这张牌的身份
                         MarkMonsterCardSeen(ad.Card);
@@ -659,7 +669,7 @@ namespace MagicBrawl.App
                         continue;
                     }
 
-                    if (dr.DefenderSeat == BattleState.SeatAi)
+                    if (dr.DefenderSeat == OpponentSeat)
                     {
                         // M28：怪物打出的防御牌同样归入「玩家已知」
                         MarkMonsterCardSeen(dr.Cards[i]);
@@ -694,9 +704,9 @@ namespace MagicBrawl.App
                 // ⚠ 败方必须用 PlayPoseHold：普通插播播完会回调待机，
                 //   而结算浮层还要在屏幕上停好几秒 —— 那几秒里尸体会自己站起来。
                 var go = (GameOverEvent)e;
-                int loserSeat = go.WinnerSeat == BattleState.SeatPlayer
-                    ? BattleState.SeatAi
-                    : BattleState.SeatPlayer;
+                int loserSeat = go.WinnerSeat == LocalSeat
+                    ? OpponentSeat
+                    : LocalSeat;
                 CharacterView loser = CharacterFor(loserSeat);
                 if (loser != null)
                 {
@@ -722,13 +732,13 @@ namespace MagicBrawl.App
         /// <summary>座位 → 舞台上的角色（玩家侧是主角，AI 侧是怪物）。</summary>
         private CharacterView CharacterFor(int seat)
         {
-            return seat == BattleState.SeatPlayer ? _hero : _monster;
+            return seat == LocalSeat ? _hero : _monster;
         }
 
         /// <summary>座位 → 该侧头顶的「刚打出的牌」展示面板（M35：双方各一块）。</summary>
         private PlayedCardView PlayedFor(int seat)
         {
-            return seat == BattleState.SeatPlayer ? _playedHero : _playedFoe;
+            return seat == LocalSeat ? _playedHero : _playedFoe;
         }
 
         /// <summary>
@@ -757,7 +767,7 @@ namespace MagicBrawl.App
 
             DiscardHeadFor(seat);
 
-            if (seat == BattleState.SeatAi)
+            if (seat == OpponentSeat)
             {
                 view.ShowFrom(cards, 0f, ModelCenterWorld(seat));
             }
@@ -857,8 +867,8 @@ namespace MagicBrawl.App
                 return;
             }
 
-            DepartFrom(_playerCoolingBuf, BattleState.SeatPlayer);
-            DepartFrom(_enemyCoolingBuf, BattleState.SeatAi);
+            DepartFrom(_playerCoolingBuf, LocalSeat);
+            DepartFrom(_enemyCoolingBuf, OpponentSeat);
         }
 
         /// <summary>
@@ -930,8 +940,8 @@ namespace MagicBrawl.App
             }
 
             if (e is TurnStartedEvent)
-                _attacksRemaining = ((TurnStartedEvent)e).Seat == BattleState.SeatPlayer ? 1 : 0;
-            else if (e is AttackDeclaredEvent && ((AttackDeclaredEvent)e).Seat == BattleState.SeatPlayer)
+                _attacksRemaining = ((TurnStartedEvent)e).Seat == LocalSeat ? 1 : 0;
+            else if (e is AttackDeclaredEvent && ((AttackDeclaredEvent)e).Seat == LocalSeat)
                 _attacksRemaining = 0;
             else if (e is GameOverEvent) _attacksRemaining = 0;
             if (_hud != null) _hud.SetAttacksRemaining(_attacksRemaining);
@@ -954,7 +964,7 @@ namespace MagicBrawl.App
             if (e is HandRevealedEvent)
             {
                 var revealed = (HandRevealedEvent)e;
-                if (revealed.OwnerSeat == BattleState.SeatAi)
+                if (revealed.OwnerSeat == OpponentSeat)
                 {
                     MarkMonsterCardSeen(revealed.Card);
                 }
@@ -1132,7 +1142,7 @@ namespace MagicBrawl.App
                 return;
             }
 
-            _driver.CollectHand(BattleState.SeatAi, _monsterHandBuf);
+            _driver.CollectHand(OpponentSeat, _monsterHandBuf);
             _monsterHand.Bind(_monsterHandBuf, _seenMonsterCards);
         }
 
@@ -1183,7 +1193,7 @@ namespace MagicBrawl.App
             if (e is TurnStartedEvent)
             {
                 var ts = (TurnStartedEvent)e;
-                if (ts.Seat == BattleState.SeatPlayer)
+                if (ts.Seat == LocalSeat)
                 {
                     _banner.Show(ts.IsComboFollowUp ? "连击 · 追加进攻" : "轮到你进攻");
                 }
@@ -1196,7 +1206,7 @@ namespace MagicBrawl.App
             {
                 // 玩家这一拍已经交牌了 —— 告诉玩家「该我做的做完了」；
                 // 挡没挡住是结算的事，下一拍 DefenseResolved 会说。
-                if (((AttackDeclaredEvent)e).Seat == BattleState.SeatPlayer)
+                if (((AttackDeclaredEvent)e).Seat == LocalSeat)
                 {
                     _banner.Show("进攻结束");
                 }
@@ -1287,7 +1297,7 @@ namespace MagicBrawl.App
         /// </summary>
         private void PlayEffectBanner(string line)
         {
-            if (_banner == null || string.IsNullOrEmpty(line) || _actorSeat != BattleState.SeatAi)
+            if (_banner == null || string.IsNullOrEmpty(line) || _actorSeat != OpponentSeat)
             {
                 return;
             }
@@ -1306,7 +1316,7 @@ namespace MagicBrawl.App
         /// </summary>
         private void PlayAiAuraCast(AuraConsumedEvent au)
         {
-            if (_hudBuff == null || au.Seat != BattleState.SeatAi)
+            if (_hudBuff == null || au.Seat != OpponentSeat)
             {
                 return;
             }
@@ -1329,7 +1339,7 @@ namespace MagicBrawl.App
             Vector3 from;
             if (!_hudBuff.TryGetIconWorld(data.SourceUid, out from))
             {
-                from = ModelCenterWorld(BattleState.SeatAi);
+                from = ModelCenterWorld(OpponentSeat);
             }
 
             _hudBuff.PlayCast(data, from);
@@ -1360,6 +1370,7 @@ namespace MagicBrawl.App
 
         private void HandleDecision(DecisionSnapshot snap)
         {
+            if (snap.Seat != LocalSeat) return;
             _pendingValid = true;
             _pendingKind = snap.Kind;
             ClassifyOptions(snap);
@@ -1376,8 +1387,8 @@ namespace MagicBrawl.App
             // 注意这只是「方向」不是规则判断：能不能出仍然由 Options 说了算。
             if (_hand != null)
             {
-                _hand.SetDropIntent(snap.Kind == RequestKind.ChooseAttackCard ? BattleState.SeatAi
-                    : snap.Kind == RequestKind.ChooseDefense ? BattleState.SeatPlayer
+                _hand.SetDropIntent(snap.Kind == RequestKind.ChooseAttackCard ? OpponentSeat
+                    : snap.Kind == RequestKind.ChooseDefense ? LocalSeat
                     : -1);
             }
 
@@ -1467,9 +1478,10 @@ namespace MagicBrawl.App
                     //
                     // ⚠ 例外：若本拍**只有**「双方」档（雪崩 SlowZoneBoth），没有任何侧别可点，
                     //   那就没有「点哪一格」这回事，只能把档列出来让玩家挑。
-                    _picker.ShowSkipOnly(snap.Options);
+                    if (snap.Kind == RequestKind.ChooseCooldownEffects) _picker.Show(string.Empty, _flatOptions);
+                    else _picker.ShowSkipOnly(snap.Options);
 
-                    if (_zoneBySeat[0].Count + _zoneBySeat[1].Count == 0)
+                    if (_zoneBySeat.Count == 0)
                     {
                         _picker.Show(string.Empty, _zoneBothOptions);
                     }
@@ -1518,7 +1530,7 @@ namespace MagicBrawl.App
                 return;
             }
 
-            bool win = winnerSeat == BattleState.SeatPlayer;
+            bool win = winnerSeat == LocalSeat;
             bool draw = winnerSeat < 0;
 
             if (_resultTitle != null)
@@ -1587,9 +1599,9 @@ namespace MagicBrawl.App
 
             // M35：两侧冷却区都要参与配对 —— 玩家的牌与怪物的牌都会从头顶飞向各自的槽
             if (_transit != null) _transit.CaptureBeforeBind(_handBuf, _playerCoolingBuf, _enemyCoolingBuf);
-            _driver.CollectHand(BattleState.SeatPlayer, _handBuf);
-            _driver.CollectCooling(BattleState.SeatPlayer, _playerCoolingBuf);
-            _driver.CollectCooling(BattleState.SeatAi, _enemyCoolingBuf);
+            _driver.CollectHand(LocalSeat, _handBuf);
+            _driver.CollectCooling(LocalSeat, _playerCoolingBuf);
+            _driver.CollectCooling(OpponentSeat, _enemyCoolingBuf);
 
             if (_hand != null)
             {
@@ -1616,8 +1628,8 @@ namespace MagicBrawl.App
 
             if (_stage != null)
             {
-                _stage.BindBars(_driver.GetPlayer(BattleState.SeatPlayer),
-                    _driver.GetPlayer(BattleState.SeatAi));
+                _stage.BindBars(_driver.GetPlayer(LocalSeat),
+                    _driver.GetPlayer(OpponentSeat));
             }
 
             // M15：光环图标必须在 CollectCooling 之后重建（它的数据源就是那两个快照缓冲）
@@ -1768,13 +1780,8 @@ namespace MagicBrawl.App
             }
 
             var seats = new HashSet<int>();
-            for (int s = 0; s < _zoneBySeat.Length; s++)
-            {
-                if (_zoneBySeat[s].Count > 0)
-                {
-                    seats.Add(s);
-                }
-            }
+            foreach (var pair in _zoneBySeat)
+                if (pair.Value.Count > 0) seats.Add(pair.Key);
 
             // 一个侧别档都没有（只有雪崩那种「双方」档）→ 没有「点哪一片」可言，不点亮。
             if (seats.Count == 0)
@@ -1801,8 +1808,8 @@ namespace MagicBrawl.App
         /// </summary>
         private void RefreshAuraIcons()
         {
-            BuildAuras(BattleState.SeatPlayer, _playerCoolingBuf, _playerAuras);
-            BuildAuras(BattleState.SeatAi, _enemyCoolingBuf, _enemyAuras);
+            BuildAuras(LocalSeat, _playerCoolingBuf, _playerAuras);
+            BuildAuras(OpponentSeat, _enemyCoolingBuf, _enemyAuras);
 
             if (_hudBuff != null)
             {
@@ -1842,12 +1849,12 @@ namespace MagicBrawl.App
                     {
                         Seat = seat,
                         SourceUid = card.Uid,
-                        TokenIndex = t,
+                        TokenIndex = tok.TokenId,
                         Kind = tok.Kind,
                         Value = tok.Value,
                         SourceName = string.IsNullOrEmpty(tok.CardName) ? card.Name : tok.CardName,
                         Text = tok.Text,
-                        Usable = _auraOptions.ContainsKey(AuraIconData.MakeKey(seat, card.Uid, t)),
+                        Usable = _auraOptions.ContainsKey(AuraIconData.MakeKey(seat, card.Uid, tok.TokenId)),
                     });
                 }
             }
@@ -1856,8 +1863,8 @@ namespace MagicBrawl.App
         /// <summary>把双方快照喂给 HUD / 能量球 / 角色头顶徽标。</summary>
         private void BindArtLayer()
         {
-            PlayerSnapshot me = _driver.GetPlayer(BattleState.SeatPlayer);
-            PlayerSnapshot foe = _driver.GetPlayer(BattleState.SeatAi);
+            PlayerSnapshot me = _driver.GetPlayer(LocalSeat);
+            PlayerSnapshot foe = _driver.GetPlayer(OpponentSeat);
 
             if (_hud != null)
             {
@@ -1920,8 +1927,7 @@ namespace MagicBrawl.App
             _auraOptions.Clear();
             _coolingTargeted = false;
             _zonePickMode = false;
-            _zoneBySeat[0].Clear();
-            _zoneBySeat[1].Clear();
+            _zoneBySeat.Clear();
             _zoneBothOptions.Clear();
 
             if (snap.Options == null)
@@ -1960,8 +1966,9 @@ namespace MagicBrawl.App
                 {
                     _zonePickMode = true;
 
-                    if (o.Seat >= 0 && o.Seat < _zoneBySeat.Length)
+                    if (o.Seat >= 0)
                     {
+                        if (!_zoneBySeat.ContainsKey(o.Seat)) _zoneBySeat.Add(o.Seat, new List<Option>());
                         _zoneBySeat[o.Seat].Add(o);
                     }
                     else
@@ -2026,8 +2033,7 @@ namespace MagicBrawl.App
             //   不会在清场途中反过来刷新一遍界面。
             _returningKeys.Clear();
             _zonePickMode = false;
-            _zoneBySeat[0].Clear();
-            _zoneBySeat[1].Clear();
+            _zoneBySeat.Clear();
             _zoneBothOptions.Clear();
 
             if (_picker != null)
@@ -2153,9 +2159,9 @@ namespace MagicBrawl.App
                 return;
             }
 
-            bool aimedAtFoe = targetSeat == BattleState.SeatAi;
+            bool aimedAtFoe = targetSeat == OpponentSeat;
             bool matches = (aimedAtFoe && _pendingKind == RequestKind.ChooseAttackCard)
-                           || (targetSeat == BattleState.SeatPlayer && _pendingKind == RequestKind.ChooseDefense);
+                           || (targetSeat == LocalSeat && _pendingKind == RequestKind.ChooseDefense);
 
             if (!matches)
             {
@@ -2378,7 +2384,7 @@ namespace MagicBrawl.App
         /// </summary>
         private void OnCooldownZoneRowClicked(int seat, int rowIndex)
         {
-            if (!_pendingValid || seat < 0 || seat >= _zoneBySeat.Length)
+            if (!_pendingValid || seat < 0 || !_zoneBySeat.ContainsKey(seat))
             {
                 return;
             }
@@ -2799,6 +2805,11 @@ namespace MagicBrawl.App
             _driver.SubmitPlayerDecision(new[] { option.Index }, auras);
         }
 
+        private void OnSettingsClicked()
+        {
+            if (_settings != null) _settings.Open();
+        }
+
         private void OnAgainClicked()
         {
             if (_driver == null)
@@ -2819,7 +2830,7 @@ namespace MagicBrawl.App
         {
             if (_driver == null || !_driver.IsRunning)
             {
-                return seat == BattleState.SeatPlayer ? "你" : "AI";
+                return seat == LocalSeat ? "你" : "AI";
             }
 
             return _driver.GetPlayer(seat).Name;

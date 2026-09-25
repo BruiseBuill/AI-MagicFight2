@@ -118,8 +118,8 @@ namespace MagicBrawl.Core
                 A(EffectOp.Copy, 3, text: "复制你冷却区中一个「基础冷却 ≤ 3 且无光环」的法术的力量和进攻效果；未复制时力量视为 1"));
 
             Add(24, "y", "瀑流", 6, 3,
-                A(EffectOp.Haste, 1, text: "加速"),
-                A(EffectOp.HastePerHpLoss, 1, text: "你每损失 1 点生命值，加速一个不同的法术"));
+                new EffectDef(EffectTrigger.Attack, EffectOp.Haste, 1, text: "加速", distinctTargetGroup: "torrent"),
+                new EffectDef(EffectTrigger.Attack, EffectOp.HastePerHpLoss, 1, text: "你每损失 1 点生命值，加速一个不同的法术", distinctTargetGroup: "torrent"));
 
             Add(25, "z", "地动波", 7, 3,
                 A(EffectOp.QuickRefill, text: "快速回填"),
@@ -341,11 +341,7 @@ namespace MagicBrawl.Core
                     seen = ef.Trigger;
                 }
 
-                if (auras > 0 && seen.HasValue && seen.Value == EffectTrigger.Passive)
-                {
-                    bad.Add(d.Name + "（" + d.Id + "）的光环标成了 Passive（常驻）—— "
-                            + "光环必须写明 α / β / γ 才会被第 ⑤ 步点亮");
-                }
+
 
                 // γ 光环的时机由卡面文字各自规定，而第 ⑤ 步只会按「本牌这一拍是攻是防」点亮
                 // α / β —— 直接放进来会是一个永远不亮的死效果。本批 40 张卡还没有 γ 光环，
