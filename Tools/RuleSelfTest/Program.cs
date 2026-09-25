@@ -129,6 +129,21 @@ namespace MagicBrawl.SelfTest
             ok &= TorrentScenario.Run(report);
             Prune(report);
 
+            // 2026-09-25：雪崩（an）从「可选的单效果」改成双效果
+            // （① 强制区域减速：双方冷却区中剩余冷却 = 1 的牌全体 +1，不弹决策；
+            //   ② 快速回填：本牌进冷却区时 −1）。
+            // 「少弹了一个决策」与「快速回填没结算」在万局统计里都不会变红 ——
+            // 前者不影响事件流自洽，后者只是冷却多 1，只能脚本化把局面钉死。
+            ok &= AvalancheScenario.Run(report);
+            Prune(report);
+
+            // 2026-09-25：模仿（x）的复制条件从「基础冷却 = 3」放宽成「≤ 3」。
+            // 卡面文字（CardLibrary）与候选过滤（BattleEngine.IssueCopyTarget）是同一个
+            // 事实的两处表达，只改一处就是「卡面写着能复制、界面里一个候选都没有」，
+            // 万局统计里同样无声。
+            ok &= MimicScenario.Run(report);
+            Prune(report);
+
             Console.WriteLine();
             Console.WriteLine("── 万局统计 ──");
             Console.WriteLine("  局数            : " + mass.Games);

@@ -834,20 +834,7 @@ namespace MagicBrawl.Core
         /// <summary>卡面是否带「进攻力量不能增加」（沉重打击）—— 带它就不必弹光环选择。</summary>
         private static bool CardForbidsAtkBuff(CardInstance card)
         {
-            if (card == null)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < card.Def.Effects.Count; i++)
-            {
-                if (card.Def.Effects[i].Op == EffectOp.NoAtkBuff)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return card != null && card.Def.ForbidsAtkBuff;
         }
 
         // ══════════════════════════════════════════════════════
@@ -1268,7 +1255,10 @@ namespace MagicBrawl.Core
             for (int i = 0; i < attacker.CoolingZone.Count; i++)
             {
                 CardInstance c = attacker.CoolingZone[i];
-                if (c.Def.Cooldown != ef.A || c.Def.HasAura)
+                // 候选条件：基础冷却 ≤ A 且无光环（2026-09-25 由「= A」放宽为「≤ A」）。
+                // ⚠ 这一行与卡面文字是同一个事实的两处表达（卡表 text / 本过滤）——
+                //   只改文字不改这里，就是「卡面写着能复制、候选表里却没有」，万局统计全无声。
+                if (c.Def.Cooldown > ef.A || c.Def.HasAura)
                 {
                     continue;
                 }
@@ -1297,7 +1287,7 @@ namespace MagicBrawl.Core
             {
                 Seat = _atk.AttackerSeat,
                 Kind = RequestKind.ChooseCopyTarget,
-                Prompt = "选择要复制的法术（基础冷却 = " + ef.A + " 且无光环）",
+                Prompt = "选择要复制的法术（基础冷却 ≤ " + ef.A + " 且无光环）",
                 Options = options,
                 MinSelect = 0,
                 MaxSelect = 1,
@@ -1859,9 +1849,20 @@ namespace MagicBrawl.Core
 
                 case EffectOp.HasteZone:
                 case EffectOp.SlowZone:
-                case EffectOp.SlowZoneBoth:
                     IssueZoneValue(ef);
                     return true;
+
+                // 雪崩（2026-09-25）：强制减速双方冷却区，**没有可选项** —— 直接结算。
+                //
+                // 返回 false = 「本效果没有发出决策」，RunStage3 会接着处理队列里的下一条
+                //（雪崩的第 2 条是 QuickRefill，属 ④ 阶段标记，在 SplitEffects 时就已记账）。
+                //
+                // ⚠ 别顺手并进上面那条 case：那一条走的是「选一个剩余冷却值」的决策
+                //   （IssueZoneValue），而雪崩的阈值是卡表写死的 A，玩家无从选择；
+                //   并进去的结果就是弹一个只有「不执行」的窗 —— 用户 2026-09-25 明确要求取消。
+                case EffectOp.SlowZoneBoth:
+                    ApplySlowZoneBoth(ef);
+                    return false;
 
                 case EffectOp.Refresh:
                 case EffectOp.ResetCooldown:
@@ -2026,77 +2027,51 @@ namespace MagicBrawl.Core
             _phase = Phase.Stage3;
         }
 
+        /// <summary>
+        /// 区域选值（<b>只服务区域加速 / 区域减速</b>）：列出「某一方冷却区中剩余冷却 = k」
+        /// 的每一档，让玩家挑一档。
+        ///
+        /// <para>⚠ 雪崩的 <see cref="EffectOp.SlowZoneBoth"/> <b>不走这里</b> ——
+        /// 它没有可选项，由 <see cref="ApplySlowZoneBoth"/> 直接结算（2026-09-25）。</para>
+        /// </summary>
         private void IssueZoneValue(EffectDef ef)
         {
             var options = new List<Option>();
             options.Add(new Option { Kind = OptionKind.Skip, Label = "不执行" });
 
-            if (ef.Op == EffectOp.SlowZoneBoth)
+            for (int seat = 0; seat < State.Players.Count; seat++)
             {
-                int matched = 0;
-                for (int seat = 0; seat < State.Players.Count; seat++)
+                PlayerState p = State.Of(seat);
+                var seen = new List<int>();
+                for (int i = 0; i < p.CoolingZone.Count; i++)
                 {
-                    PlayerState p = State.Of(seat);
-                    for (int i = 0; i < p.CoolingZone.Count; i++)
+                    int v = p.CoolingZone[i].RemainingCooldown;
+                    if (seen.Contains(v))
                     {
-                        if (p.CoolingZone[i].RemainingCooldown == ef.A)
+                        continue;
+                    }
+
+                    seen.Add(v);
+
+                    int matched = 0;
+                    for (int j = 0; j < p.CoolingZone.Count; j++)
+                    {
+                        if (p.CoolingZone[j].RemainingCooldown == v)
                         {
                             matched++;
                         }
                     }
-                }
 
-                if (matched == 0)
-                {
-                    _phase = Phase.Stage3;
-                    return;
-                }
-
-                options.Add(new Option
-                {
-                    Kind = OptionKind.ZoneValue,
-                    Seat = -1,
-                    Value = ef.A,
-                    Count = matched,
-                    Label = "双方冷却区中剩余冷却 = " + ef.A + " 的 " + matched + " 张法术全体减速",
-                });
-            }
-            else
-            {
-                for (int seat = 0; seat < State.Players.Count; seat++)
-                {
-                    PlayerState p = State.Of(seat);
-                    var seen = new List<int>();
-                    for (int i = 0; i < p.CoolingZone.Count; i++)
+                    options.Add(new Option
                     {
-                        int v = p.CoolingZone[i].RemainingCooldown;
-                        if (seen.Contains(v))
-                        {
-                            continue;
-                        }
-
-                        seen.Add(v);
-
-                        int matched = 0;
-                        for (int j = 0; j < p.CoolingZone.Count; j++)
-                        {
-                            if (p.CoolingZone[j].RemainingCooldown == v)
-                            {
-                                matched++;
-                            }
-                        }
-
-                        options.Add(new Option
-                        {
-                            Kind = OptionKind.ZoneValue,
-                            Seat = seat,
-                            Value = v,
-                            Count = matched,
-                            Label = (seat == _atk.AttackerSeat ? "我方" : "对方")
-                                    + "冷却区剩余冷却 = " + v + " 的 " + matched + " 张牌全体"
-                                    + (ef.Op == EffectOp.HasteZone ? "加速" : "减速"),
-                        });
-                    }
+                        Kind = OptionKind.ZoneValue,
+                        Seat = seat,
+                        Value = v,
+                        Count = matched,
+                        Label = (seat == _atk.AttackerSeat ? "我方" : "对方")
+                                + "冷却区剩余冷却 = " + v + " 的 " + matched + " 张牌全体"
+                                + (ef.Op == EffectOp.HasteZone ? "加速" : "减速"),
+                    });
                 }
             }
 
@@ -2121,6 +2096,31 @@ namespace MagicBrawl.Core
                 MaxSelect = 1,
                 ContextHaste = ef.Op == EffectOp.HasteZone,
             };
+        }
+
+        /// <summary>
+        /// 雪崩的<b>强制</b>区域减速：双方冷却区中剩余冷却 = <c>ef.A</c> 的牌全体 +1，
+        /// <b>不发决策</b>（用户 2026-09-25 口径：「是强制性的，因此就不需要选择了」）。
+        ///
+        /// <para><b>为什么是「立即结算」而不是「发一个没得选的决策」</b>：一个只有「不执行」
+        /// 的窗口在界面上就是一个坑（玩家点进去只能放弃），而且它会把「必然发生的事」
+        /// 表达成「可选的」。规则既然没有任何选择点，就不该有决策。</para>
+        ///
+        /// <para>无匹配目标时不报错也不卡住：<see cref="CooldownOps.SlowZone"/> 会自己往
+        /// 冷却改动流里补一条「区域减速（无匹配目标）」—— 怪物执行效果时的提示条靠它说话
+        /// （M36 口径：区域「无匹配目标」要报）。</para>
+        /// </summary>
+        private void ApplySlowZoneBoth(EffectDef ef)
+        {
+            _cooldownBuffer.Clear();
+
+            // 双方一起 —— 「双方」的含义就是逐座位各跑一遍，不是挑一个。
+            for (int seat = 0; seat < State.Players.Count; seat++)
+            {
+                CooldownOps.SlowZone(State.Of(seat), ef.A, _cooldownBuffer);
+            }
+
+            FlushCooldown();
         }
 
         private void DoZoneValue(List<Option> picked)

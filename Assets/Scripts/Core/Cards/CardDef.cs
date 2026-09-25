@@ -81,6 +81,38 @@ namespace MagicBrawl.Core
         }
 
         /// <summary>
+        /// 本牌的<b>进攻力量不可增加</b>（卡面带 <see cref="EffectOp.NoAtkBuff"/>，目前只有沉重打击 h）。
+        ///
+        /// <para><b>两处都要看它</b>：</para>
+        /// <list type="bullet">
+        /// <item><b>规则侧</b>：引擎把进攻光环 / 力量增益一律记在
+        /// <c>AttackContext.NoAtkBuff</c> 上，最终 <c>BonusPower</c> 恒为 0 ——
+        /// 也就是「用了光环也照样按不变算」；</item>
+        /// <item><b>显示侧</b>：手牌的力量预览（把已准备光环的加值画到卡面上）必须<b>跳过它</b>，
+        /// 否则卡面会画出一个规则上并不存在的数（用户 2026-09-25 口径：
+        /// 「实际逻辑按不变算，显示时也应当不变」）。</item>
+        /// </list>
+        ///
+        /// <para>放在 <see cref="CardDef"/> 而不是表现层各自判断卡 ID：这是**规则事实**
+        /// （卡表这一格写了这条效果），表现层只消费布尔量，不需要认卡。</para>
+        /// </summary>
+        public bool ForbidsAtkBuff
+        {
+            get
+            {
+                for (int i = 0; i < Effects.Count; i++)
+                {
+                    if (Effects[i].Op == EffectOp.NoAtkBuff)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 本牌「触发符号 = <paramref name="trigger"/>」的光环指示物数 ——
         /// <b>第 ⑤ 步真正会点亮几枚就看它</b>。
         ///

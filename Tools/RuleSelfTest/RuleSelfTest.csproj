@@ -36,6 +36,8 @@
     <Compile Include="RemoveFromGameScenario.cs" />
     <Compile Include="EarthquakeScenario.cs" />
     <Compile Include="TorrentScenario.cs" />
+    <Compile Include="AvalancheScenario.cs" />
+    <Compile Include="MimicScenario.cs" />
     <!-- Core 源码（链接，不复制） -->
     <Compile Include="../../Assets/Scripts/Core/**/*.cs" />
   </ItemGroup>

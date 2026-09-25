@@ -46,6 +46,15 @@ namespace MagicBrawl.Core
         /// <summary>卡面显示的力量文本：模仿是 "X"，其余是数字。</summary>
         public string PowerText;
 
+        /// <summary>
+        /// 本牌的<b>进攻力量不可增加</b>（沉重打击 h）。
+        ///
+        /// <para>表现层拿它决定「手牌的力量预览要不要画上加值」：规则侧引擎本来就把
+        /// <c>AttackContext.BonusPower</c> 钉成 0（用了进攻光环也照样按不变算），
+        /// 卡面必须跟规则一致 —— 不然会出现「卡面写 9、实际打出 7」（用户 2026-09-25 口径）。</para>
+        /// </summary>
+        public bool NoAtkBuff;
+
         /// <summary>基础冷却值。</summary>
         public int BaseCooldown;
 
@@ -98,6 +107,7 @@ namespace MagicBrawl.Core
                 Name = card.Def.Name,
                 Power = card.EffectivePower,
                 PowerText = card.Def.PowerText,
+                NoAtkBuff = card.Def.ForbidsAtkBuff,
                 BaseCooldown = card.Def.Cooldown,
                 RemainingCooldown = card.RemainingCooldown,
                 AuraTokens = card.AuraTokens,
@@ -153,6 +163,7 @@ namespace MagicBrawl.Core
                 Name = def.Name,
                 Power = def.Power,
                 PowerText = def.PowerText,
+                NoAtkBuff = def.ForbidsAtkBuff,
                 BaseCooldown = def.Cooldown,
                 RemainingCooldown = remainingCooldown,
                 AuraTokens = 0,

@@ -1649,6 +1649,11 @@ namespace MagicBrawl.App
         /// <item>其它拍（选目标 / 替换 / 光环只报了准备还没出牌…）→ 不预览。</item>
         /// </list>
         ///
+        /// <!-- 例外 -->
+        /// <para><b>例外（2026-09-25）</b>：卡面写着「此法术的进攻力量不能增加」的牌（沉重打击）
+        /// <b>不参与进攻加值预览</b> —— 规则上那份加值对它无效，画上去就是画一个不存在的结果。
+        /// 判据见 <see cref="PreviewBonusFor"/>。</para>
+        ///
         /// <para><b>为什么「可出的牌」才预览</b>：光环的加值只作用于<b>当时正在打出的那一张</b>
         /// （`rules/01-规则基线.md` §6.2），所以能拿到这份加值的正是本拍 <c>Options</c> 里
         /// 给出来的那几张。给一张打不出的牌画上加值，是画一个不存在的结果。</para>
@@ -1679,6 +1684,18 @@ namespace MagicBrawl.App
             bool attack = _pendingKind == RequestKind.ChooseAttackCard;
             bool defend = _pendingKind == RequestKind.ChooseDefense;
             if (!attack && !defend)
+            {
+                return 0;
+            }
+
+            // 沉重打击（卡面带「此法术的进攻力量不能增加」）——**卡面必须和规则一致**：
+            // 引擎在结算时本来就按不变算（AttackContext.BonusPower 在 NoAtkBuff 下恒为 0），
+            // 所以这里也不能把进攻光环的加值画到卡面上，否则玩家看到 9、实际打出 7。
+            //
+            // ⚠ 只挡**进攻侧**：这条规则管的是进攻力量，防御加值照常预览（规则 §6.3 场合限制）。
+            // ⚠ 判据来自快照的 NoAtkBuff（= 卡表里有没有 NoAtkBuff 这一条效果），
+            //   不在表现层认卡 ID —— 规则事实仍然只有卡表一个来源。
+            if (attack && card.NoAtkBuff)
             {
                 return 0;
             }

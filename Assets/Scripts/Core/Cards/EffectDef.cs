@@ -106,7 +106,18 @@ namespace MagicBrawl.Core
         HasteZone = 3,
         /// <summary>区域减速：选定某一方冷却区中剩余冷却 = k 的牌全体 +1。</summary>
         SlowZone = 4,
-        /// <summary>雪崩：同时作用于双方冷却区中剩余冷却 = A 的牌，全体 +1。</summary>
+        /// <summary>
+        /// 雪崩：<b>强制</b>把双方冷却区中剩余冷却 = A 的牌全体 +1。<b>不发决策、不给放弃</b>。
+        ///
+        /// <para><b>2026-09-25 口径变更</b>：原先它和区域加速 / 减速共用一个「选一个剩余冷却值」
+        /// 的决策（<see cref="RequestKind.ChooseZoneValue"/>），玩家可以选「不执行」。现在雪崩是
+        /// 「先强制减速、再快速回填」的双效果，减速这一半<b>没有可选项</b> ——
+        /// 于是它从 <see cref="NeedsDecision"/> 里摘掉了，引擎在 ③ 阶段直接作用双方冷却区
+        /// （<c>BattleEngine.StartStage3Decision</c> 里单独一条分支）。</para>
+        ///
+        /// <para>「强制」这件事<em>不需要</em> <see cref="EffectDef.Mandatory"/>：那个字段表达的是
+        /// 「这个决策不可选择不执行」，而这里根本没有决策可发。仍然只保留 A = 阈值。</para>
+        /// </summary>
         SlowZoneBoth = 5,
         /// <summary>使目标立即冷却完成（剩余归 0 → 立即回手）。</summary>
         Refresh = 6,
@@ -172,7 +183,10 @@ namespace MagicBrawl.Core
         HealMinusMax = 28,
 
         // ── 复制 ─────────────────────────────────────────────
-        /// <summary>模仿：复制己方冷却区中「基础冷却 = A 且无光环」的一张牌的基础力量与全部进攻效果。</summary>
+        /// <summary>
+        /// 模仿：复制己方冷却区中「基础冷却 <b>≤ A</b> 且无光环」的一张牌的基础力量与全部进攻效果。
+        /// （2026-09-25 由「基础冷却 = A」放宽为「≤ A」。）
+        /// </summary>
         Copy = 29,
 
         // ── 特殊 ─────────────────────────────────────────────
@@ -244,7 +258,12 @@ namespace MagicBrawl.Core
             Text = text ?? string.Empty;
         }
 
-        /// <summary>本效果是否需要外部决策（供引擎判断是否走「暂停-恢复」）。</summary>
+        /// <summary>
+        /// 本效果是否需要外部决策（供引擎判断是否走「暂停-恢复」）。
+        ///
+        /// <para>⚠ <see cref="EffectOp.SlowZoneBoth"/>（雪崩的强制区域减速）<b>不在</b>此列 ——
+        /// 它没有可选项，引擎在 ③ 阶段直接结算。</para>
+        /// </summary>
         public bool NeedsDecision
         {
             get
@@ -255,7 +274,6 @@ namespace MagicBrawl.Core
                     case EffectOp.Slow:
                     case EffectOp.HasteZone:
                     case EffectOp.SlowZone:
-                    case EffectOp.SlowZoneBoth:
                     case EffectOp.Refresh:
                     case EffectOp.ResetCooldown:
                     case EffectOp.RemoveFromGame:

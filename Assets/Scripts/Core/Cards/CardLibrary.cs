@@ -115,7 +115,7 @@ namespace MagicBrawl.Core
                     text: "随机查看对方一张手牌，力量 ≥7 则立即进入冷却且冷却时间 −1"));
 
             Add(23, "x", "模仿", 1, 4, true,
-                A(EffectOp.Copy, 3, text: "复制你冷却区中一个「基础冷却为 3 且无光环」的法术的力量和进攻效果；未复制时力量视为 1"));
+                A(EffectOp.Copy, 3, text: "复制你冷却区中一个「基础冷却 ≤ 3 且无光环」的法术的力量和进攻效果；未复制时力量视为 1"));
 
             Add(24, "y", "瀑流", 6, 3,
                 A(EffectOp.Haste, 1, text: "加速"),
@@ -173,8 +173,13 @@ namespace MagicBrawl.Core
                 A(EffectOp.Haste, 1, text: "加速"),
                 A(EffectOp.CoolHandForHaste, 1, text: "攻击时可将手中其它法术进入冷却，每冷却一张获得一次加速"));
 
+            // 雪崩（2026-09-25 用户口径）：从「可选的单效果」改成**双效果** ——
+            //   ① 强制区域减速：双方冷却区中剩余冷却 = 1 的牌全体 +1。**不给选择**，
+            //      所以 SlowZoneBoth 不再发决策（见 EffectDef / BattleEngine）。
+            //   ② 快速回填：本牌进冷却区时剩余冷却额外 −1（④ 阶段标记）。
             Add(39, "an", "雪崩", 6, 3,
-                A(EffectOp.SlowZoneBoth, 1, text: "可使双方冷却区中剩余冷却为 1 的法术都被减速"));
+                A(EffectOp.SlowZoneBoth, 1, text: "使双方冷却区中剩余冷却为 1 的法术全部减速"),
+                A(EffectOp.QuickRefill, text: "快速回填"));
         }
 
         // ── 查询 ────────────────────────────────────────────────
