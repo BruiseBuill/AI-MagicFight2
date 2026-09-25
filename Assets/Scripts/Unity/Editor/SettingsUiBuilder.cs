@@ -57,8 +57,8 @@ namespace MagicBrawl.App.EditorTools
                 return;
             }
 
-            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Font/Black/Google-Regular.asset");
-            _titleFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Font/BlackLike/站酷仓耳渔阳体-W03 SDF.asset");
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Art/Fonts/Black/Google-Regular.asset");
+            _titleFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset");
             if (_font == null || _titleFont == null) throw new InvalidOperationException("找不到项目字体资源。");
             _panelSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Ui/Peek_Panel.png");
             _buttonSprite = AssetDatabase.LoadAssetAtPath<Sprite>(UiLayout.HandPickConfirmSpritePath);

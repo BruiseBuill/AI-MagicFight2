@@ -4,10 +4,10 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 CARDS = PROJECT / "Assets" / "Art" / "Cards"
-OUT = PROJECT / "Docs" / "art-review" / "卡牌总览-40张.png"
-LABEL_FONT = PROJECT / "Assets" / "Font" / "Black" / "Google-Regular.ttf"
+OUT = PROJECT / "Captures" / "art-review" / "卡牌总览-40张.png"
+LABEL_FONT = PROJECT / "Assets" / "Art" / "Fonts" / "Black" / "Google-Regular.ttf"
 
 COLS, ROWS = 8, 5
 CW, CH = 236, 328          # 单元格
@@ -37,5 +37,6 @@ for i, f in enumerate(files):
     name = f.stem.split("_", 2)[2]
     d.text((x + 6, y + CH - 2), f"{cid} · {name}", font=f_label, fill=(60, 60, 70))
 
+OUT.parent.mkdir(parents=True, exist_ok=True)
 sheet.save(OUT)
 print(f"{OUT}  {sheet.size}")

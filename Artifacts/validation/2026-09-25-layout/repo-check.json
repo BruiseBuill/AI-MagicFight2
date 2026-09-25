@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "documents": 67,
+  "local_links": 247,
+  "python_files": 28,
+  "errors": [],
+  "warnings": [],
+  "limits": [
+    "External URLs and heading anchors are not checked.",
+    "Historical raw artifacts and archived scripts are not executed.",
+    "Unity import, compilation and GUID checks run separately."
+  ]
+}

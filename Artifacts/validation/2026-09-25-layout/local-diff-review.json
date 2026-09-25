@@ -1,0 +1,13 @@
+{
+  "review_basis": "Pre-task local working-file snapshot; Git HEAD diff unavailable due missing promisor objects and remote connectivity.",
+  "changed_csharp_files": [
+    "Assets/Scripts/Unity/Editor/ArtOnboarding.cs",
+    "Assets/Scripts/Unity/Editor/BattleArtLayerBuilder.cs",
+    "Assets/Scripts/Unity/Editor/BattleUiBuilder.cs",
+    "Assets/Scripts/Unity/Editor/SettingsUiBuilder.cs",
+    "Assets/Scripts/Unity/Editor/UiKitBuilder.cs"
+  ],
+  "csharp_changes_only_path_constants": true,
+  "existing_patch_notes_preserved": true,
+  "new_trailing_whitespace_files": []
+}

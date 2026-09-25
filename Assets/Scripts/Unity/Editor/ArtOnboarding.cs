@@ -47,7 +47,7 @@ namespace MagicBrawl.App.EditorTools
         private const string PolySpriteSrc = "Assets/Art/PolySprite";
         private const string PolySpriteDst = "Assets/ThirdParty/PolySprite";
 
-        private const string ReportPath = "Tools/art-audit/onboarding-report.md";
+        private const string ReportPath = "Artifacts/audits/art/onboarding-report.md";
 
         /// <summary>元素插画所在的子目录名（英文，同时用作草稿素材的前缀）。</summary>
         private static readonly string[] ElementFolders =

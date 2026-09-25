@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
-SHEET = PROJECT / "Assets" / "Art" / "661ca76a-c73d-4618-b6e5-918c75968b58.png"
+PROJECT = Path(__file__).resolve().parents[2]
+SHEET = PROJECT / "Assets" / "Art" / "Ui" / "_Source" / "661ca76a-c73d-4618-b6e5-918c75968b58.png"
 
 img = Image.open(SHEET).convert("RGBA")
 a = np.asarray(img)

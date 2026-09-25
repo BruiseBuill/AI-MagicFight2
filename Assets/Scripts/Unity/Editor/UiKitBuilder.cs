@@ -54,9 +54,9 @@ namespace MagicBrawl.App.EditorTools
         private const float CardBoxPixelsPerUnit = 100f;
 
         // 字体（选型见 `Docs/engineering/06-美术与字体规范.md` §3.4）
-        private const string BodyFontPath = "Assets/Font/Black/Google-Regular.asset";
-        private const string TitleFontPath = "Assets/Font/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
-        private const string AccentFontPath = "Assets/Font/English-Handwriting-Italy/ZCOOL Addict Italic 02 SDF.asset";
+        private const string BodyFontPath = "Assets/Art/Fonts/Black/Google-Regular.asset";
+        private const string TitleFontPath = "Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
+        private const string AccentFontPath = "Assets/Art/Fonts/English-Handwriting-Italy/ZCOOL Addict Italic 02 SDF.asset";
 
         /// <summary>
         /// 卡面「力量 / 冷却」两个数字专用的字体（M35，2026-09-23）。
@@ -72,7 +72,7 @@ namespace MagicBrawl.App.EditorTools
         ///
         /// <para>⚠ <b>改动前先跟用户确认</b> —— 这是他在意的两处细节之一（另一处是卡名的自动缩放）。</para>
         /// </summary>
-        private const string CardNumberFontPath = "Assets/Font/HandWriting/千图马克手写体 SDF.asset";
+        private const string CardNumberFontPath = "Assets/Art/Fonts/HandWriting/千图马克手写体 SDF.asset";
 
         // ══════════════════════════════════════════════════════
         //  菜单入口

@@ -36,7 +36,7 @@ from PIL import Image
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 ICON_DIR = os.path.join(ROOT, "Assets", "Art", "Icons")
 OUT_NAME = "IconSheet_触发符号_TMP.png"
-WORK_DIR = os.path.join(ROOT, "Tools", "art-audit", "_work")
+WORK_DIR = os.path.join(ROOT, "Artifacts", "work", "art")
 
 # 顺序与 TriggerIconLibrary 一致：Attack=剑、Defend=盾、Special=感叹号
 SOURCES = [

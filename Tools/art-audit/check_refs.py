@@ -15,7 +15,7 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 SCAN_ROOTS = ["Assets", "ProjectSettings", "Packages"]
 GUID_RE = re.compile(r"guid:\s*([0-9a-f]{32})")
 

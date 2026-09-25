@@ -13,9 +13,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
-FONT_ROOT = PROJECT / "Assets" / "Font"
-OUT_DIR = PROJECT / "Docs" / "art-review"
+PROJECT = Path(__file__).resolve().parents[2]
+FONT_ROOT = PROJECT / "Assets" / "Art" / "Fonts"
+OUT_DIR = PROJECT / "Captures" / "art-review"
 
 W = 1500
 PAD = 24

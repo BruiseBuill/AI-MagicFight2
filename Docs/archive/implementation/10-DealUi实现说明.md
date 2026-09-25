@@ -1,10 +1,12 @@
 # 10 · DealUi 实现说明（M9）
 
+> 归档说明：本篇是已被替代的初版；当前入口见 [实现索引](../../implementation/README.md)。目录迁移不代表重新验收。
+
 > **性质**：历史实现记录 · **最后核对** 2026-09-23（未逐条复核，**别照它改代码**）
 
-> 历史实现记录；当前交互与规则以 [规则基线](../rules/01-规则基线.md) 和 [当前交互说明](光环与拖动交互.md) 为准。
+> 历史实现记录；当前交互与规则以 [规则基线](../../rules/01-规则基线.md) 和 [当前交互说明](../../design/战斗交互.md) 为准。
 
-> 承接 `Docs/engineering/03-工程规划.md` §12 第 1 条（M9 `DealUi`）与 `Docs/implementation/09-BattleUi实现说明.md` §9「还没做的」。
+> 承接 `Docs/engineering/03-工程规划.md` §12 第 1 条（M9 `DealUi`）与 `Docs/archive/implementation/09-BattleUi实现说明.md` §9「还没做的」。
 > 本批把开场发 6 张的替换交互做成**图形化、可多选、有计数、有确认**的完整流程，
 > 顺带挖出并修掉了两个一直没暴露的真缺陷（见 §6）。
 >
@@ -83,7 +85,7 @@ TopArea
       └─ SkipButton    48 「不替换，开始对局」
 ```
 
-**位置核对**（续 `Docs/implementation/09-BattleUi实现说明.md` §5 的那张表）：
+**位置核对**（续 `Docs/archive/implementation/09-BattleUi实现说明.md` §5 的那张表）：
 
 | 区块 | 顶部起算 | 高度 |
 |---|---|---|
@@ -102,7 +104,7 @@ TopArea
 
 ## 5. 接线：BattleUi 怎么分流
 
-`Docs/implementation/09-BattleUi实现说明.md` §3.1 的那条规则（「按有没有实体卡在屏幕上分类」）本批多了一个分支：
+`Docs/archive/implementation/09-BattleUi实现说明.md` §3.1 的那条规则（「按有没有实体卡在屏幕上分类」）本批多了一个分支：
 
 | 决策 | 谁来承担按钮 | 点手牌做什么 |
 |---|---|---|

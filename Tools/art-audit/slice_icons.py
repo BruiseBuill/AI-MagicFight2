@@ -22,9 +22,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ICONS = PROJECT / "Assets" / "Art" / "Icons"
-SHEET = ICONS / "IconSheet_盾剑强制_三合一.png"   # 现有名（脚本要能原样重跑）
+SHEET = ICONS / "_Source" / "IconSheet_盾剑特殊_三合一.png"
 SHEET_FINAL = "IconSheet_盾剑特殊_三合一.png"      # 留档时改名：第三个图标是 γ 特殊，不是「强制」
 SOURCE_DIR = ICONS / "_Source"
 REVIEW = PROJECT / "Captures" / "art-review"
@@ -121,7 +121,7 @@ def main() -> int:
     # 拼图留档「不在这里做」—— Unity 正在运行时直接 mv 文件 + .meta 有被判定成
     # 「删除 + 新建」而换掉 GUID 的风险。交给菜单 `魔法乱斗/整理 · 建触发图标库`
     # 用 AssetDatabase.MoveAsset 一并改名并移入 _Source/。
-    print(f"  [待办] 拼图将由 Unity 菜单移入 _Source/ 并改名为 {SHEET_FINAL}")
+    print(f"  [源表] 保留在 {SHEET.relative_to(PROJECT)}")
 
     # 出一张核对图
     REVIEW.mkdir(parents=True, exist_ok=True)
@@ -137,7 +137,7 @@ def main() -> int:
             sheet_out.paste(plate.convert("RGB"), (i * cell + pad // 2, pad // 2))
 
     from PIL import ImageDraw, ImageFont
-    fp = PROJECT / "Assets" / "Font" / "Black" / "Google-Regular.ttf"
+    fp = PROJECT / "Assets" / "Art" / "Fonts" / "Black" / "Google-Regular.ttf"
     fnt = ImageFont.truetype(str(fp), 22) if fp.exists() else ImageFont.load_default()
     d = ImageDraw.Draw(sheet_out)
     for i, (_p, zh) in enumerate(outs):

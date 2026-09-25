@@ -3,7 +3,7 @@
 魔法乱斗 1.3 · 字体资源审计
 
 用途：
-  1. 统计 Assets/Font 下每个字体的字形数、字重/风格、家族名
+  1. 统计 Assets/Art/Fonts 下每个字体的字形数、字重/风格、家族名
   2. 用「项目实际用字集」+「GB2312 全集」双向核验覆盖率，列出缺字
   3. 输出机器可读的 JSON，供规范文档引用
 
@@ -17,10 +17,10 @@ from pathlib import Path
 
 from fontTools.ttLib import TTFont
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
-FONT_ROOT = PROJECT / "Assets" / "Font"
+PROJECT = Path(__file__).resolve().parents[2]
+FONT_ROOT = PROJECT / "Assets" / "Art" / "Fonts"
 DOCS = PROJECT / "Docs"
-OUT_JSON = Path(__file__).with_name("font-audit-result.json")
+OUT_JSON = Path(__file__).resolve().parents[2] / "Artifacts" / "audits" / "font" / "font-audit-result.json"
 
 # ---------------------------------------------------------------- 用字集
 
@@ -173,6 +173,7 @@ def main() -> int:
         else:
             print(f"  {r['file']}: 项目用字全覆盖 ✓")
 
+    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(
         json.dumps(
             {"project_charset_size": len(required), "fonts": results},

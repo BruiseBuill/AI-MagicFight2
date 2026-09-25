@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
-$uvxPath = 'D:\Python\Scripts\uvx.exe'
+$uvxPath = 'C:\Users\Lenovo\.local\bin\uvx.exe'
 if (-not (Test-Path -LiteralPath $uvxPath)) { throw "uvx not found: $uvxPath" }
 $listeners = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
 if ($listeners) {

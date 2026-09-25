@@ -15,7 +15,9 @@ namespace MagicBrawl.App
     /// <para>另有一件事落在这里（M26）：<b>区域加速 / 减速的入口是「点某一侧的某一格冷却槽」</b> ——
     /// 决定生效时两侧的 8 个槽位底图一起点亮（<see cref="SetZonePickable"/> /
     /// <see cref="SetZoneSeats"/>），点哪一格就把 (座位, 行) 报给
-    /// <see cref="ZoneRowClicked"/>；行号与剩余冷却的换算是 <c>k = 4 − 行</c>。</para>
+    /// <see cref="ZoneRowClicked"/>；行号与剩余冷却的换算是 <c>k = 4 − 行</c>。
+    /// 本拍若<b>同时</b>还有逐张目标（加速 + 区域加速），区域档的判定区域<b>只留槽位徽标</b>，
+    /// 卡面点击归还给卡牌（见 <see cref="SetZoneWithCardTargets"/>）。</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CooldownView : MonoBehaviour, ICardGestureHost
@@ -168,6 +170,26 @@ namespace MagicBrawl.App
         private readonly HashSet<int> _zoneSeats = new HashSet<int>();
 
         /// <summary>
+        /// 本拍<strong>区域档与「逐张目标」并存</strong>吗（加速 + 区域加速 / 减速 + 区域减速，2026-09-25）。
+        ///
+        /// <para><b>为什么会并存</b>：一张牌同时带 <c>Haste</c> 与 <c>HasteZone</c> 时，
+        /// 引擎把两件事合成<b>同一个决策</b>（<c>EffectWindow</c> 的 <c>combined</c> →
+        /// <c>RequestKind.ChooseCooldownEffects</c>，提示条写「加速 / 区域加速」），
+        /// 选项里既有「哪一张牌」也有「哪一方 · 剩余冷却 = k」——
+        /// 玩家二选一，<c>MaxSelect = 1</c>。</para>
+        ///
+        /// <para><b>这个开关的作用</b>：为 true 时<see cref="OnCardClicked"/> 里的
+        /// 「点卡面 = 点这一格」补路<b>关掉</b> —— 卡面点击归卡牌（逐张那一半），
+        /// 区域档只剩<b>槽位徽标自己那块空白</b>可点。卡摆在槽的外侧
+        /// （见 <see cref="BindGrouped"/> 的 <c>offset = rowW + gap</c>），
+        /// 所以「判定区域收窄到不碰卡面」在几何上是成立的。</para>
+        ///
+        /// <para>为 false（本拍只有区域档，也就是 M26 原本那一拍）时补路照旧开着：
+        /// 一行放满 4 张迷你卡时槽图露出的空白少得可怜，关掉就等于这个入口点不动。</para>
+        /// </summary>
+        private bool _zoneWithCardTargets;
+
+        /// <summary>
         /// 告知「哪些座位这一拍真的能点」。传 null / 空集 = 两侧都点不了（收掉高亮）。
         ///
         /// <para>与 <see cref="SetZonePickable"/> 配合：前者管「此刻是不是区域决策」，
@@ -189,6 +211,18 @@ namespace MagicBrawl.App
 
             ApplyZoneHighlight(LocalSeat);
             ApplyZoneHighlight(OpponentSeat);
+        }
+
+        /// <summary>
+        /// 告知「本拍区域档与逐张目标并存」（见 <see cref="_zoneWithCardTargets"/>）。
+        ///
+        /// <para>由 <c>BattleUi.ApplyZonePickState</c> 在点亮区域态时一起下 ——
+        /// 判据就是同一处的 <c>_coolingTargeted</c>（本拍 Options 里有没有「具体哪张冷却牌」）。
+        /// 它不是规则判断，只是「这一拍的选项形状」的显示态（铁律 3）。</para>
+        /// </summary>
+        public void SetZoneWithCardTargets(bool on)
+        {
+            _zoneWithCardTargets = on;
         }
 
         /// <summary>
@@ -659,6 +693,7 @@ namespace MagicBrawl.App
             // 整片可点的态一并收掉（区域决策结束 / 玩家点了别处都会走到这里）
             _zoneSeats.Clear();
             _zonePickable = false;
+            _zoneWithCardTargets = false;
             ApplyZoneHighlight(LocalSeat);
             ApplyZoneHighlight(OpponentSeat);
 
@@ -752,7 +787,18 @@ namespace MagicBrawl.App
             //
             //   这里把两条路并成一条：区域档那一拍，点牌面 = 点它所在的那一格，
             //   走同一个 ZoneRowClicked（行号由 RowIndexFor 从卡片的祖先名解析）。
-            if (_zonePickable)
+            //
+            //   ⚠⚠ 2026-09-25 收窄（用户口径：「区域加速的判定区域过大，甚至覆盖到了卡牌上，
+            //   至少不能与冷却区域当中的卡牌重叠」）：**本拍若同时还有逐张目标
+            //   （_zoneWithCardTargets），这条补路必须关掉。**
+            //   加速 + 区域加速 是同一个决策里的两半（引擎合成 ChooseCooldownEffects，
+            //   MaxSelect = 1 二选一），补路一开，点任何一张卡都被吞成「选了那一格」，
+            //   玩家永远选不出「只加速这一张」—— 屏幕上就是「区域档把卡面盖住了」。
+            //   这时区域档的判定区域只剩槽位徽标自己那块空白：卡摆在槽的外侧
+            //   （BindGrouped 的 offset = rowW + gap），两者本来就不重叠。
+            //   只有「本拍纯粹是区域档」（M26 原本那一拍）才保留补路 ——
+            //   那时一行 4 张卡把槽图露出的空白挤得几乎为零，关了就等于点不动。
+            if (_zonePickable && !_zoneWithCardTargets)
             {
                 int seat = SeatOf(card);
                 if (seat >= 0 && _zoneSeats.Contains(seat))

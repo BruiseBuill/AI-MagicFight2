@@ -36,11 +36,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
-SRC = PROJECT / "Assets" / "Art" / "Icon.png"
+PROJECT = Path(__file__).resolve().parents[2]
+SRC = PROJECT / "Assets" / "Art" / "Icons" / "_Source" / "Icon_效果七合一.png"
 OUT_DIR = PROJECT / "Assets" / "Art" / "Icons"
-WORK = PROJECT / "Tools" / "art-audit" / "_work"
-FONT = PROJECT / "Assets" / "Font" / "Black" / "Lxgw975GoSC-400W.ttf"
+WORK = PROJECT / "Artifacts" / "work" / "art"
+FONT = PROJECT / "Assets" / "Art" / "Fonts" / "Black" / "Lxgw975GoSC-400W.ttf"
 
 ALPHA_MIN = 8          # alpha > 此值算「有内容」（保住外圈辉光）
 MIN_PART = 2000        # 连通域面积下限（挡噪点；7 枚图标最小也上万）

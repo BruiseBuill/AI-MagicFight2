@@ -38,10 +38,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ART = PROJECT / "Assets" / "Art"
 OUT = ART / "Chars"
-WORK = PROJECT / "Tools" / "art-audit" / "_work"
+WORK = PROJECT / "Artifacts" / "work" / "art"
 
 HERO_SHEET = ART / "Chars" / "_Source" / "2049a678-64d5-46e6-a342-87eaf3f37435.png"
 MON_SHEET = ART / "Chars" / "_Source" / "6e093879-16be-4326-b9e9-c90a767cb587.png"

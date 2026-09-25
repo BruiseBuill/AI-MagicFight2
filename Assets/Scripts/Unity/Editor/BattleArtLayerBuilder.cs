@@ -35,8 +35,8 @@ namespace MagicBrawl.App.EditorTools
         private const string PrefabPath = "Assets/Prefabs/Ui/" + CanvasName + ".prefab";
         private const string LayerName = "ArtLayer";
 
-        private const string BodyFontPath = "Assets/Font/Black/Google-Regular.asset";
-        private const string TitleFontPath = "Assets/Font/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
+        private const string BodyFontPath = "Assets/Art/Fonts/Black/Google-Regular.asset";
+        private const string TitleFontPath = "Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
 
         /// <summary>新层接管的旧节点：构建时收起。</summary>
         private static readonly string[] RetiredNodes =

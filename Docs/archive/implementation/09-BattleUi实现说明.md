@@ -1,10 +1,12 @@
 # 09 · BattleUi 实现说明（M6 + M8）
 
+> 归档说明：本篇是已被替代的初版；当前入口见 [实现索引](../../implementation/README.md)。目录迁移不代表重新验收。
+
 > **性质**：历史实现记录 · **最后核对** 2026-09-23（未逐条复核，**别照它改代码**）
 
-> 历史实现记录；当前交互与规则以 [规则基线](../rules/01-规则基线.md) 和 [当前交互说明](光环与拖动交互.md) 为准。
+> 历史实现记录；当前交互与规则以 [规则基线](../../rules/01-规则基线.md) 和 [当前交互说明](../../design/战斗交互.md) 为准。
 
-> 承接 `Docs/engineering/03-工程规划.md` §7（界面要求）与 `Docs/implementation/08-UiKit实现说明.md` §8（M8 接入指引）。
+> 承接 `Docs/engineering/03-工程规划.md` §7（界面要求）与 `Docs/archive/implementation/08-UiKit实现说明.md` §8（M8 接入指引）。
 > 本批把 M7 搭好的界面骨架接上了真数据，并把规则引擎真正驱动了起来。
 >
 > 验收截图：`Captures/art-review/m8_uikit_01_replace.png` ~ `m8_uikit_04_result.png`

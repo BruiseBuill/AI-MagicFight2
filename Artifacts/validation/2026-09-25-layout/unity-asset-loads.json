@@ -1,0 +1,21 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"success\":true,\"message\":\"Code executed successfully.\",\"data\":{\"result\":\"Resources=6; assets=7; failures=; scene=Assets/Scenes/SampleScene.unity; dirty=False; playing=False\",\"compiler\":\"codedom\"}}"
+      }
+    ],
+    "structuredContent": {
+      "success": true,
+      "message": "Code executed successfully.",
+      "data": {
+        "result": "Resources=6; assets=7; failures=; scene=Assets/Scenes/SampleScene.unity; dirty=False; playing=False",
+        "compiler": "codedom"
+      }
+    },
+    "isError": false
+  }
+}

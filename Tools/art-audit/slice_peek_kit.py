@@ -60,10 +60,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ART = PROJECT / "Assets" / "Art"
 OUT = ART / "Ui"
-SHEET = ART / "661ca76a-c73d-4618-b6e5-918c75968b58.png"
+SHEET = ART / "Ui" / "_Source" / "661ca76a-c73d-4618-b6e5-918c75968b58.png"
 
 # 包围盒用的 alpha 阈值。取 8 而不是 24 —— 面板/牌背边缘有一圈很淡的辉光，
 # 阈值太高会把辉光切掉，缩放后边缘会显出硬直角。

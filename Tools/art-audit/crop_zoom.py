@@ -7,15 +7,15 @@ from pathlib import Path
 
 from PIL import Image
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ART = PROJECT / "Assets" / "Art"
-WORK = PROJECT / "Tools" / "art-audit" / "_work"
+WORK = PROJECT / "Artifacts" / "work" / "art"
 
 FILES = {
-    "ui": ART / "542f45c2-5d2c-4803-bcbd-2cafa10226fc.png",
-    "hero": ART / "2049a678-64d5-46e6-a342-87eaf3f37435.png",
-    "mon": ART / "6e093879-16be-4326-b9e9-c90a767cb587.png",
-    "ref": ART / "Reference.png",
+    "ui": ART / "Ui" / "_Source" / "542f45c2-5d2c-4803-bcbd-2cafa10226fc.png",
+    "hero": ART / "Chars" / "_Source" / "2049a678-64d5-46e6-a342-87eaf3f37435.png",
+    "mon": ART / "Chars" / "_Source" / "6e093879-16be-4326-b9e9-c90a767cb587.png",
+    "ref": ART / "_Reference" / "Reference.png",
 }
 
 # (key, 名字, x, y, w, h, 放大倍数, 棋盘底?)

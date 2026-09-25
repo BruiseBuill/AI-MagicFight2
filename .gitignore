@@ -1,5 +1,4 @@
 # This .gitignore file should be placed at the root of the Unity project.
-# Based on E:/UnityProject/Unity_12hGamePlan2/.gitignore
 #
 # Unity 2022.2.15f1c1 / URP 2D / UGUI + TextMeshPro
 
@@ -84,3 +83,11 @@ crashlytics-build.properties
 # Local output from the standalone rule self-test.
 /Tools/RuleSelfTest/*.log
 /Tools/RuleSelfTest/trace_*.txt
+
+# Hand-authored architecture smoke project.
+!Tools/ArchitectureSmoke/ArchitectureSmoke.csproj
+
+# Reproducible local artifacts and Python bytecode.
+/Artifacts/work/
+__pycache__/
+*.py[cod]

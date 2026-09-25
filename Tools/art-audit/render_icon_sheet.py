@@ -17,9 +17,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ICONS = PROJECT / "Assets" / "Art" / "Icons"
-REVIEW = PROJECT / "Docs" / "art-review"
+REVIEW = PROJECT / "Captures" / "art-review"
 
 # 取自 UiTheme.cs
 BACKDROP = (0x0F, 0x13, 0x1B)
@@ -43,7 +43,7 @@ H = 96 + BIG + 150
 
 
 def font(size: int) -> ImageFont.FreeTypeFont:
-    p = PROJECT / "Assets" / "Font" / "Black" / "Google-Regular.ttf"
+    p = PROJECT / "Assets" / "Art" / "Fonts" / "Black" / "Google-Regular.ttf"
     return ImageFont.truetype(str(p), size) if p.exists() else ImageFont.load_default()
 
 
@@ -90,6 +90,7 @@ def main() -> int:
             x += s + 40
 
     out = REVIEW / "新素材总览-06-图标切分结果.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out, optimize=True)
     print(f"[OK] {out.relative_to(PROJECT)}  {img.width}x{img.height}")
     return 0

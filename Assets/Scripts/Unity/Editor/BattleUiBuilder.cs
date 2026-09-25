@@ -28,8 +28,8 @@ namespace MagicBrawl.App.EditorTools
         private const string HandCardPrefabPath = PrefabDir + "/CardView_Hand.prefab";
         private const string MiniCardPrefabPath = HandCardPrefabPath;
 
-        private const string BodyFontPath = "Assets/Font/Black/Google-Regular.asset";
-        private const string TitleFontPath = "Assets/Font/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
+        private const string BodyFontPath = "Assets/Art/Fonts/Black/Google-Regular.asset";
+        private const string TitleFontPath = "Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
 
         /// <summary>M8 / M9 / M13 / M15 / M16 新增的根节点（幂等重建时先整体删掉这些）。</summary>
         private static readonly string[] OwnedNodes =

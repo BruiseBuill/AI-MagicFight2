@@ -3,9 +3,9 @@
 import csv
 from pathlib import Path
 
-CARDS_DIR = Path(r"E:\UnityProject\Unity_AI_CardFight2\Assets\Art\Cards")
-OUT_CSV = Path(__file__).with_name("rename-report.csv")
-OUT_MD = Path(__file__).with_name("rename-report.md")
+CARDS_DIR = Path(__file__).resolve().parents[2] / "Assets" / "Art" / "Cards"
+OUT_CSV = Path(__file__).resolve().parents[2] / "Artifacts" / "audits" / "font" / "rename-report.csv"
+OUT_MD = Path(__file__).resolve().parents[2] / "Artifacts" / "audits" / "font" / "rename-report.md"
 
 CARDS = [
     ("a", "暴风雪"), ("b", "冰风暴"), ("c", "凝固"), ("d", "寒流"),
@@ -26,6 +26,7 @@ for idx, (cid, cname) in enumerate(CARDS, start=1):
     assert (CARDS_DIR / fn).exists(), f"缺失 {fn}"
     rows.append((idx, cid, cname, fn))
 
+OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
 with OUT_CSV.open("w", newline="", encoding="utf-8-sig") as fh:
     w = csv.writer(fh)
     w.writerow(["序号", "卡ID", "卡名", "文件名"])

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace MagicBrawl.App
 {
@@ -46,6 +47,10 @@ namespace MagicBrawl.App
     ///
     /// <para>长按计时放在本组件的 <c>Update</c> 里，不用协程 —— 卡被池化回收时
     /// <c>OnDisable</c> 会把状态清干净，协程还得额外管生命周期。</para>
+    ///
+    /// <para><b>⚠ 不可拖的牌（<c>Draggable = false</c>，冷却区迷你卡）要把拖拽转交出去</b>：
+    /// 本类实现了拖拽接口就一定会被 EventSystem 选中，什么都不做等于把「滑冷却区」
+    /// 整片吞掉 —— 见 <see cref="ForwardDragToScroll"/>。</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CardInteractor : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler,
@@ -59,6 +64,15 @@ namespace MagicBrawl.App
 
         /// <summary>能不能拖。只有手牌为真 —— 冷却区的牌不做拖拽（那里是「点选目标」的语义）。</summary>
         public bool Draggable;
+
+        /// <summary>
+        /// 本牌<strong>不可拖</strong>时，拖拽要转交给谁（缓存）。
+        ///
+        /// <para>见 <see cref="ForwardDragToScroll"/>：冷却区的迷你卡挂在
+        /// <c>CoolingScroll_Player / CoolingScroll_Enemy</c> 的 <c>ScrollRect</c> 下，
+        /// 那才是「滑冷却区」这件事该由谁处理。</para>
+        /// </summary>
+        private ScrollRect _scrollHost;
 
         private bool _pressed;
         private bool _dragging;
@@ -165,7 +179,17 @@ namespace MagicBrawl.App
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!Draggable || eventData.button != PointerEventData.InputButton.Left)
+            if (!Draggable)
+            {
+                // 这一拖不是「出牌」，是「滑冷却区」—— 按住的那张卡不能再在途中弹长按看牌。
+                _pressed = false;
+                _longFired = false;
+
+                ForwardDragToScroll(DragPhase.Begin, eventData);
+                return;
+            }
+
+            if (eventData.button != PointerEventData.InputButton.Left)
             {
                 return;
             }
@@ -184,7 +208,13 @@ namespace MagicBrawl.App
 
         public void OnDrag(PointerEventData eventData)
         {
-            if (!Draggable || !_dragging)
+            if (!Draggable)
+            {
+                ForwardDragToScroll(DragPhase.Move, eventData);
+                return;
+            }
+
+            if (!_dragging)
             {
                 return;
             }
@@ -194,7 +224,13 @@ namespace MagicBrawl.App
 
         public void OnEndDrag(PointerEventData eventData)
         {
-            if (!Draggable || !_dragging)
+            if (!Draggable)
+            {
+                ForwardDragToScroll(DragPhase.End, eventData);
+                return;
+            }
+
+            if (!_dragging)
             {
                 return;
             }
@@ -207,6 +243,73 @@ namespace MagicBrawl.App
             if (Card != null)
             {
                 Card.SetGestureHold(false);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  不可拖的牌：拖拽转交给滚动层
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>拖拽的三个阶段（转交时用）。</summary>
+        private enum DragPhase
+        {
+            Begin = 0,
+            Move = 1,
+            End = 2,
+        }
+
+        /// <summary>
+        /// 把拖拽原样转交给本牌所在的 <see cref="ScrollRect"/>（冷却区的纵向滚动）。
+        ///
+        /// <para><b>⚠⚠ 为什么非转不可（2026-09-25 用户口径：「常态下，滑动屏幕来滑动冷却区的
+        /// 判定面积略微有点窄，经常非得要很靠边才能滑动成功」）</b>：</para>
+        ///
+        /// <para>EventSystem 找拖拽处理器的方式是「从射线命中的节点往上找<b>第一个</b>实现了
+        /// <c>IDragHandler</c> 的节点」（<c>ExecuteEvents.GetEventHandler</c>）——
+        /// 它看的是<b>类型有没有实现接口</b>，不看实现了以后做不做事。
+        /// 本类为了手牌拖拽实现了 <c>IBeginDragHandler / IDragHandler / IEndDragHandler</c>，
+        /// 于是冷却区的迷你卡（<c>Draggable = false</c>）虽然什么也不做，
+        /// 却仍然<b>把拖拽整条吞掉</b>，事件永远上不到 <c>CoolingScroll_*</c> 的 ScrollRect。</para>
+        ///
+        /// <para>结果就是：只有点在槽位徽标那块空白（槽图 <c>raycastTarget = false</c>，
+        /// 射线落到视口自己身上）才滑得动 —— 而一行 4 张迷你卡几乎铺满视口 674 宽，
+        /// 玩家感受到的就是「得贴着最左边那条才滑得动」。</para>
+        ///
+        /// <para>这里把三个回调原样转发给 ScrollRect，等于把「判定面积」从
+        /// <b>槽位徽标那一条</b>恢复到<b>整个冷却视口</b>。短点（没超过拖拽阈值）
+        /// 不会走到这三个回调，所以「点选目标 / 长按看牌」完全不受影响。</para>
+        /// </summary>
+        private void ForwardDragToScroll(DragPhase phase, PointerEventData eventData)
+        {
+            if (eventData.button != PointerEventData.InputButton.Left)
+            {
+                return;
+            }
+
+            if (_scrollHost == null)
+            {
+                // 手牌不在任何滚动层里 → 取到 null，无需转交（手牌本来就 Draggable）。
+                _scrollHost = GetComponentInParent<ScrollRect>();
+            }
+
+            if (_scrollHost == null)
+            {
+                return;
+            }
+
+            switch (phase)
+            {
+                case DragPhase.Begin:
+                    _scrollHost.OnBeginDrag(eventData);
+                    break;
+
+                case DragPhase.Move:
+                    _scrollHost.OnDrag(eventData);
+                    break;
+
+                default:
+                    _scrollHost.OnEndDrag(eventData);
+                    break;
             }
         }
 
@@ -237,6 +340,9 @@ namespace MagicBrawl.App
             it.Host = host;
             it.Card = card;
             it.Draggable = draggable;
+
+            // 池化复用的牌可能被搬到别的滚动层下 → 转交目标重新找一次。
+            it._scrollHost = null;
 
             // 卡被池化回收时会 SetActive(false) → OnDisable → ResetState()，
             // 所以复用同一张卡时不用在这里额外清状态。

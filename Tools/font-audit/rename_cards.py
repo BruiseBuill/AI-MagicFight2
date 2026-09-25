@@ -21,10 +21,10 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ART = PROJECT / "Assets" / "Art"
 DEST = ART / "Cards"
-REPORT = Path(__file__).with_name("rename-report.csv")
+REPORT = Path(__file__).resolve().parents[2] / "Artifacts" / "audits" / "font" / "rename-report.csv"
 
 # 卡 ID → 卡名，顺序即 Docs/02-卡牌图鉴.md 的 a–an
 CARDS = [

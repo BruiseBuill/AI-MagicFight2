@@ -33,7 +33,7 @@ from PIL import Image, ImageDraw
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 OUT_DIR = os.path.join(ROOT, "Assets", "Art", "Ui")
-WORK_DIR = os.path.join(ROOT, "Tools", "art-audit", "_work")
+WORK_DIR = os.path.join(ROOT, "Artifacts", "work", "art")
 
 SPRITE = 160     # 精灵边长
 INSET = 2        # 形状距精灵边缘的留白（防九宫格采样把抗锯齿边切掉）

@@ -35,7 +35,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ART = PROJECT / "Assets" / "Art"
 OUT = ART / "Ui"
 SHEET = ART / "148cae8c-29e8-457e-82ec-40f8088a71a2.png"
@@ -111,7 +111,16 @@ def apply() -> None:
 
 
 if __name__ == "__main__":
-    if "--apply" in sys.argv:
+    import argparse
+    parser = argparse.ArgumentParser(description="切分手牌选择 UI 源表（默认仅预览）")
+    parser.add_argument("--source", type=Path, help="源图路径；相对路径基于当前工作目录")
+    parser.add_argument("--apply", action="store_true", help="将切片写入 Assets/Art/Ui")
+    args = parser.parse_args()
+    if args.source:
+        SHEET = args.source.resolve()
+    if not SHEET.is_file():
+        parser.error("历史源图未随当前仓库保留，请用 --source 指定源图。现有切片无需重新生成。")
+    if args.apply:
         apply()
     else:
         probe()

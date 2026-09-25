@@ -45,10 +45,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ART = PROJECT / "Assets" / "Art"
 OUT = ART / "Chars" / "Hero"
-WORK = PROJECT / "Tools" / "art-audit" / "_work"
+WORK = PROJECT / "Artifacts" / "work" / "art"
 
 # ── 抠底参数（白底批次）─────────────────────────────────────────────
 # 距离 = 通道级「离纯白最远的那一档」（Chebyshev），能保住浅蓝护盾/浅色书本，
@@ -67,11 +67,11 @@ SHADOW_KILL = 0.0
 # ⚠ idle 2026-09-21 换图：4×4 = 16 帧（旧 6×3 = 18 帧作废；
 #   apply() 会把超出新帧数的旧编号残帧清掉，防止 17/18 帧混进 clip）。
 SHEETS = [
-    ("Idle.png", "idle", 4, 4),
-    ("Attack.png", "attack", 4, 3),
-    ("defense.png", "defend", 4, 3),
-    ("BeHit.png", "behit", 4, 3),
-    ("Death.png", "death", 4, 3),
+    ("Chars/_Source/Hero_Anim_Idle.png", "idle", 4, 4),
+    ("Chars/_Source/Hero_Anim_Attack.png", "attack", 4, 3),
+    ("Chars/_Source/Hero_Anim_Defend.png", "defend", 4, 3),
+    ("Chars/_Source/Hero_Anim_BeHit.png", "behit", 4, 3),
+    ("Chars/_Source/Hero_Anim_Death.png", "death", 4, 3),
 ]
 
 # ── 编号标签的识别口径（实测，不是猜）───────────────────────────────

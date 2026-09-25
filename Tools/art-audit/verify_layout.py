@@ -15,7 +15,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-PROJECT = Path(r"E:\UnityProject\Unity_AI_CardFight2")
+PROJECT = Path(__file__).resolve().parents[2]
 ASSETS = PROJECT / "Assets"
 
 GUID_RE = re.compile(r"guid:\s*([0-9a-f]{32})")
@@ -27,12 +27,13 @@ TEXT_EXT = {".prefab", ".mat", ".asset", ".unity", ".shadergraph", ".controller"
 
 def main():
     problems = []
+    if not ASSETS.is_dir() or not (PROJECT / "ProjectSettings").is_dir():
+        print(f"无效 Unity 项目根目录：{PROJECT}")
+        return 1
 
     # ── 1) 配对检查 ──────────────────────────────────────
     unpaired = []
     for p in ASSETS.rglob("*"):
-        if p.is_dir():
-            continue
         if p.name.startswith(".") or "Library" in p.parts:
             continue
         if p.suffix == ".meta":
@@ -87,7 +88,7 @@ def main():
     KNOWN = {"b4e77b7839b099644925129724920af6": "MagicCardKit 自带的 TMP emoji Sprite Asset（未随包导入）"}
 
     dangling, benign, known_issue = defaultdict(set), defaultdict(set), defaultdict(set)
-    for p in ASSETS.rglob("*"):
+    for p in [*ASSETS.rglob("*"), *(PROJECT / "ProjectSettings").rglob("*")]:
         if not p.is_file() or p.suffix not in TEXT_EXT:
             continue
         try:
@@ -119,6 +120,7 @@ def main():
                                   ("Art/CardArt", "插画原图", 40)]:
         d = ASSETS / folder
         if not d.is_dir():
+            problems.append(f"缺少卡图目录：{folder}")
             continue
         seqs, bad_names = [], []
         for f in sorted(d.iterdir()):

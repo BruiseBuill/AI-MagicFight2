@@ -236,6 +236,10 @@ namespace MagicBrawl.App
         //    「冷却区2」就是 k = 2。点下去在引擎给的 Options 里找 (该座位, k = 4 − 行)，
         //    找到就提交、没有就什么也不做。
         //  本类不做任何规则判断，只是在引擎给的 Options 里挑出口（铁律 3）。
+        //
+        //  ⚠ 区域档与「逐张目标」可能**出现在同一个决策里**（加速 + 区域加速 / 减速 + 区域减速，
+        //    引擎合成 ChooseCooldownEffects）。那一拍的判定区域形状见
+        //    CooldownView.SetZoneWithCardTargets —— 区域档只留槽位徽标，卡面点击归卡牌。
 
         /// <summary>本拍是不是「区域类」决策（决定要不要打开冷却区的整片可点态）。</summary>
         private bool _zonePickMode;
@@ -1776,6 +1780,7 @@ namespace MagicBrawl.App
             {
                 _cooldown.SetZonePickable(false);
                 _cooldown.SetZoneSeats(null);
+                _cooldown.SetZoneWithCardTargets(false);
                 return;
             }
 
@@ -1788,11 +1793,19 @@ namespace MagicBrawl.App
             {
                 _cooldown.SetZonePickable(false);
                 _cooldown.SetZoneSeats(null);
+                _cooldown.SetZoneWithCardTargets(false);
                 return;
             }
 
             _cooldown.SetZonePickable(true);
             _cooldown.SetZoneSeats(seats);
+
+            // ⚠ 2026-09-25：本拍若**同时**还有逐张的冷却区目标（加速 + 区域加速 /
+            //   减速 + 区域减速 —— 引擎把两件事合成一个 ChooseCooldownEffects 决策，
+            //   见 EffectWindow 的 combined），区域档的判定区域要收窄到「只剩槽位徽标」：
+            //   卡面点击归还给卡牌，否则区域档会把整片卡面吃掉，逐张那一半永远选不出来
+            //   （用户口径：「区域加速的判定区域过大，甚至覆盖到了卡牌上」）。
+            _cooldown.SetZoneWithCardTargets(_coolingTargeted);
         }
 
         /// <summary>

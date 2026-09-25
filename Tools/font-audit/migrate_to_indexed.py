@@ -16,7 +16,7 @@ CARDS = [
     ("ak", "石化"), ("al", "石盾"), ("am", "充能"), ("an", "雪崩"),
 ]
 
-CARDS_DIR = Path(r"E:\UnityProject\Unity_AI_CardFight2\Assets\Art\Cards")
+CARDS_DIR = Path(__file__).resolve().parents[2] / "Assets" / "Art" / "Cards"
 apply = "--apply" in sys.argv
 
 for idx, (cid, cname) in enumerate(CARDS, start=1):
