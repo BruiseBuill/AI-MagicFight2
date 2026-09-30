@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using MagicBrawl.App;
 using MagicBrawl.Core;
@@ -23,9 +23,6 @@ namespace MagicBrawl.App.EditorTools
     {
         private const string PrefabDir = "Assets/Prefabs/Ui";
         private const string ResourcesDir = "Assets/Resources";
-
-        /// <summary>成品卡面（760×1056，卡名 / 数值 / 文字全烘焙在图上）。</summary>
-        private const string ArtDir = "Assets/Art/Cards";
 
         /// <summary>插画原图（784×1168，无框无字）—— M16 组成式卡面的底图。</summary>
         private const string IllustrationDir = "Assets/Art/CardArt";
@@ -232,8 +229,11 @@ namespace MagicBrawl.App.EditorTools
                 AssetDatabase.CreateAsset(lib, assetPath);
             }
 
-            // 两份 guid 表各扫一次：40 张卡 × 两个目录，逐个 FindAssets 会白扫 80 遍
-            string[] faceGuids = AssetDatabase.FindAssets("t:Sprite", new[] { ArtDir });
+            // ⚠ 2026-09-30（用户口径「任何地方都不要用成品整图，把 Art/Cards 彻底删掉」）：
+            //   这里以前还会扫 `Assets/Art/Cards/` 那 40 张 760×1056 的成品整图 ——
+            //   那一族已整个删除，现在**只有插画这一份图**。
+            //   病根：成品整图把卡名 / 力量 / 冷却 / 效果文字全烘焙在 PNG 里，会与卡表各说各话 ——
+            //   2026-09-28 磁暴 / 引雷互换力量时必须回头改 PNG 里的数字，就是这么来的。
             string[] illustrationGuids = AssetDatabase.FindAssets("t:Sprite", new[] { IllustrationDir });
 
             var entries = new List<CardArtLibrary.Entry>();
@@ -241,20 +241,13 @@ namespace MagicBrawl.App.EditorTools
             for (int i = 0; i < CardLibrary.Count; i++)
             {
                 CardDef def = CardLibrary.GetByIndex(i);
-                Sprite face = FindCardSprite(faceGuids, def);
                 Sprite illustration = FindCardSprite(illustrationGuids, def);
 
                 entries.Add(new CardArtLibrary.Entry
                 {
                     CardId = def.Id,
-                    Art = face,
                     Illustration = illustration,
                 });
-
-                if (face == null)
-                {
-                    Debug.LogWarning("[UiKit] 卡面缺失：" + def.Id + " " + def.Name);
-                }
 
                 if (illustration == null)
                 {

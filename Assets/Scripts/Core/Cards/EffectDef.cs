@@ -84,6 +84,21 @@ namespace MagicBrawl.Core
 
         /// <summary>进攻力量 +A <em>或</em> 防御力量 +A，使用时二选一。</summary>
         AtkOrDefPower = 6,
+
+        /// <summary>
+        /// 快速回填光环：使<strong>本次打出的那张牌</strong>获得「快速回填」
+        /// （进入冷却区时剩余冷却额外 −A）。仅进攻时可用。
+        ///
+        /// <para><b>2026-09-29 新增（击穿 ap）</b>。它与 <see cref="EffectOp.QuickRefill"/>
+        /// 是同一条规则，区别只在发放方式：那个是打出时就绑在自己身上，
+        /// 这个是<b>存成一枚指示物</b>，可以留给后面某一拍打出的大牌用
+        /// —— 所以它必须能作用于「别人的牌」，这只有光环这条路做得到。</para>
+        ///
+        /// <para><b>它不算「力量加值」</b>（<see cref="AuraResolver.IsPowerBonus"/> 返回 false）：
+        /// 防御拍上「这张牌还差几点补值才算挡住」的预算里不能把它算进去
+        /// —— 它减的是冷却，不是力量。</para>
+        /// </summary>
+        QuickRefill = 7,
     }
 
     /// <summary>
@@ -203,6 +218,23 @@ namespace MagicBrawl.Core
         /// 归类、决策发放与 <see cref="Slow"/> 完全一致，唯一差别就是进门那道判断。</para>
         /// </summary>
         SlowIfLastTwoHand = 31,
+
+        // ── 状态类（2026-09-29）───────────────────────────────
+        /// <summary>
+        /// 毒刺（ao）：使<b>被攻击的目标</b>获得 A 层虚弱。
+        ///
+        /// <para><b>目标必须是 Opponent，不能用默认的 Participants</b>：虚弱是「使用者施加给
+        /// 被攻击目标的」，在 1v1 下 <c>Participants</c> 会把施法者自己也一起削
+        /// （<see cref="BattleState"/> 的 <c>Mode.EffectSeats</c> 口径）。</para>
+        ///
+        /// <para><b>结算阶段 = ① 力量阶段</b>，与其它 α 即时效果同拍。这与「只削进攻力量」
+        /// 是配套的：本次防御比拼用的是<b>打出者自己</b>的力量，不受刚挂上的虚弱影响 ——
+        /// 虚弱要到<b>目标下一次进攻</b>才真正咬人。</para>
+        ///
+        /// <para>无决策、无可放弃、不消耗任何资源，纯状态写入（见
+        /// <see cref="PlayerState.WeakenStacks"/>）。</para>
+        /// </summary>
+        Weaken = 32,
     }
 
     /// <summary>Immutable, serializable effect recipe. Handler identity is independent of card identity.</summary>
@@ -232,10 +264,11 @@ namespace MagicBrawl.Core
 
         public EffectDef(EffectTrigger trigger, EffectOp op, int a = 0, int b = 0, int c = 0,
             AuraKind aura = AuraKind.None, bool mandatory = false, string text = null,
-            string distinctTargetGroup = null, System.Collections.Generic.IEnumerable<EffectCondition> conditions = null)
+            string distinctTargetGroup = null, System.Collections.Generic.IEnumerable<EffectCondition> conditions = null,
+            EffectTargetScope targets = EffectTargetScope.Participants)
             : this(trigger, op.ToString(), LegacyArguments(op, a, b, c), aura, text,
                 op == EffectOp.ReadyRefresh ? "cooldown.completed" : null,
-                EffectTargetScope.Participants, distinctTargetGroup, conditions, mandatory)
+                targets, distinctTargetGroup, conditions, mandatory)
         { }
 
         public EffectDef(EffectTrigger trigger, string handlerId,
@@ -265,6 +298,19 @@ namespace MagicBrawl.Core
                 || legacy == EffectOp.HastePerHpLoss || legacy == EffectOp.SlowIfLastTwoHand || legacy == EffectOp.SlowIfUnblocked);
         }
         public int Arg(string name, int fallback = 0) { return Arguments.TryGetValue(name, out int value) ? value : fallback; }
+
+        /// <summary>
+        /// 某个算子的「主参数」在 <see cref="Arguments"/> 里叫什么名字（<c>count</c> / <c>threshold</c> / <c>amount</c>）。
+        ///
+        /// <para><b>为什么必须公开</b>：把一张牌的效果**写回资产**（强化卡、动态卡牌）时，
+        /// 参数要按名字填。如果按算子乱猜一个键名，<c>A</c> 会静默读成 0
+        /// —— 症状是「生成的卡效果栏写着『加速』但一点也不加速」，且不报任何错。</para>
+        /// </summary>
+        public static string PrimaryArgumentName(EffectOp op)
+        {
+            return PrimaryArgument(op);
+        }
+
         private static string PrimaryArgument(EffectOp op)
         {
             switch (op)

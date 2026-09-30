@@ -41,6 +41,17 @@ namespace MagicBrawl.App
         public int cooldownAdjustment;
         public AuraKind aura;
         public bool mandatory;
+
+        /// <summary>
+        /// 效果作用范围（默认 <see cref="EffectTargetScope.Participants"/>）。
+        ///
+        /// <para><b>2026-09-30 新增</b>：原来这个字段在资产里根本不存在，
+        /// 于是所有从资产造出来的效果都恒为 <c>Participants</c> ——
+        /// 毒刺（<c>ao</c>）那种「只给对方挂虚弱」的效果一旦被复制进资产就会走样
+        /// （1v1 下把施法者自己也削了）。补上它，资产才装得下一张牌的**全部**规则事实。</para>
+        /// </summary>
+        public EffectTargetScope targets = EffectTargetScope.Participants;
+
         public string specialEvent;
         public string distinctTargetGroup;
         public string text;
@@ -49,14 +60,25 @@ namespace MagicBrawl.App
         public EffectDef CreateDefinition()
         {
             string id = string.IsNullOrEmpty(handlerId) ? operation.ToString() : handlerId;
-            if (string.IsNullOrEmpty(handlerId))
-                return new EffectDef(trigger, operation, amount, secondary, cooldownAdjustment, aura, mandatory, text, distinctTargetGroup);
-            var args = new Dictionary<string, int> { { "amount", amount }, { "secondary", secondary }, { "cooldownAdjustment", cooldownAdjustment } };
+
+            // ⚠ 主参数的**键名按算子取**（count / threshold / amount），不能一律写 "amount"：
+            //   加速 / 减速 / 移出游戏 / 瀑流 这些算子的主参数叫 "count"，
+            //   区域加速·减速与模仿叫 "threshold"。键名写错时 `EffectDef.A` 会**静默读成 0**
+            //   —— 症状是「效果栏写着『加速』，但一点也不加速」，而且零报错。
+            //   2026-09-30 改：此前只在 handlerId 为空的分支才走对，填了 handlerId 的反而错。
+            string primary = EffectDef.PrimaryArgumentName(operation);
+            var args = new Dictionary<string, int>
+            {
+                { primary, amount }, { "secondary", secondary }, { "cooldownAdjustment", cooldownAdjustment }
+            };
             var rules = new List<EffectCondition>();
             foreach (CardEffectConditionAsset condition in conditions ?? new CardEffectConditionAsset[0])
+            {
                 if (condition != null) rules.Add(new EffectCondition(condition.id, condition.value));
+            }
+
             return new EffectDef(trigger, id, args, aura, text, specialEvent,
-                EffectTargetScope.Participants, distinctTargetGroup, rules, mandatory);
+                targets, distinctTargetGroup, rules, mandatory);
         }
     }
 

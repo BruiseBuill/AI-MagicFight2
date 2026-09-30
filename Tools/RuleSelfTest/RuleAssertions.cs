@@ -24,7 +24,10 @@ namespace MagicBrawl.SelfTest
             bool ok = true;
             report.Add("── 数据类断言 ──");
 
-            ok &= Check(report, CardLibrary.Count == 40, "卡表共 40 张（实为 " + CardLibrary.Count + "）");
+            // 2026-09-29：40 → 42（新增 ao 毒刺 / ap 击穿）。总数一旦变化，
+            // 下面的力量 / 冷却分布断言必须同步 —— 否则报的是「分布不符」，
+            // 看不出到底是哪一步错了。
+            ok &= Check(report, CardLibrary.Count == 42, "卡表共 42 张（实为 " + CardLibrary.Count + "）");
 
             string powerReport;
             bool powerOk = CardLibrary.ValidatePowerDistribution(out powerReport);
@@ -38,6 +41,12 @@ namespace MagicBrawl.SelfTest
             string auraReport;
             bool auraOk = CardLibrary.ValidateAuraTriggers(out auraReport);
             ok &= Check(report, auraOk, auraReport);
+
+            // 2026-09-26：每张卡都必须标了元素 —— 唯一的消费者「点击怪物 → 思考框」拿到
+            // CardElement.None 会静默不显示符号，漏标的表现是「偶尔什么也不弹」，很难发现。
+            string elementReport;
+            bool elementOk = CardLibrary.ValidateElements(out elementReport);
+            ok &= Check(report, elementOk, elementReport);
 
             // 每张卡至少 1 条效果；ID 唯一且连续；模仿卡面显示 X
             var ids = new List<string>();
@@ -440,8 +449,14 @@ namespace MagicBrawl.SelfTest
                 return false;
             }
 
-            // 允许放弃的决策必须带 Skip
+            // 允许放弃的决策必须带 Skip；但下面这几类「可以什么都不选、直接确认」的
+            // 多选 / 可选效果是例外 —— 它们的「空」由 MinSelect = 0 表达，
+            // 界面上**刻意不发** Skip 选项（多一条按钮反而语义重复）：
+            //   · ChooseCoolHandCards —— 磁暴 / 充能（2026-09-27）
+            //   · ChooseRemoveFromGame —— 漩涡「可将……移出游戏」（2026-09-28）
+            //   · ChooseReplace —— 发牌台的「不替换」
             if (req.MinSelect == 0 && req.SkipOption == null && req.Kind != RequestKind.ChooseCoolHandCards
+                && req.Kind != RequestKind.ChooseRemoveFromGame
                 && req.Kind != RequestKind.ChooseReplace)
             {
                 return false;

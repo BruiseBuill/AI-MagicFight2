@@ -34,6 +34,15 @@ namespace MagicBrawl.Core
         /// <summary>卡表序号 0–39（a=0 … an=39），与美术资源编号一一对应。</summary>
         public readonly int Index;
 
+        /// <summary>
+        /// 元素属性（冰 / 水 / 电 / 火 / 草 / 石 / 诅咒），见 <see cref="CardElement"/>。
+        ///
+        /// <para>按卡名 + 卡面美术的视觉主题归类（用户 2026-09-26 口径）。
+        /// <b>不参与规则结算</b>，目前只有「点击怪物 → 思考框」这个提示在用：
+        /// 它把怪物下一张会打出的牌翻译成元素符号，而不暴露是哪一张。</para>
+        /// </summary>
+        public readonly CardElement Element;
+
         public CardDef(
             int index,
             string id,
@@ -41,7 +50,8 @@ namespace MagicBrawl.Core
             int power,
             int cooldown,
             IReadOnlyList<EffectDef> effects,
-            bool hiddenPower = false, string artId = null, int version = 1)
+            bool hiddenPower = false, string artId = null, int version = 1,
+            CardElement element = CardElement.None)
         {
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) throw new System.ArgumentException("Card ID and name are required.");
             if (cooldown < 1 || power < 0 || version < 1) throw new System.ArgumentException("Invalid card values.");
@@ -56,6 +66,7 @@ namespace MagicBrawl.Core
             HiddenPower = hiddenPower;
             ArtId = string.IsNullOrWhiteSpace(artId) ? id : artId;
             Version = version;
+            Element = element;
         }
 
         /// <summary>卡面力量文案（模仿显示 "X"）。</summary>

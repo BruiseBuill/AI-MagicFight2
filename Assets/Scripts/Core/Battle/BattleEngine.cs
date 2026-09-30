@@ -550,6 +550,10 @@ namespace MagicBrawl.Core
                 AttackerSeat = attacker,
                 DefenderSeat = State.Mode.SelectDefender(State, attacker),
                 IsFollowUp = State.InCombo,
+
+                // 虚弱：开拍时取一份层数快照（递减发生在半场收尾，半场进行中不变）。
+                // 连击的追加进攻会新建一次 AttackContext，取到的仍是同一个值 —— 口径一致。
+                WeakenStacks = State.Of(attacker).WeakenStacks,
             };
 
             // 准备使用的光环是「本半场」的暂存：连击追加进攻是全新的一次进攻，
@@ -571,6 +575,11 @@ namespace MagicBrawl.Core
                 return;
             }
 
+            // 虚弱递减：刚刚完成进攻的那一方 −1 层（2026-09-29）。
+            // 放在这里而不是 Stage6，是因为连击的追加进攻会再次回到 BeginHalfTurn ——
+            // 一次「进攻半场」= 整条连击链，只该减 1 层。
+            DecayWeaken(State.AttackerSeat);
+
             int next = State.Mode.NextActor(State, State.AttackerSeat);
             int skipped = 0;
             while (next >= 0 && State.Of(next).IsDead)
@@ -584,6 +593,33 @@ namespace MagicBrawl.Core
                 _phase = Phase.BeginHalfTurn;
             }
             else _phase = Phase.BeginTurn;
+        }
+
+        /// <summary>
+        /// 虚弱递减：被施加者<b>自己的一个进攻半场结束之后</b> −1 层（2026-09-29 用户口径）。
+        ///
+        /// <para><b>为什么在 <see cref="DoEndHalfTurn"/></b>：那里是「一个进攻半场真正收尾」的
+        /// 唯一落点 —— 连击的追加进攻走的是 <c>Stage6 → BeginHalfTurn</c> 的循环，
+        /// 只有整条链走完才会进来，所以一次完整的进攻（含连击）只减 1 层。</para>
+        ///
+        /// <para>「手牌为空、无法进攻 → 掉 1 点」那条路径也落到这里，同样算一次进攻结束
+        /// —— 与卡面「在其进攻结束之后」的字面口径一致。</para>
+        /// </summary>
+        private void DecayWeaken(int seat)
+        {
+            if (seat < 0 || seat >= State.Players.Count)
+            {
+                return;
+            }
+
+            PlayerState player = State.Of(seat);
+            if (player.WeakenStacks <= 0)
+            {
+                return;
+            }
+
+            player.WeakenStacks--;
+            Emit(new WeakenDecayedEvent { Seat = seat, Stacks = player.WeakenStacks });
         }
 
         // ══════════════════════════════════════════════════════
@@ -687,11 +723,10 @@ namespace MagicBrawl.Core
             AddCardEffects(card, EffectTrigger.Attack, _atk.DefenderSeat, State.Of(card.OwnerSeat).Hand.Count + 1);
         }
 
-        /// <summary>卡面是否带「进攻力量不能增加」（沉重打击）—— 带它就不必弹光环选择。</summary>
-        private static bool CardForbidsAtkBuff(CardInstance card)
-        {
-            return card != null && card.Def.ForbidsAtkBuff;
-        }
+        // ⚠ 「卡面是否带『进攻力量不能增加』（沉重打击）」这条判断 2026-09-30 起**只住在**
+        //   `AuraResolver.CollectRefunded` 里（它与「连击阈值」「连击不可叠加」合在一处，
+        //   引擎与界面共用同一份判据）。原来这里的 `CardForbidsAtkBuff` 包装因此删掉 ——
+        //   留着就是第二处口径。卡表侧的读数仍走 `CardDef.ForbidsAtkBuff`。
 
         // ══════════════════════════════════════════════════════
         //  光环：准备 → 随出牌一并提交（2026-09-18）
@@ -710,6 +745,12 @@ namespace MagicBrawl.Core
         /// 真正出牌时再连同主选择一次性提交。</para>
         /// </summary>
         private readonly List<Option> _preparedAuras = new List<Option>();
+
+        /// <summary>
+        /// <see cref="ApplyPreparedAttackAuras"/> 的复用缓冲：本拍「准备了、但最终不消耗」的那几枚
+        /// 光环在 <c>auras</c> 里的下标（由 <see cref="AuraResolver.CollectRefunded"/> 填）。
+        /// </summary>
+        private readonly List<int> _refundedAuras = new List<int>();
 
         /// <summary>
         /// 上一拍被驳回的原因（例如「准备的光环加值还不够」）—— 在下一次发同一条决策时并进提示文案里。
@@ -790,22 +831,21 @@ namespace MagicBrawl.Core
                 return;
             }
 
-            bool forbidden = CardForbidsAtkBuff(_atk.Card);
+            // 「准备了、但最终不消耗」的那几枚由 AuraResolver 一处判：① 沉重打击（整批不进）、
+            // ② 连击阈值（基础力量 > A）、③ 连击不可叠加（2026-09-30 用户口径）。
+            // ⚠ 界面在同一时刻用**同一个函数**算「要播归位动画」的那几枚
+            //   （BattleUi.RefundUnusedAuras）—— 两边各写一份判据迟早分叉成
+            //   「图标回到原位了、指示物却已经被消耗」。
+            AuraResolver.CollectRefunded(auras, _atk.Card == null ? null : _atk.Card.Def, _refundedAuras);
 
             for (int i = 0; i < auras.Count; i++)
             {
+                if (_refundedAuras.Contains(i))
+                {
+                    continue;
+                }
+
                 Option o = auras[i];
-
-                if (forbidden)
-                {
-                    continue;
-                }
-
-                if (o.AuraKind == AuraKind.Combo && _atk.Card.Def.Power > o.Value)
-                {
-                    continue;
-                }
-
                 ApplyAuraOnAttack(o.AuraSource, o.AuraKind, o.Value, o.AuraTokenIndex);
             }
         }
@@ -826,6 +866,20 @@ namespace MagicBrawl.Core
                     if (_atk.Card.Def.Power <= value)
                     {
                         _atk.HasCombo = true;
+                    }
+
+                    break;
+
+                case AuraKind.QuickRefill:
+                    // 击穿：把「快速回填」记到本次打出的那张牌的冷却结算上 ——
+                    //   第 ④ 步（DoStage4）读的是该牌 EffectContext.CooldownReduction，
+                    //   拿基础冷却减掉这么多。⚠ 必须写进**那张牌的 context**，
+                    //   而不是 _atk 上的某个字段：快速回填的语义就是「这一张进冷却时少等一回合」，
+                    //   与 <see cref="EffectOp.QuickRefill"/> 走的是同一条落点。
+                    //   那张牌的 context 在 SplitEffects 里已经建好（本方法必然晚于它）。
+                    if (_effectContexts.TryGetValue(_atk.Card.Uid, out EffectContext quickRefillContext))
+                    {
+                        quickRefillContext.CooldownReduction += value;
                     }
 
                     break;
@@ -862,6 +916,10 @@ namespace MagicBrawl.Core
                 BasePower = _atk.BasePower,
                 BonusPower = _atk.BonusPower,
                 IsDouble = _atk.IsDouble,
+
+                // 虚弱层数必须随事件一起发出去：界面直接印 FinalPower，
+                // 少了它就会出现「提示条说 7、实际只打 4」。
+                WeakenStacks = _atk.WeakenStacks,
             });
 
             // 本次防御的光环预算完全来自玩家在判定区准备的那几枚；

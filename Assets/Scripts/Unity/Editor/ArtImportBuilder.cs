@@ -31,6 +31,21 @@ namespace MagicBrawl.App.EditorTools
         private const string UiDir = ArtRoot + "/Ui";
         private const string BgDir = ArtRoot + "/Backgrounds";
         private const string CharsDir = ArtRoot + "/Chars";
+        private const string IconsDir = ArtRoot + "/Icons";
+        private const string ElementsDir = IconsDir + "/Elements";
+
+        /// <summary>
+        /// 七元素符号的<b>运行时</b>目录（2026-09-26）。
+        ///
+        /// <para><see cref="ElementIconLibrary"/> 用
+        /// <c>Resources.Load&lt;Sprite&gt;("Elements/Element_XX_Name")</c> 按名取图，
+        /// 所以成品图必须落在 Resources 下 —— 那边是**唯一的一份**，
+        /// 由 `Tools/art-audit/slice_element_icons.py` 从
+        /// <c>Art/Icons/Elements/_Source/Type.png</c> 切出来直接写进去。
+        /// ⚠ 别再往 <see cref="ElementsDir"/> 里放成品副本 —— 两份一样名字的图
+        /// 就是「改了一份、另一份留着旧的」这种查不出来的错。</para>
+        /// </summary>
+        private const string ElementResourceDir = "Assets/Resources/Elements";
         private const string RefDir = ArtRoot + "/_Reference";
         private const string LibraryPath = "Assets/Resources/BattleArtLibrary.asset";
         private const string ManifestPath = CharsDir + "/anim_frames.txt";
@@ -45,6 +60,36 @@ namespace MagicBrawl.App.EditorTools
             // 2026-09-21 · 「查看对方手牌」弹窗 UI 套件（用户按 Reference-2 的风格出的一张整层图，
             // 切成 5 块 Peek_* 放在 Ui/ 下，切法见 Tools/art-audit/slice_peek_kit.py）。
             new[] { ArtRoot + "/661ca76a-c73d-4618-b6e5-918c75968b58.png", UiDir + "/_Source" },
+
+            // 2026-09-26 · 第三批 UI 套件源表（深蓝金属框卡面 + 标题条 + 按钮底，
+            // 与 Reference-3 同一风格族）。先归档，尚未切分接入。
+            new[] { ArtRoot + "/148cae8c-29e8-457e-82ec-40f8088a71a2.png", UiDir + "/_Source" },
+            new[] { ArtRoot + "/ae67a6sgshbf-bef42ae582f4 (realesrgan-x4plus x3).png", UiDir + "/_Source" },
+
+            // 2026-09-26 · 商店场景（P4）的 UI 套件源表。
+            //   它同时是**商店版式参考图**（别的游戏的商店运行截图：左侧巫师 + 4 张带价卡 + 离开按钮 + 背包），
+            //   我们从它身上切出了 Shop_PricePlate / Shop_LeaveButton / Shop_BagIcon
+            //   （切法见 Tools/art-audit/slice_shop_kit.py）。
+            //   放 Ui/_Source 而不是 _Reference：它首先是**可再切一次的 UI 源表**
+            //   （与 661ca76a 那张弹窗套件同口径），版参考只是它的副身份。
+            new[] { ArtRoot + "/d30f41c7-1d35-43f6-9755-ca54cc6f4a6a.png", UiDir + "/_Source" },
+        };
+
+        /// <summary>
+        /// 根目录上「与已归档正本逐字节相同」的副本 → 正本。
+        ///
+        /// <para>判据：正本存在、且两份文件长度相同（同长同源的表在这里就够了；真要比内容
+        /// 得读盘哈希，而这条通路每次 RunAll 都会跑，不值得）。</para>
+        ///
+        /// <para><b>为什么不能登记进 <see cref="SourceMoves"/></b>：那会把副本搬进 `_Source/`，
+        /// 得到两份同名同内容的东西 —— 正是「改了一份、另一份留着旧的」这种查不出来的错。
+        /// 正本已经在位，副本没有存在的理由。</para>
+        /// </summary>
+        private static readonly string[][] DuplicateDeletes =
+        {
+            // 2026-09-26 落的七元素源表副本。此前 2026-09-30 前的注释是「留着等用户确认后再删」；
+            // 用户 2026-09-30 明确要求「Art 根目录散图一并归类」→ 按归类处理：删副本，留正本。
+            new[] { ArtRoot + "/407da584-b124-4bb2-b070-240f7f88dd0b.png", IconsDir + "/_Source/Type.png" },
         };
 
         /// <summary>
@@ -71,6 +116,30 @@ namespace MagicBrawl.App.EditorTools
             // 2026-09-21：「查看手牌」弹窗的第二张参考图（同样是别的游戏的运行截图，
             // 只用来看那个弹窗长什么样，不进游戏）。
             new[] { ArtRoot + "/Reference-2.png", RefDir + "/Reference-2.png" },
+            // 2026-09-26：第三张版式参考（战斗界面全貌，含左侧冷却区 / 中央选牌弹窗 / 底部弧形手牌）。
+            new[] { ArtRoot + "/Reference-3.png", RefDir + "/Reference-3.png" },
+
+            // 2026-09-26 · 七元素符号表。⚠ 它已经在
+            //     Tools/art-audit/slice_element_icons.py 里切成了 7 张成品图放在
+            //     Assets/Art/Icons/Elements/ 下，这里只把**源表**归档 ——
+            //     否则一张 1536×1024 的源图留在 Art 根目录，会被当成散落图反复提醒。
+            new[] { ArtRoot + "/Type.png", IconsDir + "/_Source/Type.png" },
+
+            // 2026-09-26 · **商店场景的成品背景**（木质内景，无任何烘焙 UI）。
+            //     ⚠ 文件名 `ReferenceShop.png` 有误导性 —— 它不是参考图，
+            //     它是商店唯一在用的背景（`UiLayout.ShopBgSpritePath` 指向这里）。
+            //     真正的「商店版式参考」是上面的 `d30f41c7-…`。
+            new[] { ArtRoot + "/ReferenceShop.png", BgDir + "/Bg_Shop.png" },
+
+            // 2026-09-30 · **强化场景（卡牌强化）的成品背景**（石质台面 + 悬浮石板 + 蓝晶，1671×941，无烘焙 UI）。
+            //     ⚠ 落到 Art 根目录时叫光秃秃的 `Background.png` —— 那个名字进 Backgrounds/ 会
+            //     变成「第二张 Background」，跟已有的 Bg_Dungeon / Bg_Shop 不是一个口径，
+            //     所以归类时一并按 `<用途>_背景` 规范成 `Bg_Upgrade.png`。
+            new[] { ArtRoot + "/Background.png", BgDir + "/Bg_Upgrade.png" },
+
+            // 2026-09-30 · 强化场景的**版式参考图**（同一张背景 + 左下角站着的巫师 = 目标构图）。
+            //     与 Reference / Reference-2 / Reference-3 同族，编号接着排。
+            new[] { ArtRoot + "/Reference4.png", RefDir + "/Reference-4.png" },
         };
 
         // ── 菜单入口（带确认弹窗，不能给脚本化调用）─────────────────────
@@ -84,9 +153,11 @@ namespace MagicBrawl.App.EditorTools
                     "① 把 UUID 源表移进 Ui/_Source 与 Chars/_Source\n" +
                     "② 第二批主角动画源表（Idle / Attack / defense / BeHit / Death）\n" +
                     "    → Chars/_Source/Hero_Anim_*.png\n" +
-                    "③ 背景 → Backgrounds/Bg_Dungeon.png，参考图 → _Reference/\n" +
-                    "④ 重设全部新图的导入参数\n" +
-                    "⑤ 重建 Assets/Resources/BattleArtLibrary.asset\n\n" +
+                    "③ 背景 → Backgrounds/Bg_Dungeon.png、商店背景 → Backgrounds/Bg_Shop.png、\n" +
+                    "    强化背景 → Backgrounds/Bg_Upgrade.png，参考图 → _Reference/\n" +
+                    "④ 清掉 Art 根目录上与已归档正本重复的散图（搬进 Artifacts/backups/）\n" +
+                    "⑤ 重设全部新图的导入参数\n" +
+                    "⑥ 重建 Assets/Resources/BattleArtLibrary.asset\n\n" +
                     "全部操作幂等，可反复重跑。",
                     "执行", "取消"))
             {
@@ -109,6 +180,7 @@ namespace MagicBrawl.App.EditorTools
             AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
 
             MoveAll(log);
+            DeleteDuplicates(log);
             AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
 
             ConfigureImporters(log);
@@ -129,7 +201,9 @@ namespace MagicBrawl.App.EditorTools
 
         private static void EnsureFolders()
         {
-            string[] dirs = { UiDir, UiDir + "/_Source", BgDir, CharsDir, CharsDir + "/_Source", RefDir };
+            string[] dirs = { UiDir, UiDir + "/_Source", BgDir, CharsDir, CharsDir + "/_Source",
+                              IconsDir, IconsDir + "/_Source", ElementsDir,
+                              ElementResourceDir, RefDir };
             foreach (string d in dirs)
             {
                 if (AssetDatabase.IsValidFolder(d))
@@ -194,6 +268,61 @@ namespace MagicBrawl.App.EditorTools
             }
         }
 
+        /// <summary>
+        /// 删掉根目录上「与已归档正本重复」的散图（见 <see cref="DuplicateDeletes"/>）。
+        ///
+        /// <para><b>⚠ 只在正本确实在位时才删</b>：判据是「<c>to</c> 存在」。
+        /// 少了这一条，一旦正本被人挪走 / 删掉，这一遍就会把<b>唯一的一份</b>当副本清掉
+        /// —— 与 <see cref="RemovePythonSideArchives"/> 第一版栽的是同一个坑。</para>
+        /// </summary>
+        private static void DeleteDuplicates(StringBuilder log)
+        {
+            foreach (string[] pair in DuplicateDeletes)
+            {
+                string copy = pair[0];
+                string canonical = pair[1];
+
+                if (!File.Exists(copy))
+                {
+                    log.AppendLine("  ⚠ 副本已不在，跳过 " + copy);
+                    continue;
+                }
+
+                if (!File.Exists(canonical))
+                {
+                    log.AppendLine("  ✘ 正本不在位，拒绝删副本 " + copy + "（正本：" + canonical + "）");
+                    continue;
+                }
+
+                if (new FileInfo(copy).Length != new FileInfo(canonical).Length)
+                {
+                    log.AppendLine("  ✘ 长度不同，不当重复处理 " + copy + "（正本：" + canonical + "）");
+                    continue;
+                }
+
+                // 搬进 Artifacts/backups/ 而不是就地删：那一层在 Assets **之外**，Unity 不导入，
+                // 但文件还在盘上、随时能捞回来。`AssetDatabase.DeleteAsset` 是直接删、不进回收站，
+                // 对一次「归类」来说代价太大。
+                string backupDir = "Artifacts/backups/" + System.DateTime.Now.ToString("yyyy-MM-dd")
+                                   + "-artroot-duplicates";
+                Directory.CreateDirectory(backupDir);
+                string backup = backupDir + "/" + Path.GetFileName(copy);
+                if (File.Exists(backup))
+                {
+                    backup = backupDir + "/" + Path.GetFileNameWithoutExtension(copy)
+                             + System.DateTime.Now.ToString("-HHmmss") + Path.GetExtension(copy);
+                }
+
+                File.Move(copy, backup);
+                if (File.Exists(copy + ".meta"))
+                {
+                    File.Move(copy + ".meta", backup + ".meta");
+                }
+
+                log.AppendLine("  删重复副本 " + copy + "（正本在位：" + canonical + "，备份 → " + backup + "）");
+            }
+        }
+
         private static void MoveOne(string from, string to, StringBuilder log)
         {
             if (File.Exists(to) && !File.Exists(from))
@@ -237,6 +366,22 @@ namespace MagicBrawl.App.EditorTools
                 sprite++;
             }
 
+            // 七元素符号（2026-09-26）：成品 UI 图，按 Sprite 导入。
+            foreach (string path in CollectPngs(IconsDir, true))
+            {
+                Apply(path, TextureImporterType.Sprite, 512);
+                sprite++;
+            }
+
+            // 七元素符号的**运行时那份**（Resources/Elements）—— 由切图脚本直接写进去，
+            // 与上面 Art/Icons/Elements 下那份**不是同一批文件**（后者只剩 _Source/Type.png）。
+            // 导入参数必须与 Art 侧对齐，否则同一张图在两处看起来不一样。
+            foreach (string path in CollectPngs(ElementResourceDir, true))
+            {
+                Apply(path, TextureImporterType.Sprite, 512);
+                sprite++;
+            }
+
             int plain = 0;
             // ⚠ 这三个调用必须传 excludeSourceSubdir = false —— 它们扫的**就是** `_Source/` 本身，
             //   传 true 会把自己全部过滤掉，归档贴图就不会被降级成普通贴图。
@@ -247,6 +392,13 @@ namespace MagicBrawl.App.EditorTools
             }
 
             foreach (string path in CollectPngs(UiDir + "/_Source", false))
+            {
+                Apply(path, TextureImporterType.Default, 2048);
+                plain++;
+            }
+
+            // ⚠ 必须传 false —— 与上面 UiDir/_Source 同理，它扫的就是 _Source 本身。
+            foreach (string path in CollectPngs(IconsDir + "/_Source", false))
             {
                 Apply(path, TextureImporterType.Default, 2048);
                 plain++;

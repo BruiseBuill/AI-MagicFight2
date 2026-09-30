@@ -50,15 +50,27 @@ namespace MagicBrawl.Core
         public int BonusPower;
         public bool IsDouble;
 
+        /// <summary>
+        /// 本半场进攻方身上的虚弱层数（0 = 没被削）—— 2026-09-29。
+        ///
+        /// <para><b>为什么必须带上它</b>：这个事件的 <see cref="FinalPower"/> 会被
+        /// 战斗界面直接印成「进攻力量 N · 需要 ≥N 才能挡住」。折扣若只发生在引擎内部、
+        /// 事件里不体现，玩家看到的就是「说好 7，其实只打 4」——
+        /// 所以力量和它的折扣必须在同一条事件里。</para>
+        /// </summary>
+        public int WeakenStacks;
+
+        /// <summary>最终进攻力量 =（基础 + 增量）再按虚弱折算（有层数则减半、向上取整）。</summary>
         public int FinalPower
         {
-            get { return BasePower + BonusPower; }
+            get { return PlayerState.Weakened(BasePower + BonusPower, WeakenStacks); }
         }
 
         public override string Describe()
         {
             return "    → 最终进攻力量 " + FinalPower
                    + (BonusPower != 0 ? "（基础 " + BasePower + " " + (BonusPower > 0 ? "+" : "") + BonusPower + "）" : string.Empty)
+                   + (WeakenStacks > 0 ? " [虚弱 ×" + WeakenStacks + "，力量折半]" : string.Empty)
                    + (IsDouble ? " [双发]" : string.Empty);
         }
     }
@@ -243,6 +255,42 @@ namespace MagicBrawl.Core
         public override string Describe()
         {
             return "seat" + Seat + " 替换 " + Returned.Def.Name + " → " + Gained.Def.Name;
+        }
+    }
+
+    /// <summary>被施加虚弱（毒刺 ao）—— 2026-09-29 新增。</summary>
+    public sealed class WeakenAppliedEvent : BattleEvent
+    {
+        /// <summary>被施加者（= 本次进攻的目标）。</summary>
+        public int Seat;
+
+        /// <summary>本次施加的层数。</summary>
+        public int Amount;
+
+        /// <summary>施加<b>之后</b>的总层数。</summary>
+        public int Stacks;
+
+        public override string Describe()
+        {
+            return "虚弱 seat" + Seat + " +" + Amount + " 层（共 " + Stacks + " 层）";
+        }
+    }
+
+    /// <summary>
+    /// 虚弱消耗一层 —— 发生在拥有者<b>自己的进攻半场结束之后</b>（2026-09-29）。
+    ///
+    /// <para>连击的追加进攻算同一个半场，整条链只减 1 层。</para>
+    /// </summary>
+    public sealed class WeakenDecayedEvent : BattleEvent
+    {
+        public int Seat;
+
+        /// <summary>消耗之后剩余的层数。</summary>
+        public int Stacks;
+
+        public override string Describe()
+        {
+            return "虚弱 seat" + Seat + " 进攻结束 → 余 " + Stacks + " 层";
         }
     }
 

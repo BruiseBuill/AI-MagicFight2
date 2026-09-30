@@ -30,6 +30,24 @@ namespace MagicBrawl.App
             EnsureZoneClickCatchers();
         }
 
+        /// <summary>
+        /// 迷你卡用的那份组成式卡面 Prefab（就是唯一那份 <c>CardView_Hand.prefab</c>，铁律 9）。
+        ///
+        /// <para><b>2026-09-30 开放这个只读口子给谁用</b>：<see cref="CardTransitView"/> 的
+        /// <b>飞行卡</b>。飞行卡原来是一张纯 <c>Image</c> 吃插画（无框无字）——于是头顶那张
+        /// 组成式卡面在起飞的一瞬间「文字全没了，只剩插画飞到冷却区，落地又冒出来」。
+        /// 改成在飞行层里实例化同一份卡面之后，这一段才真正是「这张牌自己飞过去」。</para>
+        ///
+        /// <para>为什么不给 <see cref="CardTransitView"/> 自己加一个序列化字段：那样要重新
+        /// 往 <c>BattleCanvas.prefab</c> 里写一个引用（走 `PrefabUtility` 定点写还好，
+        /// 但完全没必要）—— 这份 Prefab 本来就已经接在冷却区上了，而飞行卡与冷却迷你卡
+        /// <b>必须</b>是同一份（否则落地那一刻还是会跳一下）。</para>
+        /// </summary>
+        public CardView CardPrefab
+        {
+            get { return _cardPrefab; }
+        }
+
         [Header("Prefab / 挂载点")]
         [SerializeField] private CardView _cardPrefab;
         [SerializeField] private RectTransform _playerRoot;

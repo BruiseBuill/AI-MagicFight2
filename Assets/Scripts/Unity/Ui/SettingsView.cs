@@ -19,7 +19,7 @@ namespace MagicBrawl.App
         [SerializeField] private Button _back;
         [SerializeField] private Button _save;
         [SerializeField] private Button _selectAll;
-        [SerializeField] private Button _resetDefault;
+        [SerializeField] private Button _selectNone;
         [SerializeField] private TMP_Text _count;
         [SerializeField] private TMP_Text _error;
         [SerializeField] private ScrollRect _scroll;
@@ -39,7 +39,7 @@ namespace MagicBrawl.App
             _back.onClick.AddListener(Back);
             _save.onClick.AddListener(Save);
             _selectAll.onClick.AddListener(SelectAll);
-            _resetDefault.onClick.AddListener(ResetDefault);
+            _selectNone.onClick.AddListener(SelectNone);
         }
 
         private void OnEnable() { if (_driver != null) _driver.OnStarted += Close; }
@@ -118,7 +118,16 @@ namespace MagicBrawl.App
         }
 
         private void SelectAll() { _draft = _driver.GetAllCardPool(); RefreshSelection(); }
-        private void ResetDefault() { _draft = _driver.GetDefaultLocalCardPool(); RefreshSelection(); }
+
+        /// <summary>取消所有勾选，得到一张都不选的空卡池。<b>刻意允许落到 0 张</b>：
+        /// 此时 <see cref="RefreshStatus"/> 会给出「至少 N 张」的原因并把「保存并重开」置灰，
+        /// 由 <see cref="CardPool.Validate"/> 这一处口径同时管住按钮与保存两条路（铁律 1）。
+        /// 需要全选回来点「全选」即可。</summary>
+        private void SelectNone()
+        {
+            _draft = new CardPool(new string[0], _driver.GetCardCatalog());
+            RefreshSelection();
+        }
         private void RefreshSelection()
         {
             foreach (CardPoolEntryView entry in _entries) entry.SetSelected(_draft.Contains(entry.CardId));

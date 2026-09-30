@@ -20,8 +20,61 @@ namespace MagicBrawl.Core
         {
             var context = new EffectContext(this, card, opponent, trigger, _atk, handCount);
             _effectContexts[card.Uid] = context;
-            foreach (EffectDef effect in card.Def.Effects)
-                if (effect.Trigger == trigger) AddEffect(context, effect);
+            EnqueueEffects(context, card.Def.Effects, trigger);
+        }
+
+        /// <summary>
+        /// 把「一组效果」里某个触发时机的项按<b>合并后的顺序</b>入队。
+        ///
+        /// <para><b>为什么需要这一层</b>（2026-09-27 用户口径）：充能（<c>am</c>）有两条 α 效果 ——
+        /// <c>Haste(1)</c> 与 <c>CoolHandForHaste(1)</c>。按卡表顺序入队的话，玩家会先被问
+        /// 「把这一次加速给谁」，之后才去挑要送入冷却的手牌 —— 也就是<b>在还不知道总共能加速几次
+        /// 的时候就得做加速的分配</b>。用户要的节奏是反过来的：<b>先挑手牌、算出总的加速次数，
+        /// 再一次性把加速目标问完</b>。</para>
+        ///
+        /// <para><b>实现</b>：只要这张牌上同时有 <see cref="EffectOp.CoolHandForHaste"/>，
+        /// 就把同卡同触发的 <see cref="EffectOp.Haste"/> <b>并进它</b>：
+        /// 那条 Haste 不入队（否则次数会算两遍），它给的次数改由
+        /// <c>CoolHandForHaste</c> 一并发放 —— 于是「选牌 → 算总次数 → 问加速目标」
+        /// 成为一条连续流程，而不需要引擎侧再排序。</para>
+        ///
+        /// <para><b>为什么把吸收来的次数写进 <see cref="EffectDef.Arguments"/> 而不是回头去读卡表</b>：
+        /// 这张效果表不一定是卡表来的 —— 模仿（<c>Copy</c>）会把冷却区某张牌的进攻效果
+        /// <b>原样复制</b>一份进来（见 <see cref="EffectCopy"/>）。次数在入队这一刻就算好，
+        /// 两种情况（本体 / 被复制）自动一致，不必在效果处理器里分辨「我是被复制来的吗」。</para>
+        /// </summary>
+        private void EnqueueEffects(EffectContext context, IReadOnlyList<EffectDef> effects, EffectTrigger trigger)
+        {
+            bool absorbHaste = false;
+            foreach (EffectDef effect in effects)
+                if (effect.Trigger == trigger && effect.Op == EffectOp.CoolHandForHaste) { absorbHaste = true; break; }
+
+            int absorbedHaste = 0;
+            if (absorbHaste)
+                foreach (EffectDef effect in effects)
+                    if (effect.Trigger == trigger && effect.Op == EffectOp.Haste) absorbedHaste += effect.Arg("count", 1);
+
+            foreach (EffectDef effect in effects)
+            {
+                if (effect.Trigger != trigger) continue;
+                if (absorbHaste && effect.Op == EffectOp.Haste) continue;
+                if (absorbHaste && effect.Op == EffectOp.CoolHandForHaste && absorbedHaste > 0)
+                {
+                    AddEffect(context, WithAbsorbedHaste(effect, absorbedHaste));
+                    continue;
+                }
+                AddEffect(context, effect);
+            }
+        }
+
+        /// <summary>复制一份效果定义，额外带上「被它吸收的加速次数」（见 <see cref="EnqueueEffects"/>）。</summary>
+        private static EffectDef WithAbsorbedHaste(EffectDef source, int absorbed)
+        {
+            var arguments = new Dictionary<string, int>();
+            foreach (KeyValuePair<string, int> pair in source.Arguments) arguments[pair.Key] = pair.Value;
+            arguments["absorbedHaste"] = absorbed;
+            return new EffectDef(source.Trigger, source.HandlerId, arguments, source.Aura, source.Text,
+                source.SpecialEvent, source.Targets, source.DistinctTargetGroup, source.Conditions, source.Mandatory);
         }
         private void AddEffect(EffectContext context, EffectDef effect)
         {
@@ -83,8 +136,9 @@ namespace MagicBrawl.Core
                 throw new InvalidOperationException("CopyAttack requires an attack context.");
             context.Attack.CopySource = definition;
             context.Attack.BasePower = definition.Power;
-            foreach (EffectDef effect in definition.Effects)
-                if (effect.Trigger == EffectTrigger.Attack) AddEffect(context, effect);
+            // 与 AddCardEffects 共用同一套入队口径：复制来的效果表里若同时有 Haste 与
+            // CoolHandForHaste，也要合并成「先选牌、再一次性问加速」，别把次数算两遍。
+            EnqueueEffects(context, definition.Effects, EffectTrigger.Attack);
         }
         internal void EffectFlush(List<CooldownChange> changes)
         { _cooldownBuffer.AddRange(changes); FlushCooldown(); }

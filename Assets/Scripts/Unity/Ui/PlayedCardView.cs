@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using MagicBrawl.Core;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,6 +33,12 @@ namespace MagicBrawl.App
     /// 下一回合要等它停完（含淡出）才开始。</item>
     /// </list>
     ///
+    /// <para><b>2026-09-30 · 卡位里画什么（用户口径）</b>：卡位里现在实例化的是
+    /// <b>与手牌 / 冷却迷你卡同一份</b> <c>CardView_Hand.prefab</c>（组成式卡面），
+    /// 再按头顶卡宽 <see cref="CardView.SetFaceWidth"/> 缩下去 —— 「显示方式与手牌一致，
+    /// 仅大小不同」。旧版在这里铺一张插画（无框无字，卡名与数值都看不出来）。
+    /// 找不到那份 Prefab 时退回插画铺满，不会白屏。</para>
+    ///
     /// <para>⚠ 卡位（<c>Card1</c> / <c>Card2</c>）的坐标与尺寸<b>由本类在运行时算</b>，
     /// 不再读 prefab 里那对手调的 −63 / +63 —— 单张与双张是两套版式，静态位置表达不了。
     /// 想调尺寸/间距/留白请改 <see cref="UiLayout"/> 的 M13/M20 段（那是唯一来源）。</para>
@@ -45,6 +51,27 @@ namespace MagicBrawl.App
         [SerializeField] private RectTransform _cardsRoot;
         [SerializeField] private Image[] _faces = new Image[0];
         [SerializeField] private CanvasGroup _group;
+
+        /// <summary>
+        /// 组成式卡面 Prefab —— 就是那份唯一的 <c>CardView_Hand.prefab</c>（铁律 9），
+        /// 由 <c>BattleArtLayerBuilder</c> 写进来。
+        ///
+        /// <para><b>2026-09-30（用户口径）</b>：头顶出牌展示原来是「一张插画铺满卡位」，
+        /// 与手牌 / 冷却迷你卡（组成式卡面）不是同一种东西 —— 卡名、力量、冷却、效果文字
+        /// 都不在图上。用户要求<b>「显示方式与手牌里的卡一致，仅大小不同，可以直接缩放」</b>，
+        /// 于是改成在卡位里实例化这一份 Prefab，再用
+        /// <see cref="CardView.SetFaceWidth"/> 缩到头顶卡宽。</para>
+        ///
+        /// <para>留空（老 Prefab 还没跑过 M11）→ 退回原来的「插画铺满卡位」，
+        /// 少一层信息但牌照样看得见，不会白屏。</para>
+        /// </summary>
+        [SerializeField] private CardView _cardPrefab;
+
+        /// <summary>每个卡位里那份组成式卡面（运行时建、建了就复用；下标与 <see cref="_faces"/> 对齐）。</summary>
+        private CardView[] _cards = new CardView[0];
+
+        /// <summary>本轮卡宽（由 <see cref="Layout"/> 算出来）—— 组成式卡面按它缩放。</summary>
+        private float _slotWidth;
 
         [Header("节奏")]
         [Tooltip("默认停留秒数（Show 不显式给时长时用它），到点开始淡出。")]
@@ -134,10 +161,17 @@ namespace MagicBrawl.App
                 _panel.SetActive(true);
             }
 
+            // 出牌展示是**纯展示**，不吃射线：卡面 Prefab 自带 Button / CardInteractor，
+            // 面板这层 CanvasGroup 一关到底（`Graphic.Raycast` 会沿父链查 CanvasGroup，
+            // 命中的图形直接作废）—— 既不挡角色身上的点击面，也不会被当成「能点的牌」。
+            if (_group != null)
+            {
+                _group.blocksRaycasts = false;
+                _group.interactable = false;
+            }
+
             int shown = Mathf.Min(cards.Count, _faces.Length);
             Layout(shown);
-
-            CardArtLibrary lib = CardArtLibrary.Instance;
 
             for (int i = 0; i < _faces.Length; i++)
             {
@@ -156,7 +190,16 @@ namespace MagicBrawl.App
                     continue;
                 }
 
-                Sprite sprite = lib == null ? null : lib.GetArt(cards[i].CardId);
+                // 2026-09-30：卡位里画的是**与手牌同一份**组成式卡面（只差缩放），
+                // 不再是「一张插画铺满卡位」。
+                if (BindFace(i, cards[i]))
+                {
+                    continue;
+                }
+
+                // 没接线（老 Prefab 没跑过 M11）→ 退回插画铺满，至少还知道「这儿有一张牌」。
+                CardArtLibrary lib = CardArtLibrary.Instance;
+                Sprite sprite = lib == null ? null : lib.GetIllustration(cards[i].CardId);
 
                 if (sprite != null)
                 {
@@ -165,7 +208,6 @@ namespace MagicBrawl.App
                 }
                 else
                 {
-                    // 没映射表就退化成纯色块，至少还知道「这儿有一张牌」
                     face.sprite = null;
                     face.color = UiTheme.MiniCardFace;
                 }
@@ -188,6 +230,75 @@ namespace MagicBrawl.App
             // 入场动画属于「上一趟」的事：新一趟 Show 必须把它收干净，否则面板会带着
             // 上一张牌的偏移量出现（双发第二张、或连击追加时最容易看出来）。
             ResetIntro();
+        }
+
+        /// <summary>
+        /// 把第 <paramref name="index"/> 个卡位画成**组成式卡面**（与手牌同一份 Prefab，只差缩放）。
+        ///
+        /// <para>返回 <c>false</c> = 没有接线 / 卡位缺失 → 调用方退回原来的插画铺满。</para>
+        /// </summary>
+        private bool BindFace(int index, CardSnapshot card)
+        {
+            CardView view = EnsureCard(index);
+            if (view == null)
+            {
+                return false;
+            }
+
+            view.gameObject.SetActive(true);
+            view.Bind(card, CardView.ViewMode.Mini, index);
+            view.SetFaceWidth(_slotWidth);
+            return true;
+        }
+
+        /// <summary>
+        /// 惰性建出第 <paramref name="index"/> 个卡位的组成式卡面（只建一次，之后复用）。
+        ///
+        /// <para><b>为什么把卡位自己那层纯色 <see cref="Image"/> 关掉</b>：它只是老版式留下的
+        /// **占位色块**（插画底）。现在整张卡面由子节点画出来，占位色块留着会从卡面圆角
+        /// 外面透出一圈（而且它自带 <c>raycastTarget</c>，白白多一块挡射线的面）。</para>
+        ///
+        /// <para>卡面节点铺满卡位（四角拉伸、零偏移），尺寸由
+        /// <see cref="CardView.SetFaceWidth"/> 按卡宽缩放 —— 与手牌 / 冷却迷你卡同一套口径。</para>
+        /// </summary>
+        private CardView EnsureCard(int index)
+        {
+            if (_faces == null || index < 0 || index >= _faces.Length || _faces[index] == null)
+            {
+                return null;
+            }
+
+            if (_cards.Length != _faces.Length)
+            {
+                _cards = new CardView[_faces.Length];
+            }
+
+            if (_cards[index] == null)
+            {
+                if (_cardPrefab == null)
+                {
+                    return null;
+                }
+
+                _faces[index].enabled = false;
+
+                CardView view = Instantiate(_cardPrefab, _faces[index].transform);
+                view.name = "CardFace";
+
+                RectTransform rt = view.transform as RectTransform;
+                if (rt != null)
+                {
+                    rt.anchorMin = Vector2.zero;
+                    rt.anchorMax = Vector2.one;
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.offsetMin = Vector2.zero;
+                    rt.offsetMax = Vector2.zero;
+                }
+
+                _cards[index] = view;
+            }
+
+            return _cards[index];
         }
 
         /// <summary>
@@ -379,15 +490,25 @@ namespace MagicBrawl.App
 
         /// <summary>构建器接线用。</summary>
         public void Configure(GameObject panel, RectTransform cardsRoot, Image[] faces,
-            CanvasGroup group, float holdSeconds, float fadeSeconds)
+            CanvasGroup group, CardView cardPrefab, float holdSeconds, float fadeSeconds)
         {
             _panel = panel;
             _cardsRoot = cardsRoot;
             _faces = faces;
             _group = group;
+            _cardPrefab = cardPrefab;
             _holdSeconds = holdSeconds;
             _fadeSeconds = fadeSeconds;
 
+            // 纯展示：不吃射线。写在构建期，Prefab 存下来的就是「关」——
+            // 运行时还会在 Show 里重申一次（那边才是最终生效的那份）。
+            if (_group != null)
+            {
+                _group.blocksRaycasts = false;
+                _group.interactable = false;
+            }
+
+            _cards = new CardView[0];       // Configure 只在构建期调；运行态数组从这里起步
             Hide();
         }
 
@@ -491,6 +612,7 @@ namespace MagicBrawl.App
             float scale = single ? Mathf.Max(0.1f, UiLayout.PlayedCardSingleScale) : 1f;
             float w = UiLayout.PlayedCardWidth * scale;
             float h = UiLayout.PlayedCardHeight * scale;
+            _slotWidth = w;
 
             for (int i = 0; i < _faces.Length; i++)
             {
@@ -518,6 +640,13 @@ namespace MagicBrawl.App
                 // 单张居中；双张左右对称（±(卡宽+间隙)/2）
                 float x = single ? 0f : (i == 0 ? -1f : 1f) * (w + UiLayout.PlayedCardGap) * 0.5f;
                 rt.anchoredPosition = new Vector2(x, 0f);
+
+                // 已经建出来的组成式卡面跟着改尺寸 —— 同一份 Prefab，差别只在缩放
+                //（与 CooldownView.Take 里那句 SetFaceWidth 同一套口径）。
+                if (i < _cards.Length && _cards[i] != null)
+                {
+                    _cards[i].SetFaceWidth(w);
+                }
             }
 
             // 面板本体就是衬底的外框：内容 + 两侧留白。单张时它比双张窄一半，

@@ -44,6 +44,8 @@ namespace MagicBrawl.App.EditorTools
             "PreparedAura", "CardTransitLayer", "ActionBanner",
             // M36：屏幕中央的「一句话浮字」（回答「这张牌为什么点不动」）
             "FloatTip",
+            // M41：点怪物 → 元素预告的「思考框」
+            "ThinkBubble",
             // M25：查看对方手牌弹窗（雷云 / 狂躁蘑菇的第 2 个 α 效果）
             "PeekLayer",
             // M27：手牌选择弹窗（磁暴 / 充能 / 电弧）
@@ -152,6 +154,10 @@ namespace MagicBrawl.App.EditorTools
             CardTransitView transit = BuildTransitLayer(canvas.transform);
             ActionBannerView actionBanner = BuildActionBanner(canvas.transform, title);
             FloatTipView floatTip = BuildFloatTip(canvas.transform, title);
+            // M41：点怪物的「思考框」（元素预告）。排在 FloatTip 之后建 —— 两者都在中央，
+            // 但绝不会同屏（一个回答「这张牌为什么点不动」、一个是「点了怪物」），
+            // 顺手把「后建 = 画在上」这条守住。
+            ThinkBubbleView thinkBubble = BuildThinkBubble(canvas.transform);
             PreparedAuraView preparedBar = BuildPreparedBar(canvas.transform);
 
             // M25：查看对方手牌弹窗。**必须排在最后一个建** ——
@@ -162,7 +168,9 @@ namespace MagicBrawl.App.EditorTools
             // M27：手牌选择弹窗（磁暴 / 充能 / 电弧）。
             // 比 PeekLayer 更晚建 = 压在它之上 —— 两者不会同屏（一拍只有一种决策），
             // 但绘制顺序上「后建的在上面」这条要守住。
-            HandPickView handPick = BuildHandPickLayer(canvas.transform, body, title);
+            // ⚠ 2026-09-27：不再需要 body 字型 —— 这块浮层现在只有标题（title 体）与确认文案，
+            //   那条「已选 N / M」的副标题已按用户口径删掉（见 BuildHandPickLayer）。
+            HandPickView handPick = BuildHandPickLayer(canvas.transform, title);
 
             // M28：按住怪物手牌数 → 查看它的手牌。同样排在最后，
             // 「后建 = 画在最上」这条要守住（三块浮层不会同屏，但顺序是硬约束）。
@@ -189,6 +197,30 @@ namespace MagicBrawl.App.EditorTools
             {
                 Debug.LogWarning("[BattleUi] 没找到 ArtLayer/HandCount_Monster —— "
                                  + "M28 的「按住查看怪物手牌」手势没接上。"
+                                 + "先跑「M11 · 构建 BattleArtLayer」再跑本菜单。");
+            }
+
+            // ── M41：捞一下 ArtLayer/Char_Monster_Click 上的「点怪物」接收器 ──
+            // ⚠ 与上面 M28 同一条账：组件本体由 BattleArtLayerBuilder.BuildMonsterClickFace 挂，
+            //   本构建器只做接线 —— 否则先跑本菜单、再跑 M11 会被 DestroyImmediate 抹掉。
+            MonsterClickCatcher monsterClick = null;
+            Transform clickFace = FindDeep(canvas.transform, "Char_Monster_Click");
+            if (clickFace != null)
+            {
+                monsterClick = clickFace.GetComponent<MonsterClickCatcher>();
+                if (monsterClick == null)
+                {
+                    monsterClick = clickFace.gameObject.AddComponent<MonsterClickCatcher>();
+                }
+
+                // ⚠ 这里**不**设 monsterClick.Owner —— `ui` 要到下面几行才声明，
+                //   而且归属本来也不该序列化进 Prefab：它是个运行时引用，
+                //   BattleUi.Awake 里会自己 `Owner = this`（比存一份过期引用更可靠）。
+            }
+            else
+            {
+                Debug.LogWarning("[BattleUi] 没找到 ArtLayer/Char_Monster_Click —— "
+                                 + "M41 的「点怪物看元素预告」没接上。"
                                  + "先跑「M11 · 构建 BattleArtLayer」再跑本菜单。");
             }
 
@@ -243,10 +275,12 @@ namespace MagicBrawl.App.EditorTools
             uso.FindProperty("_preparedBar").objectReferenceValue = preparedBar;
             uso.FindProperty("_banner").objectReferenceValue = actionBanner;
             uso.FindProperty("_floatTip").objectReferenceValue = floatTip;
+            uso.FindProperty("_thinkBubble").objectReferenceValue = thinkBubble;
             uso.FindProperty("_peek").objectReferenceValue = peek;
             uso.FindProperty("_handPick").objectReferenceValue = handPick;
             uso.FindProperty("_monsterHand").objectReferenceValue = monsterHand;
             uso.FindProperty("_monsterHandHold").objectReferenceValue = monsterHandHold;
+            uso.FindProperty("_monsterClick").objectReferenceValue = monsterClick;
             uso.FindProperty("_resultRoot").objectReferenceValue = resultRoot;
             uso.FindProperty("_resultTitle").objectReferenceValue = resultTitle;
             uso.FindProperty("_resultSub").objectReferenceValue = resultSub;
@@ -562,7 +596,73 @@ namespace MagicBrawl.App.EditorTools
         }
 
         /// <summary>
-        /// M16/M21：手牌区左侧的「已准备光环」标记行 + 拖光环时的落区高亮。
+        /// M41：点怪物的「思考框」—— 一个正方形气泡，里面是怪物下一张进攻牌的<b>元素符号</b>。
+        ///
+        /// <para><b>用户口径</b>：点怪物模型时弹出「思考框一样的提示」，告诉玩家它下一次进攻
+        /// 会打出哪张牌，<b>但不显示是哪一张，只显示元素符号</b>（图来自 <c>Art/Icons/Elements</c>），
+        /// 约两秒后渐隐消失。</para>
+        ///
+        /// <para><b>2026-09-27 改版（用户口径三条）</b></para>
+        /// <list type="number">
+        /// <item><b>位置</b>从「模型头顶正中」改成<b>模型偏右上角</b>
+        /// （<c>CharMonsterX + ThinkBubbleRightOffsetX</c> / <c>CharGroundY + ThinkBubbleUpperRightRiseY</c>，
+        /// 版式账在 <see cref="UiLayout.ThinkBubbleX"/> 那段注释里）；</item>
+        /// <item><b>去掉那块象牙白的泡体</b>（原来这里是 `Backdrop` + `CardBox.png` 九宫格，
+        /// 把血量徽标压掉了半边）—— 「不需要有白色的背景」，屏幕上只剩元素符号；</item>
+        /// <item><b>符号缩到 40%</b>（104 → 41.6），泡体同比例缩到 67.2 —— 后者已经看不见了，
+        /// 只剩「弹出动画的缩放原点」这一个作用。</item>
+        /// </list>
+        ///
+        /// <para><b>不吃射线</b>：它出现的时机正是玩家在点怪物，挡一下就把连点打断了。
+        /// <c>Image.raycastTarget</c> 关掉、<c>CanvasGroup.blocksRaycasts</c> 关掉，双保险。</para>
+        ///
+        /// <para><b>框里只有一张 <see cref="Image"/></b>，没有 TMP_Text —— 口径要的是符号本身，
+        /// 一张图比「冰」这个字更直观，也不吃字体 / 换行。图由
+        /// <see cref="ElementIconLibrary"/> 按元素在运行时加载（构建器不预绑哪一张）。</para>
+        ///
+        /// <para>⚠ 尺寸 / 坐标都是读 <see cref="UiLayout"/> 常量写进 prefab 的，
+        /// 而 `ThinkBubbleView.ApplyLayout()` 在运行时还会按同一批常量重申一次 ——
+        /// 所以**改常量立刻见效**，不必为了挪一个泡重跑构建器；重跑构建器也不会改回去。</para>
+        /// </summary>
+        private static ThinkBubbleView BuildThinkBubble(Transform canvas)
+        {
+            GameObject go = NewUi("ThinkBubble", canvas);
+            RectTransform rt = Rt(go);
+            // ⚠ 这两个常量都是**相对画面中心**的（节点锚在 0.5/0.5）——
+            //   别把底边口径的 CharMonsterX / 怪物脚底 y 填进来，那会把泡顶到屏幕外。
+            Box(rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(UiLayout.ThinkBubbleX, UiLayout.ThinkBubbleY),
+                new Vector2(UiLayout.ThinkBubbleWidth, UiLayout.ThinkBubbleHeight));
+
+            var group = go.AddComponent<CanvasGroup>();
+            group.interactable = false;
+            group.blocksRaycasts = false;
+            group.alpha = 0f;
+
+            // ⚠ 2026-09-27：这里**不再建 Backdrop**（用户口径「不需要有白色的背景」）。
+            //   历史：M41 第一版用 `CardBox.png` 九宫格 + UiTheme.ThinkBubbleBackdrop（象牙白）
+            //   做了一块泡体，理由是「浅底让七种颜色的元素符号都跳得出来，深底上深蓝的水几乎看不见」。
+            //   那条理由现在由「符号缩到 40%、只剩它自己」取代 —— 泡体一去掉，
+            //   元素符号直接压在场景上，靠它自身的描边与饱和度读。
+            //   `UiTheme.ThinkBubbleBackdrop` 与 `Art/Ui/CardBox.png` 的导入校验都保留
+            //  （CardBox 另有消费者；色值留着供将来想加回底衬时直接用）。
+            //
+            //   元素符号：唯一的显示内容。初始无图、不显示 —— 由 Show 时再绑。
+            GameObject iconGo = NewUi("Icon", go.transform);
+            Box(Rt(iconGo), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(UiLayout.ThinkBubbleIconSize, UiLayout.ThinkBubbleIconSize));
+            var icon = iconGo.AddComponent<Image>();
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            icon.enabled = false;
+
+            var view = go.AddComponent<ThinkBubbleView>();
+            view.Configure(group, rt, icon,
+                UiLayout.ThinkBubbleSeconds, UiLayout.ThinkBubblePopSeconds, UiLayout.ThinkBubbleRise);
+            return view;
+        }
+
+
         ///
         /// <para><b>为什么建在 Canvas 根的最后</b>：ArtLayer 在 Canvas 里的兄弟序很靠前
         /// （紧跟 Backdrop），界面全在它上面 —— 标记条若压进 ArtLayer 就会被手牌盖住。
@@ -1029,7 +1129,7 @@ namespace MagicBrawl.App.EditorTools
         /// <c>Hide()</c> 会把本局第一次 Show 一起关回去（本工程已在
         /// <c>DropArrowView</c> / <c>PlayedCardView</c> 上中过两次）。</para>
         /// </summary>
-        private static HandPickView BuildHandPickLayer(Transform canvas, TMP_FontAsset body, TMP_FontAsset title)
+        private static HandPickView BuildHandPickLayer(Transform canvas, TMP_FontAsset title)
         {
             GameObject go = NewUi("HandPickLayer", canvas);
             Stretch(Rt(go));
@@ -1091,14 +1191,14 @@ namespace MagicBrawl.App.EditorTools
             titleLabel.fontSizeMax = UiLayout.FontSizeHandPickTitleBase;
             titleLabel.overflowMode = TextOverflowModes.Truncate;
 
-            // 副标题（「0 / 3」这种计数）—— 挂在标题正下方一点的同一块牌位里
-            GameObject subGo = NewUi("SubTitle", panelGo.transform);
-            Box(Rt(subGo), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -UiLayout.HandPickTitleTop - UiLayout.HandPickTitleHeight
-                                - UiLayout.HandPickSubTitleGap),
-                new Vector2(UiLayout.HandPickTitleWidth, UiLayout.HandPickSubTitleHeight));
-            TMP_Text subTitle = AddText(subGo, body, UiLayout.FontSizeHandPickSubTitle,
-                UiTheme.TextSecondary, TextAlignmentOptions.Center, "0 / 3");
+            // ⚠ 2026-09-27：这里**不再建副标题**（原来是一条「已选 N / M」的计数，挂在标题正下方）。
+            //   用户口径：「选择牌的界面当中（磁暴 / 充能 / 电弧 / 漩涡），标题底下会有一个
+            //   当前选择牌数和当前手牌总数的数字显示，不需要显示这个」。
+            //   选了几张其实一眼就看得见 —— 牌就摆在中间的卡框里，面板还会跟着变宽；
+            //   那个「N / M」既和「最多能选几张」的语义有歧义（M 是候选数不是总数），
+            //   又占了标题与卡框之间那 40 px 的净空。
+            //   连同 `HandPickView._subTitle` 字段 / `RefreshConfirm` 里刷它的那几句 /
+            //   UiLayout 的三条 SubTitle 常量一起删掉了。
 
             // ── 卡框区（运行时按张数改宽 / 改位置）──────────────
             // 锚在面板中心：HandPickView.Layout 算的就是「以面板中心为原点」的坐标。
@@ -1220,15 +1320,14 @@ namespace MagicBrawl.App.EditorTools
             so.FindProperty("_panel").objectReferenceValue = panel;
             so.FindProperty("_panelImage").objectReferenceValue = panelImg;
             so.FindProperty("_title").objectReferenceValue = titleLabel;
-            so.FindProperty("_subTitle").objectReferenceValue = subTitle;
             so.FindProperty("_slotArea").objectReferenceValue = area;
             so.FindProperty("_slotAreaBackdrop").objectReferenceValue = areaBackdrop;
             so.FindProperty("_emptyFrame").objectReferenceValue = empty;
             so.FindProperty("_confirmButton").objectReferenceValue = confirm;
             so.FindProperty("_confirmImage").objectReferenceValue = btnImg;
             so.FindProperty("_confirmLabel").objectReferenceValue = confirmLabel;
-            // 卡面的兜底来源。正常走 CardArtLibrary（烘焙好的整张卡面），但那本库由
-            // ArtImportBuilder 生成 —— 库还没建到这一批时 GetArt 是 null，卡框会刷成一块
+            // 卡面的兜底来源。正常走 CardArtLibrary（插画 —— 2026-09-30 起只剩这一份图），
+            // 但那本库由构建器生成 —— 库还没建到这一批时查不到图，卡框会刷成一块
             // 灰方块且零报错（M25 的 PeekCardBack 正是这么炸过）。构建期直接从
             // AssetDatabase 取一张牌背顶上：它不是正确卡面，但形状与「这是一张牌」的
             // 语义是对的，比一块灰方块清楚得多（顺序问题一解决就被真卡面盖掉）。

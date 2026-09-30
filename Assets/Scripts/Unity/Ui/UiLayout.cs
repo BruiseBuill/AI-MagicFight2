@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace MagicBrawl.App
 {
     /// <summary>
@@ -122,6 +124,7 @@ namespace MagicBrawl.App
         public const float TopAreaHeight = ReferenceHeight - HandAreaHeight;
 
         public const float PlayerBarWidth = 300f;
+
         public const float PlayerBarHeight = 220f;
 
         /// <summary>双方信息条相对屏幕中心左右各偏多少。</summary>
@@ -132,6 +135,7 @@ namespace MagicBrawl.App
 
         /// <summary>生命上限（点数 = 生命上限，规则固定 4）。</summary>
         public const int HpDotCount = 4;
+
 
         // ── 字号（对齐 `Docs/engineering/06-美术与字体规范.md` §3.6）────────
         /// <summary>卡名 / 提示条：22–24，仓耳渔阳体 W03 Bold。</summary>
@@ -145,6 +149,9 @@ namespace MagicBrawl.App
 
         /// <summary>手牌 ×N：26–28。</summary>
         public const float FontSizeHandCount = 26f;
+
+        /// <summary>虚弱徽标「虚弱 ×N」：24。</summary>
+        public const float FontSizeWeaken = 24f;
 
         /// <summary>玩家名。</summary>
         public const float FontSizePlayerName = 34f;
@@ -482,6 +489,128 @@ namespace MagicBrawl.App
         /// <summary>停留结束后的上升距离：从弹出点向上走这么多像素再消失。</summary>
         public const float FloatTipRise = 48f;
 
+        // ══════════════════════════════════════════════════════
+        //  M41 · 「思考框」——点击怪物时弹出的元素提示（2026-09-26）
+        // ══════════════════════════════════════════════════════
+        //
+        //  用户口径：点击怪物模型时弹出一个像「思考框」一样的提示，
+        //  告诉玩家这只怪物下一次进攻会打出哪种元素的牌（只给元素符号，
+        //  不告诉是哪一张），**显示约两秒之后渐隐消失**。
+        //
+        //  ── 2026-09-27 用户口径（三处一起改）────────────────────
+        //  ① 「显示在怪物模型的**偏右上角**」—— 原来摆在模型**头顶正中**
+        //     （与脚底同轴 1246.5、抬到徽标之上），现在移到模型右上角那一带；
+        //  ② 「**不需要有白色的背景**」—— 那块象牙白的圆角泡体（Backdrop / CardBox.png）
+        //     整个去掉，屏幕上只剩元素符号本身；
+        //  ③ 「元素符号大小缩小到当前的 40%，同时缩小背后的框」——
+        //     符号 104 → 41.6、泡体 168 → 67.2（同一个 0.4 系数；弹出上浮量同比例缩到 14）。
+        //     ⚠ 泡体已经**没有图**了，所以「框」只决定弹出动画的缩放原点与下面这笔版式账，
+        //       屏幕上看不见 —— 想让它重新长出一块底，把 Backdrop 加回来即可
+        //       （构建器 `BuildThinkBubble` 里那一段已按口径删掉）。
+        //
+        //  版式账（画布 1920×1080，坐标从左下角算）：
+        //    · 怪物脚底中心 = (CharMonsterX 1246.5, CharGroundY 402)，
+        //      待机帧 257×216 × CharScale 1.55 = 398×335 → 模型占 x 1048…1445、y 402…737；
+        //    · 落点取 **模型右上角那一带**：x = 1246.5 + 200 = 1446.5
+        //      （与 M36「怪物用掉光环」的落点同一列：贴模型右缘、不与本体叠），
+        //      y = 402 + 368 = 770（模型顶边 737 之上一点点，读作「右上角」）；
+        //    · 缩到 67.2 之后泡体占 x 1412.9…1480.1、y 736.4…803.6，于是：
+        //        - 血量徽标 x 1180.5…1312.5 —— **横向不重叠**（泡在它右边，改动前是压在它上面）；
+        //        - 头顶出牌面板 x 1119.5…1373.5 / y 815.4…988.6 —— 也不重叠；
+        //        - 敌方冷却列的视口上沿 736 —— 泡底边 736.4，正好让开。
+        //
+        //  ⚠ **本节点锚在画面正中（anchor 0.5/0.5）**，所以 ThinkBubbleX / Y 要写
+        //    「相对画面中心」的值（同 FloatTipY 的口径）：上面算的 1446.5 / 770 是
+        //    **从画布左下角**量出来的，换算过来是 486.5 / 230。第一版直接填了底边口径的值，
+        //    在 1920×1080 的画布上等于把泡顶到屏幕外，于是「点击有反应、但什么都看不见」
+        //    （2026-09-26 踩过）。
+        //
+        //  ⚠ **不吃射线**：它出现的时机正是玩家在点怪物，挡一下就把后续点击打断了。
+        //
+        //  ⚠⚠ 改这几个常量**不会**自动改到已经存盘的 `BattleCanvas.prefab` ——
+        //    所以 `ThinkBubbleView.ApplyLayout()` 在运行时按常量重申一次
+        //    尺寸 / 位置 / 符号大小（`Show` 与 `Configure` 各一次），改常量立刻见效，
+        //    不必为了挪一个泡去重跑整棵界面的构建器；构建器那几行读的也是这些常量。
+
+        /// <summary>思考框的尺寸（正方形）。**2026-09-27：168 × 0.4 = 67.2**。</summary>
+        public const float ThinkBubbleWidth = 67.2f;
+        public const float ThinkBubbleHeight = 67.2f;
+
+        /// <summary>
+        /// 思考框中心相对「怪物脚底中心」的横向偏移（正数往右）。
+        /// 取 200 = 模型右缘（398/2 = 199）那一列 —— 与 <see cref="AuraCastX"/> 同一条竖线。
+        /// </summary>
+        public const float ThinkBubbleRightOffsetX = 200f;
+
+        /// <summary>
+        /// 思考框中心距怪物脚底（<see cref="CharGroundY"/>）的抬升量。
+        /// 模型顶边在脚底 +335 处（398×335），取 368 = 顶边再往上一点，落在「模型右上角」。
+        /// </summary>
+        public const float ThinkBubbleUpperRightRiseY = 368f;
+
+        /// <summary>
+        /// 思考框中心<b>相对画面中心</b>的位置（正数往右上）。
+        ///
+        /// <para><b>本节点锚在画面正中</b>（anchor 0.5/0.5），所以两个分量都得是
+        /// 「相对中心」的值 —— 和 <see cref="FloatTipY"/> 同一个口径：</para>
+        /// <list type="bullet">
+        /// <item>x = 怪物脚底 x（<see cref="CharMonsterX"/> 1246.5）+ 右移量 200
+        ///     − <see cref="ReferenceWidth"/> / 2 = 486.5；</item>
+        /// <item>y = 脚底 402 + 抬升量 368 − <see cref="ReferenceHeight"/> / 2 = 230。</item>
+        /// </list>
+        ///
+        /// <para>⚠ 第一版直接把底边口径的值填进来，等于把泡顶到屏幕外，
+        /// 表现是「点击有反应、但什么都看不见」（2026-09-26 踩过）。</para>
+        /// </summary>
+        public const float ThinkBubbleX = CharMonsterX + ThinkBubbleRightOffsetX - ReferenceWidth / 2f;
+
+        /// <inheritdoc cref="ThinkBubbleX"/>
+        public const float ThinkBubbleY = CharGroundY + ThinkBubbleUpperRightRiseY - ReferenceHeight / 2f;
+
+        /// <summary>框内元素符号的边长。**2026-09-27：104 × 0.4 = 41.6**。</summary>
+        public const float ThinkBubbleIconSize = 41.6f;
+
+        /// <summary>整段「弹出 → 停留 → 渐隐」的总时长。<b>用户口径：约两秒。</b></summary>
+        public const float ThinkBubbleSeconds = 2.0f;
+
+        /// <summary>弹出时长（缩放 OutBack + 淡入）—— 要短，它是「点下去立刻有回话」。</summary>
+        public const float ThinkBubblePopSeconds = 0.16f;
+
+        /// <summary>弹出时从多小开始放大。</summary>
+        public const float ThinkBubblePopFrom = 0.72f;
+
+        /// <summary>渐隐阶段的上浮距离。**2026-09-27：随泡体一起 ×0.4（36 → 14）**。</summary>
+        public const float ThinkBubbleRise = 14f;
+
+        // ── M41 · 怪物点击面（透明、吃射线；见 MonsterClickCatcher）────────
+        //
+        //  它是「点了怪物」的命中范围 —— 单独一块固定尺寸的矩形，不挂到角色本体上
+        //  （角色 sizeDelta / pivot 每帧随动作帧变，挂上去命中范围会跟着漂）。
+        //
+        //  ⚠ 2026-09-27 用户口径：「当前的有效点击判定区域太小，应当**覆盖整个怪物模型**」。
+        //   原来 320×340（当时故意比模型小一圈），现在按模型包围盒给足：
+        //     · 模型 398×335，占 x 1048…1445、y 402…737；
+        //     · 取 420×360、中心抬到 402 + 168 = 570 → 覆盖 x 1036.5…1456.5、y 390…750，
+        //       四边各留约 10 px 余量（点模型最边缘那几像素也不会漏）。
+        //
+        //  ⚠ 撑大到这个尺寸之后它会不会抢掉别人的点击？**不会**，靠的是兄弟序：
+        //   本节点由 `BattleArtLayerBuilder` 在**角色之后、冷却列与手牌数标签之前**建，
+        //   同层绘制顺序 = 兄弟序 —— 后建的在上面，所以
+        //     · 头顶手牌数标签（按住看怪物手牌，x 1380…1504 / y 408…448）、
+        //     · 两侧冷却列的迷你卡
+        //   这一带落的点按仍然归它们自己（射线从上往下问，谁在上面谁先应答）。
+        //
+        //  位置基准：中心 = 脚底(CharGroundY) + ThinkBubbleClickCenterY。
+
+        /// <summary>怪物点击面的宽（覆盖模型包围盒 398 宽 + 两侧余量）。</summary>
+        public const float ThinkBubbleClickWidth = 420f;
+
+        /// <summary>怪物点击面的高（覆盖模型包围盒 335 高 + 上下余量）。</summary>
+        public const float ThinkBubbleClickHeight = 360f;
+
+        /// <summary>点击面中心相对怪物脚底（<see cref="CharGroundY"/>）的抬升量（= 335 / 2）。</summary>
+        public const float ThinkBubbleClickCenterY = 168f;
+
         /// <summary>选项浮层标题。</summary>
         public const float FontSizePickerTitle = 24f;
 
@@ -811,6 +940,25 @@ namespace MagicBrawl.App
         public const float CharBadgeHeight = 42f;
         public const float CharBadgeGroundOffset = 392f;
 
+        // ── 虚弱徽标（2026-09-29，毒刺 ao）─────────────────────
+        //
+        //  版式账（画布 1920×1080，坐标从左下角算）：
+        //    怪物脚底 = CharGroundY 402，模型 398×335 → 顶边 y = 737；
+        //    头顶「生命 n/m」徽标中心 = 402 + 392 = 794（占 773…815）；
+        //    虚弱徽标**再往上叠一行**：中心 = 794 + 21 + 6 + 14 = 835。
+        //
+        //  为什么往上叠而不是并排：徽标宽只有 132，横向塞不下第二行读数；
+        //  而头顶那一片本来就是空的（模型顶边 737 以上、思考框在更右侧 x≈1446）。
+        //
+        //  ⚠ 双方各一枚（主角 / 怪物）—— 虚弱是「被攻击目标」身上的状态，
+        //    玩家会被削、怪物也会被削，只画一侧就有半边局面看不见。
+
+        /// <summary>虚弱徽标中心距地平线的高度（= 头顶徽标中心 + 半高 + 缝 + 半高）。</summary>
+        public const float CharWeakenGroundOffset = 435f;
+
+        public const float CharWeakenWidth = 160f;
+        public const float CharWeakenHeight = 28f;
+
         public const float FontSizeCharBadge = 24f;
 
         // ══════════════════════════════════════════════════════
@@ -1053,8 +1201,10 @@ namespace MagicBrawl.App
         //
         //  ── 口径 ──────────────────────────────────────────────
         //  卡面版式**逐字照抄** `ThirdParty/MagicCardKit/Prefabs/BigMagicCard.prefab`：
-        //  锚点、pivot、anchoredPosition、尺寸、字号全部取自它，不再参考
-        //  `Assets/Art/Cards/` 那张 760×1056 的成品卡面（用户 2026-09-19 明确要求）。
+        //  锚点、pivot、anchoredPosition、尺寸、字号全部取自它，不参考任何「烘焙好的卡面整图」。
+        //  ⚠ 2026-09-30（用户口径）：原来并列存在的那一族 760×1056 成品整图
+        //  （`Assets/Art/Cards/`，卡名 / 力量 / 冷却 / 文字全烘在 PNG 里）**已整族删除** ——
+        //  卡面的一切文字与数值现在只有「TMP 现场渲染」这一条来源，图片只提供无框无字的插画。
         //
         //  设计空间 = 622×872，就是那个 prefab 的 Canvas 尺寸；卡 = 画布整块。
         //
@@ -1379,26 +1529,28 @@ namespace MagicBrawl.App
         /// <summary>
         /// 标题文字框：距面板顶边的距离与高度。
         ///
-        /// <para>量自原图：第 41 行起不透明像素从 2 跳到 157、第 42 行到 289 ——
-        /// 那是顶部牌位的横 band 起点；band 覆盖 42…75 左右，**中心 ≈ 58**。
-        /// 于是 `35 + 46/2 = 58`。</para>
+        /// <para>量自原图（`Peek_Frame.png`），<b>2026-09-28 重新量的</b>：顶部 title band
+        /// 的亮边在第 44…47 行、下亮边在第 105…108 行，中间那块可以放字的暗色内槽是
+        /// <b>48…103</b>（高 56，中心 ≈ 75.5）。于是 title box 顶边取
+        /// `53.5`（中心 = 53.5 + 46/2 = 76.5，字墨迹中心 ≈ 75.5）。</para>
+        ///
+        /// <para>⚠ <b>原来是 35（中心 58）—— 那是「标题 + 副标题」两行时代的取值</b>：
+        /// 原先标题下面还有一条「已选 N / M」的计数（中心 ≈ 105），两行合起来才在 band 里居中。
+        /// 2026-09-27 用户要求删掉那条计数之后，标题<b>没有跟着重新居中</b>，
+        /// 于是整整偏上约 18 px —— 文字顶到 band 上缘、下面空一大片
+        /// （用户 2026-09-28 的截图：标题「移出·获加速」看着「没放进框里、偏上了」）。
+        /// 单行标题现在要自己占满这块内槽。</para>
         /// </summary>
-        public const float HandPickTitleTop = 35f;
+        public const float HandPickTitleTop = 53.5f;
 
         public const float HandPickTitleHeight = 46f;
 
-        /// <summary>
-        /// 副标题（「0 / 6」这种计数）距标题框<strong>底边</strong>的间隙。
-        ///
-        /// <para>原来写死 2 px，配上 46 高的标题框与 32 高的副标题框 →
-        /// 两行文字实际只隔 2 px，截图里「送入冷却增加力量（可选择多张）」的降部
-        /// 几乎贴到「0 / 6」上（2026-09-22 `m30_confirm_empty.png`）。
-        /// 这里给到 8 px：标题降部不会撞上计数，又不至于把副标题推进中间卡框区。</para>
-        /// </summary>
-        public const float HandPickSubTitleGap = 8f;
-
-        /// <summary>副标题的高度（一行「0 / 6」）。</summary>
-        public const float HandPickSubTitleHeight = 32f;
+        // ⚠ 2026-09-27：原先这里有两条副标题常量（`HandPickSubTitleGap = 8` /
+        //   `HandPickSubTitleHeight = 32`）—— 供标题正下方那条「已选 N / M」的计数用。
+        //   用户口径「标题底下会有一个当前选择牌数和当前手牌总数的数字显示，不需要显示这个」
+        //   → 计数连同节点、字号常量一起删掉（节点由 `BattleUiBuilder.BuildHandPickLayer` 建）。
+        //   删掉它们**不影响任何布局**：那条计数是压在标题牌位下方的装饰，
+        //   中间的「已选卡框」区一直按 <see cref="HandPickSlotAreaCenterY"/> 定位。
 
         /// <summary>
         /// 标题文字框宽度 —— <b>= 原图 title band 的内槽宽</b>（不是「面板减去内边距」）。
@@ -1660,8 +1812,8 @@ namespace MagicBrawl.App
         /// </summary>
         public const float FontSizeHandPickConfirm = 26f;
 
-        /// <summary>副标题（「0 / 3」这一行计数）的字号。</summary>
-        public const float FontSizeHandPickSubTitle = 22f;
+        // ⚠ 2026-09-27：原先这里有一条 `FontSizeHandPickSubTitle = 22`（「已选 0 / 3」那行计数）。
+        //   计数整个移除，字号常量跟着删 —— 见 `HandPickTitleTop` 那段后的说明。
 
         /// <summary>确认键不可用时文字的颜色（暗下去；按钮底图的 disabled 色另有其物）。</summary>
         public const float HandPickDisabledDim = 0.45f;
@@ -1746,5 +1898,631 @@ namespace MagicBrawl.App
 
         /// <summary>副标题字号。</summary>
         public const float FontSizeMonsterHandSub = 22f;
+
+        // ══════════════════════════════════════════════════════
+        //  商店场景（2026-09-26 · P4 的第一个事件切片）
+        // ══════════════════════════════════════════════════════
+        //
+        //  版式来自用户给的 `Art/ReferenceShop.png`（商店内景）与
+        //  `Art/d30f41c7-….png`（同一套商店 UI：木质价格牌 + 「离开」按钮）。
+        //
+        //  与战斗场景的关系：**场景独立、版式复用**。
+        //  背景换成商店内景图，顶栏仍用战斗那套 `Hud_Bar`（口径：💰 位改显示金币），
+        //  卡面仍用**唯一那份** `CardView_Hand.prefab`（红线 9）。
+        //
+        //  ⚠ 本段所有坐标都是「画布绝对坐标」，锚点用**左下角**（同 Char* 那批），
+        //    别跟战斗里 `(0f,1f)` 那批左上角口径的混用（铁律 10）。
+
+        /// <summary>商店货位数量（3 原价 + 1 特价；口径见 <c>Docs/design/冒险事件架构.md</c> §5.1）。</summary>
+        public const int ShopSlotCount = 4;
+
+        /// <summary>
+        /// 货位卡面宽度 = <see cref="HandCardWidth"/> × 1.1。
+        ///
+        /// <para><b>⚠ 2026-09-27 由「= HandCardWidth」改成独立的 1.1 倍</b>（用户要求
+        /// 「出售的卡牌适度放开一点点」）：货架上的卡比手牌大一档。
+        /// <b>背包里的卡不受影响</b> —— 那是 <see cref="ShopBagCardFaceWidth"/>，仍 = HandCardWidth。</para>
+        /// </summary>
+        public const float ShopCardWidth = HandCardWidth * 1.1f;
+
+        /// <summary>货位卡面高度（= <see cref="HandCardHeight"/> × 1.1，与宽度同比例）。</summary>
+        public const float ShopCardHeight = HandCardHeight * 1.1f;
+
+        /// <summary>
+        /// 相邻货位的中心间距（<b>步进</b>，= <b>手牌卡宽</b> + 34 的缝）。
+        ///
+        /// <para>缝为什么是 34：柜台台面在画布上占 x 275…1525，但右侧 1185…1350 那一段被
+        /// 店主伸出的手占着（他在「展示货品」）。留给货架的干净台面就是 275…1185 = 910 宽。
+        /// 4 张 196 的卡要全塞进 910：196 + 3 × 步进 ≤ 900 → 步进 ≤ 234。
+        /// 取 <b>230</b>（缝 34）→ 整排 886 宽、两侧各余 12，是最宽的合规解。</para>
+        ///
+        /// <para><b>⚠ 2026-09-27：基准是 <see cref="HandCardWidth"/>，不是 <see cref="ShopCardWidth"/></b>
+        /// —— 卡面放大 1.1 倍之后若步进跟着长，整排会一口气宽出近 9%、把最右一张推去压店主的手。
+        /// 放大只作用于卡面本身：卡视觉宽 215.6 仍 &lt; 230，卡与卡的缝从 34 收到 14.4，依旧不重叠。</para>
+        /// </summary>
+        public const float ShopSlotSpacing = HandCardWidth + 34f;
+
+        /// <summary>
+        /// 一个货位的<b>命中区</b>（透明的整格矩形，货位里唯一吃射线的东西）。
+        ///
+        /// <para><b>⚠ 它必须一直包到价格牌底边</b>（2026-09-27 修）：价格牌挂在卡面<b>下方</b>
+        /// （<see cref="ShopPricePlateDrop"/> = 202.9 &gt; 半个卡高 149.6），所以「一张卡那么大」的
+        /// 命中区<b>不含价格牌</b> —— 点价格牌（那块木质六边形，玩家读作「购买」）什么都不会发生，
+        /// 而且零报错。用户的原话是「无论点击购买键还是点击卡牌都能买」，这一条就是它的实现。</para>
+        /// </summary>
+        public const float ShopSlotHitWidth = ShopCardWidth;
+
+        public const float ShopSlotHitHeight = ShopCardHeight * 0.5f
+                                               + ShopPricePlateDrop + ShopPricePlateHeight * 0.5f;
+
+        public const float ShopSlotHitCenterY = (ShopCardHeight * 0.5f
+                                                 - (ShopPricePlateDrop + ShopPricePlateHeight * 0.5f)) * 0.5f;
+
+        /// <summary>
+        /// 4 个货位的整排中心 X（画布绝对坐标）。
+        ///
+        /// <para><b>不是画布中心，也不是台面中心</b>：台面 275…1525 的中心是 900，但台面右侧
+        /// 被店主的手占着（见 <see cref="ShopSlotSpacing"/>），货架只能占 275…1185 这一段。
+        /// 最初按这个口径取 <b>730</b>（整排落在 287…1173）。</para>
+        ///
+        /// <para><b>⚠ 2026-09-27 改成 976</b>：用户在编辑器里把场景中的 <c>Shelf</c> 节点
+        /// 右移了 246（<c>anchoredPosition.x</c> 由 −230 改成 <b>16</b> = 画布 976）。
+        /// <b>这是用户手调的位置，不要再改回去</b> —— 把它同步进常量，只是让
+        /// 「万一重跑构建器」时落点仍然一致，而不是重新裁决它该在哪。</para>
+        /// </summary>
+        public const float ShopShelfCenterX = 976f;
+
+        /// <summary>
+        /// 货位卡面中心 Y（画布绝对坐标，从底边算）。
+        ///
+        /// <para>版式账（对着背景量，换算用的是 <see cref="ShopBgCoverSize"/> 的 <b>1.16379 放大</b>
+        /// —— 不是缩小，一开始按缩小算过一版，整排位置全错）：
+        /// 柜台台面在画布上占 y 410…475（上沿 = 柜面后棱线 475，下沿 = 齐柜面前沿 410）。
+        /// 卡高 272 时卡底取 472 → 中心 = 472 + 136 = <b>608</b>；
+        /// 卡顶 = 744，仍远低于顶栏底边（1080 − 14 − 95 = 971）与标题（964…1040）。</para>
+        ///
+        /// <para><b>⚠ 2026-09-27：卡高变 299.2 后这个值<b>故意保持 608</b></b>：
+        /// 放大以卡心为基准 → 卡底由 472 落到 458.4、卡顶升到 757.6（仍在标题之下）。
+        /// <b>不动 <c>Shelf</c> 的 y</b> —— 那个节点用户已经手调过，动它的 y 等于动用户的节点。
+        /// 价格牌的下移由 <see cref="ShopPricePlateDrop"/> 的表达式自动补偿，不靠这里。</para>
+        /// </summary>
+        public const float ShopCardCenterY = 608f;
+
+        /// <summary>价格牌宽度（= 切出来的 <c>Shop_PricePlate.png</c> 原始宽 × 显示缩放 × 0.9）。</summary>
+        public const float ShopPricePlateWidth = 212.4f;
+
+        /// <summary>价格牌高度（同口径 × 0.9；2026-09-27 用户要求「购买键缩小 10%」）。</summary>
+        public const float ShopPricePlateHeight = 84.6f;
+
+        /// <summary>
+        /// 价格牌中心相对卡面中心的下移量（价格牌挂在卡面正下方）。
+        ///
+        /// <para>= 半张卡 + 半个牌 + 间距 11。间距取 11 而不是更宽，
+        /// 是为了让价格牌还能压在台面棱线（画布 y ≈ 482）附近而不是滑到柜台下面去。</para>
+        ///
+        /// <para><b>⚠ 2026-09-27 由写死的 194 改成表达式</b>：卡高与价格牌高在这一天同时变了
+        /// （卡 ×1.1、牌 ×0.9），写死的数字必然与它们脱钩 —— 症状是价格牌<b>被卡面盖住一角</b>，
+        /// 而且零报错。改成表达式之后，以后再调卡高 / 牌高都不会再对不上。</para>
+        /// </summary>
+        public const float ShopPricePlateDrop = ShopCardHeight * 0.5f + ShopPricePlateHeight * 0.5f + 11f;
+
+        /// <summary>价格数字的文本框尺寸（压在金币右侧，位置由原图量出；同牌面 × 0.9）。</summary>
+        public const float ShopPriceTextWidth = 86.4f;
+
+        /// <summary>价格数字文本框高度。</summary>
+        public const float ShopPriceTextHeight = 41.4f;
+
+        /// <summary>
+        /// 价格数字文本框相对价格牌中心的偏移。
+        ///
+        /// <para>版式账（原图）：牌 236×94，金币圆心约在中心左侧 −46 px、屏幕 y 中心附近；
+        /// 原图数字在金币右侧、横向居中于牌面右半 → 偏移取 (+30, 0)。
+        /// 2026-09-27 牌面缩到 0.9 倍，偏移同比例跟随（金币也随底图一起缩）→ (+27, 0.9)。</para>
+        /// </summary>
+        public const float ShopPriceTextOffsetX = 27f;
+
+        public const float ShopPriceTextOffsetY = 0.9f;
+
+        /// <summary>价格牌上金币的显示尺寸（切图里的原尺寸，不缩放）。</summary>
+        public const float ShopPriceCoinSize = 54f;
+
+        /// <summary>金币圆心相对价格牌中心的偏移（让 TMP 数字压在它右边）。</summary>
+        public const float ShopPriceCoinOffsetX = -46f;
+
+        public const float ShopPriceCoinOffsetY = 0f;
+
+        /// <summary>「卖光了」空位上的文字颜色 / 字号。</summary>
+        public const float FontSizeShopSoldOut = 30f;
+
+        /// <summary>
+        /// 「卖光了」底板相对卡面的内缩量（四周各缩这么多）。
+        ///
+        /// <para><b>底板为什么做成「整卡大小的暗色剪影」</b>：空槽背后是商店的木质内景
+        /// （浅暖色 + 货架结构），灰字直接浮上去几乎读不清。垫一块与卡面同尺寸的压暗圆角牌之后，
+        /// ① 文字立刻立起来；② 那一格读作「槽位还在、只是空了」，
+        /// 而且与左右卡面同宽同高、整排节奏不塌。</para>
+        ///
+        /// <para>内缩 4 px 是为了让空槽比真卡**略小一圈** —— 一眼能看出「这里没有卡」，
+        /// 而不是「这里有一张很暗的卡」。</para>
+        /// </summary>
+        public const float ShopSoldOutPlateInset = 4f;
+
+        /// <summary>
+        /// 「卖光了」底板的图路径（工程第三方白色几何图，可被 <c>Image.color</c> 上色）。
+        ///
+        /// <para>⚠ <b>按 <c>Image.Type.Simple</c> 用，不要用 Sliced</b>：这张
+        /// `RoundedRectangle.png`（256×256，圆角半径 ≈26）的 <c>spriteBorder</c> 是 0，
+        /// 而且它同时被战斗的光环图标（<c>BattleArtLayerBuilder.BuildAuraIcon</c>）以 Sliced 引用着 ——
+        /// 去改它的 meta border 会把光环图标的圆角一起改掉。拿一个接近 1:1 的矩形去 Simple 拉伸，
+        /// 圆角只会被压一点点，肉眼看不出来。</para>
+        /// </summary>
+        public const string ShopSoldOutPlateSpritePath = "Assets/ThirdParty/PolySprite/RoundedRectangle.png";
+
+        /// <summary>
+        /// 价格数字字号。
+        ///
+        /// <para><b>⚠ 2026-09-27：40 → 36（×0.9）</b>，与价格牌一起缩 —— 牌缩了字不缩，
+        /// 数字会顶到六边形的斜边上。</para>
+        /// </summary>
+        public const float FontSizeShopPrice = 36f;
+
+        /// <summary>商店标题字号。</summary>
+        public const float FontSizeShopTitle = 52f;
+
+        /// <summary>
+        /// 商店标题中心（画布绝对坐标）—— 顶部居中，与顶栏同一条水平带。
+        ///
+        /// <para><b>不压背景上的元素</b>：背景图顶部那排蓝旗（背景图 y ≈ 20…170 一段彩色三角旗）
+        /// 是画面里最抢眼的细节，标题压上去会读不清。而顶栏占的是画布 x 20…728、
+        /// 画布中心 960 在它右边、两者不重叠，所以直接与顶栏同高最干净。
+        /// y 取 1002 → 标签占 964…1040，与顶栏（971…1066）横向并排。</para>
+        /// </summary>
+        public const float ShopTitleCenterX = ReferenceWidth * 0.5f;
+
+        public const float ShopTitleCenterY = 1002f;
+
+        /// <summary>标题文本框尺寸。</summary>
+        public const float ShopTitleWidth = 460f;
+
+        public const float ShopTitleHeight = 76f;
+
+        /// <summary>
+        /// 「离开」按钮尺寸与位置。
+        ///
+        /// <para>右下角，与参考图里那颗木质六边形按钮同侧（垫在背景右侧的晶石箱一带）。
+        /// 尺寸取切图等比缩到 236×86 —— 比价格牌略小，不至于跟货架抢注意力。</para>
+        /// </summary>
+        public const float ShopLeaveWidth = 236f;
+
+        public const float ShopLeaveHeight = 86f;
+
+        /// <summary>
+        /// 「离开」按钮的右边距。
+        ///
+        /// <para><b>⚠ 2026-09-26 由 64 改成 176</b>：背包键（<see cref="ShopBagButtonRight"/>）
+        /// 要占住右下角最右那一格（与参考图一致：离开在左、背包贴角），
+        /// 所以离开必须往左让出「背包宽 + 缝」= <see cref="ShopBagButtonWidth"/> +
+        /// <see cref="ShopBagButtonGap"/> = 112。
+        /// 离开右缘因此从 1856 退到 1744，两键之间留 20 的缝。</para>
+        /// </summary>
+        public const float ShopLeaveRight = 64f + ShopBagButtonWidth + ShopBagButtonGap;
+
+        public const float ShopLeaveBottom = 44f;
+
+        /// <summary>「离开」按钮文字字号。</summary>
+        public const float FontSizeShopLeave = 34f;
+
+        // ── 主角（站在柜台左前方，2026-09-26）────────────────────────
+        //
+        //  参考图里主角在左下角、正面偏右站着看货架。我们的货架最左一张卡
+        //  占 x 287…483（见 ShopShelfTotalWidth），所以主角**横向只能占 0…287**，
+        //  否则会压到第一张卡上。取「身高 425（= 185×2.3）+ 脚底 y=24」之后
+        //  头顶落在 449，正好压在卡底（472）之下 —— 主角因此读作
+        //  「站在柜台前面」，而不是「浮在货架中间」。
+
+        /// <summary>主角脚底中心的画布 X（底边口径，同 <c>Char*</c> 那批）。</summary>
+        public const float ShopHeroX = 215f;
+
+        /// <summary>主角脚底的画布 Y。留 24 是为了让斗篷下沿离屏幕底边有一点余量。</summary>
+        public const float ShopHeroGroundY = 24f;
+
+        /// <summary>
+        /// 主角显示缩放 = 界面像素 / 素材画布像素。
+        ///
+        /// <para>待机素材画布 188×185（<c>BattleArtLibrary.Hero.Idle</c>），
+        /// 战斗里用的是 1.55（≈287 高）。商店是<b>单场景立绘</b>，比战斗里大一号：
+        /// 2.3 → 432×425.5。
+        /// ⚠ 素材本身只有 185 像素高，2.3 倍已经是「平涂低多边形还能扛住」的上限，
+        /// 再放大就明显发糊了 —— 要更大的主角必须换一张更大的素材。</para>
+        /// </summary>
+        public const float ShopHeroScale = 2.3f;
+
+        // ── 背包键（右下角最右一格）─────────────────────────────────
+
+        /// <summary>
+        /// 背包键尺寸。
+        ///
+        /// <para>切图 <c>Shop_BagIcon.png</c> 是 144×135（木质六边形底 + 背包图形，
+        /// 底板已经烘在图上）；显示 92×86 是把它缩到与「离开」同高，
+        /// 两键并排时视觉重量相当。⚠ 92/86 = 1.0698 与素材的 1.0667 只差 0.3%，
+        /// 所以直接用 <c>Image.Type.Simple</c> 铺，不做九宫格（它的 border 是 0）。</para>
+        /// </summary>
+        public const float ShopBagButtonWidth = 92f;
+
+        public const float ShopBagButtonHeight = 86f;
+
+        /// <summary>背包键的右边距 / 下边距（贴住右下角，比「离开」更靠角）。</summary>
+        public const float ShopBagButtonRight = 64f;
+
+        public const float ShopBagButtonBottom = 44f;
+
+        /// <summary>背包键与「离开」之间的水平缝。</summary>
+        public const float ShopBagButtonGap = 20f;
+
+        // ── 背包面板（点背包键弹出的「主角卡池」）────────────────────
+
+        /// <summary>
+        /// 背包面板尺寸。
+        ///
+        /// <para>1620×880 在 1920×1080 上四边各留 ≥100。面板底图复用 M25 的
+        /// <c>Peek_Panel</c>（992×447，<c>spriteBorder</c> = 左右 0 / 下 48 / 上 128）——
+        /// 横向本来就靠拉伸（左右 border 是 0，中间是平整的深色面），
+        /// 纵向 447→880 的拉伸被上下 border 护住了两端。</para>
+        /// </summary>
+        public const float ShopBagPanelWidth = 1620f;
+
+        public const float ShopBagPanelHeight = 880f;
+
+        /// <summary>网格列数。6 列 × 卡宽 196 在 1500 的内容宽里刚好排得开。</summary>
+        public const int ShopBagColumns = 6;
+
+        /// <summary>
+        /// 网格单元格（比卡面略大，留出卡与卡之间的呼吸）。
+        ///
+        /// <para><b>⚠ 宽度是被算出来的，不能随便加</b>：滚动区 1500 − 滚动条 26 = 视口 1474，
+        /// 再减网格左右 padding 各 14 → 可用 <b>1446</b>。
+        /// 6 列 × 230 + 5 道缝 × 12 = <b>1440</b> ≤ 1446（只余 6）。
+        /// 单元格一旦超过 231，第 6 列就会被 <c>RectMask2D</c> 裁掉一截 —— 而且零报错。</para>
+        /// </summary>
+        public const float ShopBagCellWidth = 230f;
+
+        /// <summary>单元格高度 = 卡高 272 + 上下留白 20。</summary>
+        public const float ShopBagCellHeight = 292f;
+
+        /// <summary>背包里的卡面宽度 —— 与手牌 / 货位同一档 196（三处卡面统一，红线 9）。</summary>
+        public const float ShopBagCardFaceWidth = HandCardWidth;
+
+        public const float ShopBagGridSpacingX = 12f;
+
+        public const float ShopBagGridSpacingY = 16f;
+
+        /// <summary>网格左右内边距（算列宽时要减掉，见 <see cref="ShopBagCellWidth"/>）。</summary>
+        public const float ShopBagGridPadding = 14f;
+
+        // 面板内部的带子（坐标都相对**面板中心**，y 向上）：
+
+        /// <summary>滚动区尺寸。高 620 → 顶边 +300、底边 −320。</summary>
+        public const float ShopBagScrollWidth = 1500f;
+
+        public const float ShopBagScrollHeight = 620f;
+
+        public const float ShopBagScrollCenterY = -10f;
+
+        /// <summary>视口右侧给滚动条让出的宽度。</summary>
+        public const float ShopBagViewportRightInset = 26f;
+
+        public const float ShopBagScrollbarWidth = 18f;
+
+        /// <summary>标题带（面板顶边 −440 往上 70 起）。</summary>
+        public const float ShopBagTitleCenterY = 370f;
+
+        public const float ShopBagTitleWidth = 900f;
+
+        public const float ShopBagTitleHeight = 60f;
+
+        /// <summary>「N 张」计数带，压在标题下面。</summary>
+        public const float ShopBagCountCenterY = 322f;
+
+        public const float ShopBagCountWidth = 900f;
+
+        public const float ShopBagCountHeight = 36f;
+
+        /// <summary>「关闭」按钮（右下，与面板底边留 28）。</summary>
+        public const float ShopBagCloseCenterY = -378f;
+
+        public const float ShopBagCloseWidth = 240f;
+
+        public const float ShopBagCloseHeight = 68f;
+
+        public const float ShopBagCloseRightInset = 60f;
+
+        /// <summary>「背包里还没有牌」那行提示（居中在滚动区上）。</summary>
+        public const float ShopBagEmptyWidth = 900f;
+
+        public const float ShopBagEmptyHeight = 60f;
+
+        /// <summary>背包面板里那几行字的字号。</summary>
+        public const float FontSizeShopBagTitle = 46f;
+
+        public const float FontSizeShopBagCount = 26f;
+
+        public const float FontSizeShopBagClose = 28f;
+
+        public const float FontSizeShopBagEmpty = 30f;
+
+        /// <summary>
+        /// 背包键底图路径。
+        ///
+        /// <para>由 <c>Tools/art-audit/slice_shop_kit.py</c> 从商店套件源表切出（144×135），
+        /// 2026-09-26 落版时切了但没用上，本次接进版式。</para>
+        /// </summary>
+        public const string ShopBagIconSpritePath = "Assets/Art/Ui/Shop_BagIcon.png";
+
+        /// <summary>
+        /// 价格牌九宫格 border（**精灵像素**）。
+        ///
+        /// <para>与 <see cref="HandPickConfirmBorderX"/> 同一类口径：牌面本身只做横向拉伸
+        /// （四张牌等宽），所以纵向不拉伸 —— 给一个够大的 border 把六边形两端 + 上下描边钉住。
+        /// 数值必须与切图实际尺寸相容，否则圆角/尖角会被拉变形，且**零报错**。</para>
+        /// </summary>
+        public const float ShopPlateBorderX = 96f;
+
+        public const float ShopPlateBorderY = 24f;
+
+        /// <summary>「离开」按钮九宫格 border（精灵像素）。</summary>
+        public const float ShopLeaveBorderX = 96f;
+
+        public const float ShopLeaveBorderY = 26f;
+
+        // ── 图集路径（构建器与运行时都从这里取，别写第二处字面量）──────
+
+        /// <summary>商店背景（内景，1664×928）。归档在 Backgrounds/（由 `ArtImportBuilder` 从 Art 根搬来）。</summary>
+        public const string ShopBgSpritePath = "Assets/Art/Backgrounds/Bg_Shop.png";
+
+        /// <summary>价格牌底图（已擦掉数字，金币保留）。</summary>
+        public const string ShopPricePlateSpritePath = "Assets/Art/Ui/Shop_PricePlate.png";
+
+        /// <summary>「离开」按钮底图。</summary>
+        public const string ShopLeaveSpritePath = "Assets/Art/Ui/Shop_LeaveButton.png";
+
+        /// <summary>商店背景原图尺寸（cover 铺法要按它算）。</summary>
+        public const float ShopBgNativeWidth = 1664f;
+
+        public const float ShopBgNativeHeight = 928f;
+
+        /// <summary>
+        /// 货位整排的总宽（= 第 1 张的左缘到第 4 张的右缘）。
+        ///
+        /// <para>⚠ <see cref="ShopSlotSpacing"/> 是<b>步进</b>，不是「卡与卡之间的间距」——
+        /// 这里也只能用它乘 (张数 − 1) 再加一张卡宽。别写成
+        /// <c>ShopCardWidth * ShopSlotCount + ShopSlotSpacing * (ShopSlotCount − 1)</c>
+        /// （那是把步进当成了缝，会多算 3 个卡宽 → 整排跑到屏幕外、最左一张被切一半，
+        /// 且**零报错**。2026-09-26 就是这么错过一次）。</para>
+        /// </summary>
+        public const float ShopShelfTotalWidth = ShopSlotSpacing * (ShopSlotCount - 1) + ShopCardWidth;
+
+        /// <summary>
+        /// 第 <paramref name="i"/> 个货位的中心 X（从左到右）。
+        ///
+        /// <para>⚠ 步进用 <see cref="ShopSlotSpacing"/>（不要再加一个卡宽，理由见
+        /// <see cref="ShopShelfTotalWidth"/>）。</para>
+        /// </summary>
+        public static float ShopSlotCenterX(int i)
+        {
+            return ShopShelfCenterX - ShopShelfTotalWidth * 0.5f
+                   + ShopCardWidth * 0.5f + ShopSlotSpacing * i;
+        }
+
+        // ── 商店背景的 cover 铺法与「背景 → 画布」坐标换算 ──────────────
+        //
+        //  ⚠ 商店的版式是**对着背景图量的**（柜台棱线、招牌位置都在那张图上），
+        //    所以这里必须给出一个确定的 cover 公式。cover 的后果是图会被裁掉一部分，
+        //    而「裁掉多少」直接决定图上的某个像素会落在画布的哪一点 ——
+        //    不把这个偏移量算出来，所有「按背景量出来的坐标」都会整体错位。
+
+        /// <summary>cover 铺法下，背景按比例放大后的显示尺寸（≥ 画布，多出来的被裁掉）。</summary>
+        public static Vector2 ShopBgCoverSize()
+        {
+            float ratio = ShopBgNativeWidth / ShopBgNativeHeight;
+            float need = ReferenceWidth / ReferenceHeight;
+            return ratio > need
+                ? new Vector2(ReferenceHeight * ratio, ReferenceHeight)
+                : new Vector2(ReferenceWidth, ReferenceWidth / ratio);
+        }
+
+        /// <summary>
+        /// 背景图左上角相对画布左上角的偏移。
+        ///
+        /// <para>背景是<b>居中铺</b>的，所以这个量恒为负（图比画布大，左上角跑到画布外面）。
+        /// 用 <c>bgPixelX + X = 画布上的 X</c> 就能把「按图量的像素」翻译成画布坐标。</para>
+        /// </summary>
+        public static Vector2 ShopBgCoverOffset()
+        {
+            Vector2 size = ShopBgCoverSize();
+            return new Vector2((ReferenceWidth - size.x) * 0.5f, (ReferenceHeight - size.y) * 0.5f);
+        }
+
+        /// <summary>
+        /// 背景图上的像素点 → 画布坐标（左下角为原点，y 向上）。
+        ///
+        /// <para><b>⚠ 必须乘缩放</b>：cover 是「等比放大到盖住画布」，放大倍率 = 画布高 / 图高
+        /// = 1080 / 928 = <b>1.16379</b>（> 1，是放大不是缩小）。忘了乘这一下，
+        /// 「对着背景量的坐标」会系统性地缩在画面左上角，且不报任何错 —— 2026-09-26 首次落版就是这么错的。</para>
+        /// </summary>
+        public static Vector2 ShopBgPointToCanvas(float bgPixelX, float bgPixelY)
+        {
+            float scale = ShopBgCoverSize().y / ShopBgNativeHeight;
+            Vector2 offset = ShopBgCoverOffset();
+            return new Vector2(offset.x + bgPixelX * scale, ReferenceHeight - (bgPixelY * scale));
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  强化卡牌场景（2026-09-30 · P5）
+        // ══════════════════════════════════════════════════════
+        //
+        //  版式来自用户给的 `Art/_Reference/Reference-4.png`（最终效果：左下站着主角、正中一张石台），
+        //  背景 = 同一张图把主角抹掉之后的 `Art/Backgrounds/Bg_Upgrade.png`（1671×941）。
+        //
+        //  与商店场景的关系：**场景独立、版式复用**。弹窗照抄商店背包那一套
+        //  （`Peek_Panel` 底图 + 6 列网格 + 卡面用唯一那份 `CardView_Hand.prefab`），
+        //  所以面板内部那批坐标**直接复用 `ShopBag*` 常量**，不另抄一份同值的升级版
+        //  —— 抄一份的下场是「改了一处、另一处留在旧版」，而且零报错。
+        //
+        //  ⚠ 本段坐标口径与商店一致：**画布绝对坐标 + 左下角原点**（同 Char* 那批），
+        //    别跟战斗里 `(0f,1f)` 那批左上角口径混用（铁律 10）。
+
+        /// <summary>强化场景背景（1671×941，无烘焙 UI，无主角）。</summary>
+        public const string UpgradeBgSpritePath = "Assets/Art/Backgrounds/Bg_Upgrade.png";
+
+        /// <summary>背景原图尺寸（cover 铺法要按它算）。</summary>
+        public const float UpgradeBgNativeWidth = 1671f;
+
+        public const float UpgradeBgNativeHeight = 941f;
+
+        /// <summary>强化动画用的光爆素材（暖金色星芒，与场景蓝调形成对比）。</summary>
+        public const string UpgradeFxGlowSpritePath = "Assets/Art/Fx/Fx_Explosion_Light.png";
+
+        /// <summary>cover 铺法下背景放大后的显示尺寸（≥ 画布，多出来的被裁掉）。</summary>
+        public static Vector2 UpgradeBgCoverSize()
+        {
+            float ratio = UpgradeBgNativeWidth / UpgradeBgNativeHeight;
+            float need = ReferenceWidth / ReferenceHeight;
+            return ratio > need
+                ? new Vector2(ReferenceHeight * ratio, ReferenceHeight)
+                : new Vector2(ReferenceWidth, ReferenceWidth / ratio);
+        }
+
+        /// <summary>背景图左上角相对画布左上角的偏移（居中铺 → 恒为负）。</summary>
+        public static Vector2 UpgradeBgCoverOffset()
+        {
+            Vector2 size = UpgradeBgCoverSize();
+            return new Vector2((ReferenceWidth - size.x) * 0.5f, (ReferenceHeight - size.y) * 0.5f);
+        }
+
+        /// <summary>背景图像素 → 画布坐标（左下角为原点，y 向上）。</summary>
+        public static Vector2 UpgradeBgPointToCanvas(float bgPixelX, float bgPixelY)
+        {
+            float scale = UpgradeBgCoverSize().y / UpgradeBgNativeHeight;
+            Vector2 offset = UpgradeBgCoverOffset();
+            return new Vector2(offset.x + bgPixelX * scale, ReferenceHeight - (bgPixelY * scale));
+        }
+
+        // ── 石台命中区 ──────────────────────────────────────────
+        //
+        //  用户口径（2026-09-30）：**整张石台（含两侧木边）一块矩形命中区**，
+        //  不含主角、不含漂浮石板与背景。
+        //  下面四个数是**对着背景图量的像素**（左上为原点），换算走
+        //  `UpgradeBgPointToCanvas` —— 背景是 cover 铺的（放大 1.149 倍），
+        //  忘了乘缩放的话整块会缩在画面左上角，而且零报错（商店首次落版就这么错过一次）。
+
+        public const float UpgradeTableBgLeft = 170f;
+        public const float UpgradeTableBgTop = 292f;
+        public const float UpgradeTableBgRight = 1525f;
+        public const float UpgradeTableBgBottom = 698f;
+
+        /// <summary>石台命中区的中心（画布坐标）。</summary>
+        public static Vector2 UpgradeTableCenter()
+        {
+            Vector2 topLeft = UpgradeBgPointToCanvas(UpgradeTableBgLeft, UpgradeTableBgTop);
+            Vector2 bottomRight = UpgradeBgPointToCanvas(UpgradeTableBgRight, UpgradeTableBgBottom);
+            return new Vector2((topLeft.x + bottomRight.x) * 0.5f, (topLeft.y + bottomRight.y) * 0.5f);
+        }
+
+        /// <summary>石台命中区的尺寸（画布单位）。</summary>
+        public static Vector2 UpgradeTableSize()
+        {
+            Vector2 topLeft = UpgradeBgPointToCanvas(UpgradeTableBgLeft, UpgradeTableBgTop);
+            Vector2 bottomRight = UpgradeBgPointToCanvas(UpgradeTableBgRight, UpgradeTableBgBottom);
+            return new Vector2(Mathf.Abs(bottomRight.x - topLeft.x), Mathf.Abs(bottomRight.y - topLeft.y));
+        }
+
+        // ── 主角（左下角，与 Reference-4 同一站位）──────────────────
+        //
+        //  ⚠ Reference-4 里那位巫师是一张**高分辨率插画**（占画面高约七成），
+        //    我们的主角素材只有 188×185（`BattleArtLibrary.Hero.Idle`）——
+        //    照参考图那个尺寸铺要放大到 ≈4.3 倍，平涂低多边形会明显发糊。
+        //    所以这里取与商店场景**同一个 2.3 倍**（实测是该素材的画质上限），
+        //    位置也照商店那套（左下、脚底留一点余量）：读起来仍是
+        //    「主角站在台子左前方」，只是比参考图小一号。
+        //    想要参考图那个体量，得先有一张更大的主角立绘。
+
+        public const float UpgradeHeroX = 205f;
+
+        public const float UpgradeHeroGroundY = 44f;
+
+        public const float UpgradeHeroScale = 2.3f;
+
+        // ── 标题 / 提示行 / 离开键 ────────────────────────────────
+
+        /// <summary>场景标题「强化卡牌」（与商店标题同一条水平带）。</summary>
+        public const float UpgradeTitleCenterY = 1002f;
+
+        public const float UpgradeTitleWidth = 460f;
+
+        public const float UpgradeTitleHeight = 76f;
+
+        public const float FontSizeUpgradeTitle = 52f;
+
+        /// <summary>
+        /// 台面下方的引导文字（「点击台面 …」）。
+        ///
+        /// <para>没有它，玩家进场景只看到一张石台，不知道要点哪儿 ——
+        /// 弹窗一打开这行就藏起来（见 <c>UpgradeView.SetHintVisible</c>）。</para>
+        /// </summary>
+        public const float UpgradeHintCenterY = 158f;
+
+        public const float UpgradeHintWidth = 1300f;
+
+        public const float UpgradeHintHeight = 56f;
+
+        public const float FontSizeUpgradeHint = 34f;
+
+        /// <summary>
+        /// 「离开」按钮（右下角）。
+        ///
+        /// <para>⚠ 本场景<b>没有背包键</b>，所以右边距用 <see cref="ShopBagButtonRight"/> 原值 64，
+        /// 而不是 <see cref="ShopLeaveRight"/>（那个是「给背包键让位」之后的 176）。</para>
+        /// </summary>
+        public const float UpgradeLeaveRight = 64f;
+
+        public const float UpgradeLeaveBottom = 44f;
+
+        // ── 强化动画（确认之后播的那一段，约 1.2 s）──────────────────
+        //
+        //  时间线：卡面轻缩（0.18）→ 光爆炸开（0.30）→ 卡面换成新卡（0.42）→
+        //  力量数字从旧值滚到新值（0.36）。四段总 1.26 s，用户口径「约 1.2 秒」。
+        //
+        //  ⚠ 四段是**串行**的（每一段结束才起下一段），所以常量直接相加就是总时长；
+        //    要调快调慢改这四个数即可，别在代码里另写一份时长。
+
+        /// <summary>动画里那张卡面的宽度（比手牌大一号，是演出）。</summary>
+        public const float UpgradeFxCardWidth = 320f;
+
+        /// <summary>动画卡面的中心 Y（画布坐标）—— 压在石台上方。</summary>
+        public const float UpgradeFxCardCenterY = 560f;
+
+        /// <summary>光爆图案的显示尺寸。</summary>
+        public const float UpgradeFxGlowSize = 820f;
+
+        /// <summary>力量数字行（在卡面下方）的中心 Y 与尺寸。</summary>
+        public const float UpgradeFxPowerCenterY = 248f;
+
+        public const float UpgradeFxPowerWidth = 760f;
+
+        public const float UpgradeFxPowerHeight = 170f;
+
+        public const float FontSizeUpgradeFxPower = 128f;
+
+        public const float UpgradeFxShrinkDuration = 0.18f;
+
+        public const float UpgradeFxBurstDuration = 0.30f;
+
+        public const float UpgradeFxRevealDuration = 0.42f;
+
+        public const float UpgradeFxCountDuration = 0.36f;
+
+        /// <summary>动画总时长（四段之和）。</summary>
+        public const float UpgradeFxTotalDuration = UpgradeFxShrinkDuration + UpgradeFxBurstDuration
+                                                   + UpgradeFxRevealDuration + UpgradeFxCountDuration;
     }
 }

@@ -190,6 +190,23 @@ namespace MagicBrawl.App
             }
         }
 
+        /// <summary>
+        /// 预判 <paramref name="seat"/> 下一次进攻会打出的牌的<b>元素</b>（2026-09-26）。
+        ///
+        /// <para><b>为什么只给元素、不给牌</b>：这是用户口径 —— 玩家点怪物只该看到
+        /// 「它接下来会用什么系」，看到牌名就等于把手牌全告诉他了。所以在
+        /// <see cref="BattleDriver"/> 这一层就把信息<b>收窄到最小</b>：
+        /// 只返回一个 <see cref="CardElement"/>，调用方拿不到 <see cref="CardInstance"/>，
+        /// 连想「顺手多显示一点」都做不到。</para>
+        ///
+        /// <para>预判口径见 <see cref="AttackForecast"/>：与 <c>SimpleAiAgent</c>
+        /// 的进攻策略同源。手牌为空返回 <see cref="CardElement.None"/>。</para>
+        /// </summary>
+        public CardElement ForecastAttackElement(int seat)
+        {
+            return _engine == null ? CardElement.None : AttackForecast.ElementOfNextAttack(_engine.State, seat);
+        }
+
         // ══════════════════════════════════════════════════════
         //  生命周期
         // ══════════════════════════════════════════════════════
@@ -549,8 +566,6 @@ namespace MagicBrawl.App
             return new BattleSetup(participants, ModeFactory == null ? new DuelMode() : ModeFactory(),
                 EffectRegistryFactory == null ? null : EffectRegistryFactory());
         }
-
-        public CardPool GetDefaultLocalCardPool() { return BaseDefinition(_localSeat).CreateCardPool(); }
 
         public ICardCatalog GetCardCatalog()
         {

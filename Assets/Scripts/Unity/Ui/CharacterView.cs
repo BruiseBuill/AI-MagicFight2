@@ -30,6 +30,21 @@ namespace MagicBrawl.App
         [SerializeField] private GameObject _handCountRoot;
         [SerializeField] private TMP_Text _handCountText;
 
+        /// <summary>
+        /// 虚弱徽标（2026-09-29，毒刺 <c>ao</c> 施加的减益）—— 摆在头顶徽标<b>正上方</b>，
+        /// 层数为 0 时整块隐藏。
+        ///
+        /// <para><b>为什么要显式画出来</b>：虚弱的全部表现是「它打出来的牌力量只有一半」，
+        /// 而这件事发生在引擎的结算内部。不画的话，玩家看到的是「对面明明 7 的牌只算 4」
+        /// —— 那是 bug 的样子。双方各一枚：玩家可能被削、也可能削到对手。</para>
+        ///
+        /// <para><b>为什么不并进头顶徽标那一行</b>：那一行是「生命 n/m」，
+        /// 每局都在的常驻读数；虚弱是条件出现的临时状态。挤在一起会让血量读数在中毒时变形。</para>
+        /// </summary>
+        [Header("虚弱")]
+        [SerializeField] private GameObject _weakenRoot;
+        [SerializeField] private TMP_Text _weakenText;
+
         [Tooltip("角色显示缩放（切图后的画布像素 → 界面像素）。")]
         [SerializeField] private float _scale = 1.3f;
 
@@ -168,6 +183,17 @@ namespace MagicBrawl.App
             }
         }
 
+        /// <summary>
+        /// 构建器接线用（与 <see cref="Configure"/> 分开：虚弱徽标是 2026-09-29 后加的一行，
+        /// 老的一条 <c>Configure</c> 调用点不必跟着改）。
+        /// </summary>
+        public void ConfigureWeaken(GameObject root, TMP_Text text)
+        {
+            _weakenRoot = root;
+            _weakenText = text;
+            SetWeaken(0);
+        }
+
         /// <summary>构建器接线用（与 <see cref="Configure"/> 分开：只有怪物这一侧有手牌数标签）。</summary>
         public void ConfigureHandCount(GameObject root, TMP_Text text)
         {
@@ -248,6 +274,28 @@ namespace MagicBrawl.App
             }
 
             SetBadge(hp + "/" + Mathf.Max(0, maxHp), c, icon);
+        }
+
+        /// <summary>
+        /// 虚弱层数（0 = 整块隐藏）—— 毒刺打出去之后，被削的那一方头顶会多一行「虚弱 ×N」。
+        ///
+        /// <para>调用点与 <see cref="SetHpBadge"/> 同一处（<c>BattleUi</c> 刷新血量读数时），
+        /// 但那一个每拍都刷，所以这里的 <c>SetActive</c> 必须先比一次 ——
+        /// 每拍都写一次 <c>activeSelf</c> 会让 UI 面板每帧重建批次。</para>
+        /// </summary>
+        public void SetWeaken(int stacks)
+        {
+            bool show = stacks > 0;
+
+            if (_weakenRoot != null && _weakenRoot.activeSelf != show)
+            {
+                _weakenRoot.SetActive(show);
+            }
+
+            if (_weakenText != null)
+            {
+                _weakenText.text = show ? "虚弱 ×" + stacks : string.Empty;
+            }
         }
 
         // ══════════════════════════════════════════════════════

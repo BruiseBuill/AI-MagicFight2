@@ -68,6 +68,13 @@ namespace MagicBrawl.App
         [Tooltip("Canvas/FloatTip（M8 构建器预建）。中间弹出 → 向上移动 → 迅速透明消失，不吃射线。")]
         [SerializeField] private FloatTipView _floatTip;
 
+        [Header("M41 点击怪物的「思考框」（元素预告）")]
+        [Tooltip("Canvas/ThinkBubble（构建器预建）。点怪物时弹出它下一张会打出的牌的元素符号，约 2 秒后渐隐。")]
+        [SerializeField] private ThinkBubbleView _thinkBubble;
+
+        [Tooltip("ArtLayer/Char_Monster_Click 上的点击接收器（M11 构建器建节点 + 挂组件；留空则运行时自动去捞）。")]
+        [SerializeField] private MonsterClickCatcher _monsterClick;
+
         [Header("飞牌动画层（手牌 ↔ 冷却区）")]
         [Tooltip("Canvas/CardTransitLayer（M8 构建器预建）。")]
         [SerializeField] private CardTransitView _transit;
@@ -110,6 +117,13 @@ namespace MagicBrawl.App
 
         // 种子由 BattleDriver 决定并公开（BattleDriver.LastSeed）——
         // 本类不再自己算种子：那会和 driver 的「随机 / 固定」开关形成第二套口径。
+
+        /// <summary>
+        /// 怪物点击面的节点名（M41）。<b>与 <c>BattleArtLayerBuilder</c> 里的字面量必须一致</b> ——
+        /// 它建节点时用这个名字，本类在<see cref="Awake"/>里按名字去捞那枚
+        /// <see cref="MonsterClickCatcher"/>（防漏配）。改名要两处一起改。
+        /// </summary>
+        private const string MonsterClickNodeName = "Char_Monster_Click";
 
         // ── 缓冲（避免每拍分配）──────────────────────────────
         private readonly List<CardSnapshot> _handBuf = new List<CardSnapshot>();
@@ -188,6 +202,19 @@ namespace MagicBrawl.App
 
         /// <summary>准备标记的显示数据（给 <see cref="PreparedAuraView"/> 用）。</summary>
         private readonly List<AuraIconData> _preparedIcons = new List<AuraIconData>();
+
+        /// <summary>
+        /// 「准备了、但最终不消耗、按取消处理」那几枚光环的**复用缓冲**（2026-09-30）。
+        ///
+        /// <para>三个一起用，见 <see cref="RefundUnusedAuras"/>：
+        /// <c>_refundAuraBuf</c> = 按提交顺序排好的光环选项；
+        /// <c>_refundKeyIndexBuf</c> = 它们各自在 <see cref="_preparedKeys"/> 里的下标；
+        /// <c>_refundOrderBuf</c> = 「该退回」的那些在 <c>_refundAuraBuf</c> 里的下标 ——
+        /// 由 <c>AuraResolver.CollectRefunded</c> 填，与引擎结算用的是同一个函数。</para>
+        /// </summary>
+        private readonly List<Option> _refundAuraBuf = new List<Option>();
+        private readonly List<int> _refundKeyIndexBuf = new List<int>();
+        private readonly List<int> _refundOrderBuf = new List<int>();
 
         private bool _pendingValid;
 
@@ -361,6 +388,19 @@ namespace MagicBrawl.App
             {
                 _monsterHandHold.Pressed += OnMonsterHandPressed;
                 _monsterHandHold.Released += OnMonsterHandReleased;
+            }
+
+            // M41：点怪物模型 → 弹「思考框」告诉玩家它下一张会打什么系。
+            // 点击面是 ArtLayer/Char_Monster_Click（BattleArtLayerBuilder 建节点），
+            // 组件挂在那个节点自己身上（谁建节点谁挂组件 —— 见 M28 那条账）；
+            // 这里没接上就去捞一把，省得漏配后点了没反应。
+            if (_monsterClick == null)
+            {
+                _monsterClick = FindMonsterClickCatcher();
+            }
+            if (_monsterClick != null)
+            {
+                _monsterClick.Owner = this;
             }
 
             // M15：光环图标的手势 —— 拖动期间点亮判定区落区，松手时判落点
@@ -550,6 +590,12 @@ namespace MagicBrawl.App
             if (_floatTip != null)
             {
                 _floatTip.Hide();
+            }
+
+            // M41：上一局可能正好停在思考框弹着的那一刻 —— 新一局必须立刻干净。
+            if (_thinkBubble != null)
+            {
+                _thinkBubble.Hide();
             }
 
             // M25：上一局没收干净的查看浮层。正常路径上它自己会淡出（1.4 s 内），
@@ -1166,6 +1212,79 @@ namespace MagicBrawl.App
             }
         }
 
+        // ══════════════════════════════════════════════════════
+        //  M41 点怪物 → 思考框（元素预告）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 捞出怪物点击面上的 <see cref="MonsterClickCatcher"/>（M41 防漏配兜底）。
+        ///
+        /// <para><b>为什么从怪物的父节点找</b>：点击面 <c>Char_Monster_Click</c> 与怪物
+        /// <c>Char_Monster</c> 都是 <c>ArtLayer</c> 的<b>直接子节点</b>
+        /// （见 <c>BattleArtLayerBuilder.RunAll</c>）—— 所以「怪物的父节点」就是 ArtLayer，
+        /// <see cref="Transform.Find"/> 一次就命中，不用递归全树。
+        /// 怪物自己没绑上时退回「本组件所在的 Canvas 根」，两种路径都只是找一层。</para>
+        ///
+        /// <para>返回 null 是合法情况（老场景没重跑 M11）—— 调用方由
+        /// <see cref="Awake"/> 静默跳过，点怪物就是没提示，不影响出牌。</para>
+        /// </summary>
+        private MonsterClickCatcher FindMonsterClickCatcher()
+        {
+            Transform host = _monster != null ? _monster.transform.parent : null;
+            if (host == null)
+            {
+                host = transform;
+            }
+
+            Transform face = host.Find(MonsterClickNodeName);
+            return face == null ? null : face.GetComponent<MonsterClickCatcher>();
+        }
+
+        /// <summary>
+        /// 玩家点了怪物模型（由 <see cref="MonsterClickCatcher"/> 转发）：弹一个「思考框」，
+        /// 里面是它<b>下一次进攻会打出的那张牌的元素符号</b>，约两秒后渐隐（2026-09-26 用户口径）。
+        ///
+        /// <para><b>只给元素、不给牌</b>：口径是「不需要显示出这是哪一张，只需要显示出这张牌
+        /// 对应的元素的符号」。这条约束在 <see cref="BattleDriver.ForecastAttackElement"/>
+        /// 的返回类型上就已经收死了 —— 这里拿到的是一个 <see cref="CardElement"/>，
+        /// 想多显示也拿不到牌名。</para>
+        ///
+        /// <para><b>预判口径</b>由 <c>AttackForecast</c> 负责（与 <c>SimpleAiAgent</c> 同源），
+        /// 本类不做任何规则判断（铁律 3）。以下几种情况<b>静默不出提示</b>：</para>
+        /// <list type="bullet">
+        /// <item>对局还没开始 / 已经结束（<see cref="_driver"/> 为空或引擎已收场）；</item>
+        /// <item>还在发牌台选替换牌的那几拍（<b>那时候「下一次进攻」根本无从谈起</b>，
+        ///       而且发牌台的面板正占着画面中央右侧，弹出来会和它挤在一起）；</item>
+        /// <item>怪物手上没牌（元素为 <see cref="CardElement.None"/>）；</item>
+        /// <item>该元素缺图 —— 宁可不出，也不弹一个空框或错的符号。</item>
+        /// </list>
+        ///
+        /// <para><b>不阻塞驱动</b>：这是一个纯展示的回话（跟 M28 按住看手牌同一性质），
+        /// 不能占住 <c>_pendingHold</c>，否则玩家点一下怪物就出不了牌了。</para>
+        /// </summary>
+        public void NotifyMonsterClicked()
+        {
+            if (_thinkBubble == null || _driver == null)
+            {
+                return;
+            }
+
+            // 发牌台还开着（对局没真正开始）→ 这一拍不存在「下一次进攻」，不出提示。
+            if (_deal != null && _deal.IsOpen)
+            {
+                return;
+            }
+
+            // 结算浮层已经铺上来时不再弹 —— 那时候这一拍已经不属于对局了。
+            if (_resultRoot != null && _resultRoot.activeSelf)
+            {
+                return;
+            }
+
+            CardElement element = _driver.ForecastAttackElement(OpponentSeat);
+            _thinkBubble.Show(element);
+        }
+
         /// <summary>
         /// 把一张怪物手牌记为「玩家已知」（幂等）。
         /// 只登记 uid，不存引用 —— 牌回手、换牌都不影响。
@@ -1587,6 +1706,13 @@ namespace MagicBrawl.App
                 _monsterHandHold.ResetState();
             }
 
+            // M41：终局时把思考框收掉 —— 它不吃射线、不会挡住结算面板，
+            // 但让一个「预告下一张牌」的泡停在终局画面上是纯噪音。
+            if (_thinkBubble != null)
+            {
+                _thinkBubble.Hide();
+            }
+
             ClearDecision();
         }
 
@@ -1891,6 +2017,10 @@ namespace MagicBrawl.App
             if (_hero != null)
             {
                 _hero.SetHpBadge(me.Hp, me.MaxHp, heart);
+
+                // 虚弱（2026-09-29）：跟着血量读数一起刷。它会自己比一次 activeSelf，
+                // 所以每拍调用不会造成无谓的 UI 重建。
+                _hero.SetWeaken(me.WeakenStacks);
             }
 
             // 对方血量必须看得见 —— 否则玩家无法判断「还有几刀能收」。参考图里
@@ -1898,6 +2028,7 @@ namespace MagicBrawl.App
             if (_monster != null)
             {
                 _monster.SetHpBadge(foe.Hp, foe.MaxHp, heart);
+                _monster.SetWeaken(foe.WeakenStacks);
                 // M20：怪物模型右下角的手牌数（对方手牌数本来就是公开信息，
                 // 玩家侧不建这个节点 —— 手牌就在屏幕上摆着）
                 _monster.SetHandCount(foe.HandCount, true);
@@ -2024,6 +2155,22 @@ namespace MagicBrawl.App
 
         private void ClearDecision()
         {
+            ClearDecision(false);
+        }
+
+        /// <summary>
+        /// 结束本拍（<paramref name="keepReturning"/> = <c>true</c> 时不打断「正在飞回默认位」
+        /// 的那几枚标记）。
+        ///
+        /// <para><b>为什么需要这个开关</b>：出牌那一刻刚被退回的光环（见
+        /// <see cref="RefundUnusedAuras"/>）已经在飞了，而本方法原来的收场是
+        /// <c>_preparedBar.Clear()</c> → <c>AbandonReturns()</c> —— 一跑就把那段飞行掐掉，
+        /// 图标当场落回默认位，用户要的「归位动画」等于没播。所以那条路上传 <c>true</c>：
+        /// 只收掉还没起飞的标记，飞行段与 <see cref="_returningKeys"/> 都留着，
+        /// 等它自己落地（<see cref="OnPreparedAuraReturnLanded"/>）再把图标放出来。</para>
+        /// </summary>
+        private void ClearDecision(bool keepReturning)
+        {
             _pendingValid = false;
 
             // 没有待决策时把类型打成一个不可能的值：拖拽落点那处只看 _pendingValid，
@@ -2044,7 +2191,13 @@ namespace MagicBrawl.App
             // ⚠ 先清这份再调 _preparedBar.Clear()：飞行段被放弃时会补发 ReturnLanded，
             //   handler 里那句 `_returningKeys.Remove` 正好返回 false 直接退出，
             //   不会在清场途中反过来刷新一遍界面。
-            _returningKeys.Clear();
+            // ⚠ 2026-09-30：`keepReturning` 时**不清** —— 那几枚是「出牌那一刻刚被退回、
+            //   正在往回飞」的（见 RefundUnusedAuras），它们要留在名单里让 HudBuff 继续隐着，
+            //   否则屏幕上会同时出现「图标已回原位」+「标记还在往回飞」两份。
+            if (!keepReturning)
+            {
+                _returningKeys.Clear();
+            }
             _zonePickMode = false;
             _zoneBySeat.Clear();
             _zoneBothOptions.Clear();
@@ -2083,7 +2236,16 @@ namespace MagicBrawl.App
             {
                 // 决策结束 → 手牌区左侧的准备标记全部收掉。真正的消耗与否由引擎决定
                 // （放弃防御时准备的力量光环不消耗，那枚指示物会照旧出现在 HudBuff 里）。
-                _preparedBar.Clear();
+                // ⚠ 2026-09-30：`keepReturning` 时只收「还没起飞的」—— 正在飞回默认位的那几枚
+                //   已经不在标记行的 _shown 里了，Clear 会顺手把它们掐掉（AbandonReturns）。
+                if (keepReturning)
+                {
+                    _preparedBar.ClearMarkers();
+                }
+                else
+                {
+                    _preparedBar.Clear();
+                }
             }
 
             if (_cooldown != null)
@@ -2810,12 +2972,116 @@ namespace MagicBrawl.App
                 return;
             }
 
+            // 出牌那一刻先处理「准备了、但引擎最终不会消耗」的那几枚光环（2026-09-30 用户口径）：
+            // 它们按「玩家最终取消了使用」处理 —— 那枚图标从准备位滑回默认位。
+            // ⚠ 两处顺序是硬要求：
+            //   ① 必须排在 PreparedAuraIndices() 之前 —— 它会把该退的键从 _preparedKeys 里摘掉，
+            //      摘掉之后才不会再把它们提交给引擎；
+            //   ② 必须排在 ClearDecision() 之前 —— 那时标记还在 _preparedBar 的 _shown 里，
+            //      才飞得起来（Clear 一跑就把它们收进池子了）。
+            bool returning = RefundUnusedAuras(option);
+
             // 出牌那一刻把「判定区里准备使用的光环」一并提交（2026-09-18）。
             // 其它决策的 _auraOptions 一定是空的，所以这里不需要按决策类型分叉。
             int[] auras = PreparedAuraIndices();
 
-            ClearDecision();
+            // 刚起飞的那几枚不能被 ClearDecision 当成「该被放弃的飞行段」收掉。
+            ClearDecision(returning);
             _driver.SubmitPlayerDecision(new[] { option.Index }, auras);
+        }
+
+        /// <summary>
+        /// 出牌那一刻，把「准备了、但引擎最终<b>不会消耗</b>」的那几枚光环按<b>取消使用</b>处理：
+        /// 让它们的标记从准备位<b>滑回默认位</b>（与「再拖一下取消」走同一条动画），
+        /// HudBuff 里那几枚原图标则一直隐到落地才显出来。
+        ///
+        /// <para><b>用户口径（2026-09-30）</b>：连击效果不可叠加 —— 已经准备了连击光环，
+        /// 又打出一张<b>卡面自带连击</b>的牌时，这枚光环纯属浪费，应当处理为「玩家最终取消了
+        /// 使用该光环」（在玩家打出牌之后，播放光环归原位的动画，即取消使用的动画）。
+        /// 同一条口径也覆盖沉重打击那一批（准备了光环、但那张牌的进攻力量不能增加，
+        /// 光环一个都不生效）—— 连击阈值那条原本就是「不生效也不消耗」，一并收进来。</para>
+        ///
+        /// <para><b>判据不在这里</b>：由 <c>AuraResolver.CollectRefunded</c> 一处给出，
+        /// 引擎结算（<c>ApplyPreparedAttackAuras</c>）调的是<b>同一个函数</b> ——
+        /// 两边各写一份迟早会分叉成「图标回到原位了、指示物却已经被消耗掉」（铁律 3 的落法：
+        /// 规则事实只在 Core 一处，界面只消费它）。</para>
+        ///
+        /// <para>本方法只做四件事：把该退的键从 <see cref="_preparedKeys"/> 里摘掉、
+        /// 记进 <see cref="_returningKeys"/>（HudBuff 那枚继续隐着）、请
+        /// <see cref="PreparedAuraView.FlyHome"/> 起航、重排剩下的标记。</para>
+        /// </summary>
+        /// <returns>是否真的有一枚起飞了 —— <c>ClearDecision</c> 要靠它决定「别把飞行段收掉」。</returns>
+        private bool RefundUnusedAuras(Option option)
+        {
+            if (_preparedBar == null || _preparedKeys.Count == 0 || option == null)
+            {
+                return false;
+            }
+
+            // 只有「真的打出去一张牌」才有得谈：
+            //  · 光环选项自己（AuraSource != null）永远不走 Pick（它的入口是 HudBuff 的图标），
+            //    真撞上也不能拿它当「打出的那张牌」；
+            //  · 放弃防御那种 Skip 选项没有 Card —— 那一条（引擎同样不消耗它）不在此列，
+            //    行为与改动前一致。
+            if (option.AuraSource != null || option.Card == null)
+            {
+                return false;
+            }
+
+            // ① 按提交顺序把准备的光环排出来（与 PreparedAuraIndices() 同序 —— 引擎就是按它结算的）
+            _refundAuraBuf.Clear();
+            _refundKeyIndexBuf.Clear();
+
+            for (int i = 0; i < _preparedKeys.Count; i++)
+            {
+                Option o;
+                if (!_auraOptions.TryGetValue(_preparedKeys[i], out o) || o == null)
+                {
+                    continue;
+                }
+
+                _refundAuraBuf.Add(o);
+                _refundKeyIndexBuf.Add(i);
+            }
+
+            // ② 哪些该退回 —— 与引擎同一处判据
+            AuraResolver.CollectRefunded(_refundAuraBuf, option.Card.Def, _refundOrderBuf);
+            if (_refundOrderBuf.Count == 0)
+            {
+                return false;
+            }
+
+            // ③ 从后往前摘：HomeSlotFor 是按「已经删掉它」的集合算格子的，
+            //    先摘靠后的，前面那些在 _preparedKeys 里的下标才不会错位。
+            bool flying = false;
+
+            for (int r = _refundOrderBuf.Count - 1; r >= 0; r--)
+            {
+                int keyIndex = _refundKeyIndexBuf[_refundOrderBuf[r]];
+                long key = _preparedKeys[keyIndex];
+                _preparedKeys.RemoveAt(keyIndex);
+
+                RectTransform home = HomeSlotFor(key);
+                if (home == null)
+                {
+                    continue;
+                }
+
+                _returningKeys.Add(key);
+
+                if (_preparedBar.FlyHome(key, home, UiLayout.AuraReturnSeconds))
+                {
+                    flying = true;
+                }
+                else
+                {
+                    // 找不到那枚标记（理论上不该发生）→ 退回「当场收回」，别把它永久隐着。
+                    _returningKeys.Remove(key);
+                }
+            }
+
+            RefreshPreparedMarkers();
+            return flying;
         }
 
         private void OnSettingsClicked()

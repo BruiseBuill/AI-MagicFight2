@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using MagicBrawl.Core;
 using TMPro;
 using UnityEngine;
@@ -190,13 +190,9 @@ namespace MagicBrawl.App
                 return;
             }
 
+            // 2026-09-30：只剩插画（成品整图整族已删），退化链只剩「插画 → 纯色」。
             CardArtLibrary lib = CardArtLibrary.Instance;
             Sprite sprite = lib == null ? null : lib.GetIllustration(cardId);
-
-            if (sprite == null && lib != null)
-            {
-                sprite = lib.GetArt(cardId);
-            }
 
             _art.sprite = sprite;
             _art.preserveAspect = false;

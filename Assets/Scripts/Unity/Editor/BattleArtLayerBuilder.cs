@@ -38,6 +38,19 @@ namespace MagicBrawl.App.EditorTools
         private const string BodyFontPath = "Assets/Art/Fonts/Black/Google-Regular.asset";
         private const string TitleFontPath = "Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
 
+        /// <summary>
+        /// 唯一那份组成式卡面 Prefab（铁律 9）。头顶出牌展示与手牌 / 冷却迷你卡共用它，
+        /// 差别只在 <c>CardView.SetFaceWidth</c> 给的卡宽 —— 2026-09-30 起
+        /// <c>PlayedCard_Hero</c> / <c>PlayedCard_Monster</c> 也接上它。
+        /// </summary>
+        private const string CardFacePrefabPath = "Assets/Prefabs/Ui/CardView_Hand.prefab";
+
+        /// <summary>
+        /// 怪物点击面的节点名（M41）。<b>与 <c>BattleUi.MonsterClickNodeName</c> 必须一致</b> ——
+        /// 那边在 <c>Awake</c> 里按这个名字去捞本节点上的 <see cref="MonsterClickCatcher"/>。改名两处一起改。
+        /// </summary>
+        private const string MonsterClickNodeName = "Char_Monster_Click";
+
         /// <summary>新层接管的旧节点：构建时收起。</summary>
         private static readonly string[] RetiredNodes =
         {
@@ -124,6 +137,7 @@ namespace MagicBrawl.App.EditorTools
 
             BuildCharacter(layer, "Char_Hero", art.Hero, UiLayout.CharHeroX, log);
             CharacterView monster = BuildCharacter(layer, "Char_Monster", art.Monster, UiLayout.CharMonsterX, log);
+            BuildMonsterClickFace(layer, log);
             TMP_Text orbNumber = BuildOrb(layer, art, body, log);
             RectTransform[] playerRows = BuildSlotColumn(layer, art, true, log);
             RectTransform[] enemyRows = BuildSlotColumn(layer, art, false, log);
@@ -266,8 +280,31 @@ namespace MagicBrawl.App.EditorTools
             TMP_Text badgeText = AddText(textGo, LoadFont(BodyFontPath),
                 UiLayout.FontSizeCharBadge, UiTheme.TextPrimary, TextAlignmentOptions.Center);
 
+            // 虚弱徽标（2026-09-29，毒刺 ao）：被削的那一方头顶再叠一行「虚弱 ×N」——
+            // 否则「对面 7 的牌只算 4」在玩家眼里就是个 bug。
+            // 与头顶徽标同因**不挂在角色节点下**（角色 pivot 随动作帧切，挂进去会跟着抖），
+            // 位置直接由地平线算，往头顶徽标上方再叠一行（见 UiLayout.CharWeakenGroundOffset）。
+            // 节点名带 Badge_ 前缀：FindDeep 是按名字捞的，光叫 "Weaken" 太容易与别处重名。
+            GameObject weaken = NewUi("Badge_Weaken", layer);
+            Box(Rt(weaken), Vector2.zero, new Vector2(0.5f, 0.5f),
+                new Vector2(groundX, UiLayout.CharGroundY + UiLayout.CharWeakenGroundOffset),
+                new Vector2(UiLayout.CharWeakenWidth, UiLayout.CharWeakenHeight));
+
+            GameObject weakenBg = NewUi("Bg", Rt(weaken));
+            Stretch(Rt(weakenBg), 0f, 0f, 0f, 0f);
+            var weakenBgImg = weakenBg.AddComponent<Image>();
+            weakenBgImg.color = UiTheme.PromptBackdrop;
+            weakenBgImg.raycastTarget = false;
+
+            GameObject weakenTextGo = NewUi("Text", Rt(weaken));
+            Stretch(Rt(weakenTextGo), 4f, 0f, 4f, 0f);
+            TMP_Text weakenText = AddText(weakenTextGo, LoadFont(BodyFontPath),
+                UiLayout.FontSizeWeaken, UiTheme.WarnRed, TextAlignmentOptions.Center);
+            weaken.SetActive(false);
+
             var view = go.AddComponent<CharacterView>();
             view.Configure(img, anim, Rt(badge), badgeText, iconImg);
+            view.ConfigureWeaken(weaken, weakenText);
             view.SetScale(UiLayout.CharScale);
             view.SetFps(UiLayout.CharIdleFps, UiLayout.CharAttackFps);
             view.Bind(set);
@@ -275,6 +312,123 @@ namespace MagicBrawl.App.EditorTools
             log.AppendLine("  " + name + " 待机 " + (idle != null ? idle.FrameCount : 0)
                            + " 帧 · 画布 " + size.x + "×" + size.y);
             return view;
+        }
+
+        /// <summary>
+        /// <summary>
+        /// 敌方冷却列的**隐形拖拽面**：把「怪物模型」那一块从滚动视口里挖掉（2026-09-27）。
+        ///
+        /// <para><b>为什么非挖不可</b>：用户口径「怪物的意图，当前的有效点击判定区域太小，
+        /// 应当覆盖整个怪物模型」。查下来根因不是 <c>Char_Monster_Click</c> 的尺寸，
+        /// 而是**敌方的滚动视口把它盖住了**：视口 674×621（x 1226…1900 / y 344…965，
+        /// 宽度账见 <see cref="UiLayout.SlotColumnBudgetWidth"/>），而怪物模型只到 x ≈1450 ——
+        /// 视口那片「空的、但照样吃射线」的区域正好压在模型右半边。
+        /// 视口比 <c>Char_Monster_Click</c> 后建（兄弟序更靠后 = 画在上、先应答射线），
+        /// 而它没有任何点击处理器 → <b>点模型右半边什么都不会发生，且零报错</b>。
+        /// 实测：模型 x 1226…1450 那一段是死的（原有 320 宽点击面下只剩 x 1086…1226 能点）。</para>
+        ///
+        /// <para><b>为什么不是「把模型点击面挪到视口之上」</b>：那样整棵冷却列子树都落到它下面 ——
+        /// 迷你卡与槽位徽标（点选加速 / 减速目标、选区域档全靠它们）会一起点不动，比现在更糟。</para>
+        ///
+        /// <para><b>为什么不是「把视口缩窄到不再压住模型」</b>：视口宽 =
+        /// 槽宽 + 缝 + 卡宽 + 3×步进 = 674，一行放满 4 张迷你卡时最左那一张会伸到 x ≈1312；
+        /// 缩窄就等于把那几张卡裁掉（M11 时期为这件事反复调过）。</para>
+        ///
+        /// <para><b>做法</b>：视口自己的 <c>Image.raycastTarget</c> 关掉（见
+        /// <c>BuildSlotColumn</c>），另外补两块**只覆盖模型以外**的透明拖拽面。
+        /// 它们建在内容列与滚动条**之前** → 兄弟序更靠前 = 画在下面，
+        /// 所以只在「空地」上生效，迷你卡 / 槽位徽标 / 滚动条照旧优先。
+        /// 两块合起来 = 视口矩形减去「模型点击面」那个矩形（下方那 46 px 的窄条略去不补）。</para>
+        ///
+        /// <para>拖动仍然滑得动：两块都是视口的子节点，
+        /// EventSystem 找 <c>IDragHandler</c> 是「从命中节点往上找」→ 照样落到视口上的
+        /// <c>ScrollRect</c>（与 <c>CardInteractor.ForwardDragToScroll</c> 同一个道理）。</para>
+        /// </summary>
+        private static void BuildCoolingDragSurface(Transform viewport,
+            float viewLeft, float viewTop, float viewRight, float viewBottom, StringBuilder log)
+        {
+            // 怪物点击面（画布绝对坐标）—— 与 UiLayout 的 M41 段同源。
+            float faceRight = UiLayout.CharMonsterX + UiLayout.ThinkBubbleClickWidth * 0.5f;
+            float faceTop = UiLayout.CharGroundY + UiLayout.ThinkBubbleClickCenterY
+                + UiLayout.ThinkBubbleClickHeight * 0.5f;
+
+            // 视口的 anchor / pivot 是 (1,1)（右上角），所以下面每个矩形都用
+            // 「自己的右上角离视口右上角多远」表达：dx 向左为正、dy 向下为正。
+            float rightW = viewRight - faceRight;      // 模型右缘 → 视口右缘
+            float fullH = viewTop - viewBottom;
+
+            // 两块的高度都是「画布 y 上量的高度」，恒为正数。
+            string[] names = new string[] { "DragSurface_Right", "DragSurface_Top" };
+            float[] widths = new float[] { rightW, faceRight - viewLeft };
+            float[] heights = new float[] { fullH, viewTop - faceTop };
+            float[] offsets = new float[] { 0f, -rightW };
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (widths[i] <= 0f || heights[i] <= 0f)
+                {
+                    continue;   // 退化成空矩形（例如模型恰好贴在视口边上）→ 不建
+                }
+
+                GameObject go = NewUi(names[i], viewport);
+                Box(Rt(go), new Vector2(1f, 1f), new Vector2(1f, 1f),
+                    new Vector2(offsets[i], 0f), new Vector2(widths[i], heights[i]));
+                var img = go.AddComponent<Image>();
+                img.color = new Color(0f, 0f, 0f, 0f);   // 全透明：只吃射线，不画东西
+                img.raycastTarget = true;
+                log.AppendLine("  " + names[i] + " 拖拽面 "
+                               + widths[i].ToString("0.#") + "×" + heights[i].ToString("0.#"));
+            }
+        }
+
+        /// <summary>
+        /// 怪物的<b>点击面</b>（M41，2026-09-26）：一块透明、可吃射线的矩形，盖在怪物模型上，
+        /// 玩家点它 → 弹「思考框」预告它下一张进攻牌的元素。
+        ///
+        /// <para><b>为什么不直接把 <see cref="MonsterClickCatcher"/> 挂到角色本体上</b>：
+        /// 角色节点的 <c>sizeDelta</c> 每帧随动作帧重设（<see cref="SpriteAnimator"/>）、
+        /// <c>pivot</c> 也在切 —— 于是「能点到的范围」会随动作在屏幕上游走，
+        /// 出现「有的动作点得到、有的动作点不到」的漂移。拿一块固定尺寸的透明面钉在怪物的
+        /// 站立位置上，命中范围就只跟这一块有关。</para>
+        ///
+        /// <para><b>尺寸 / 位置</b>：以 <see cref="UiLayout.CharMonsterX"/> /
+        /// <see cref="UiLayout.CharGroundY"/>（脚底）为基准，取
+        /// <see cref="UiLayout.ThinkBubbleClickWidth"/> × <see cref="UiLayout.ThinkBubbleClickHeight"/>，
+        /// 中心抬到模型躯干高度（168 = 模型高 335 的一半）。</para>
+        ///
+        /// <para><b>⚠ 2026-09-27 撑大到「盖住整个模型」</b>（用户口径「当前的有效点击判定区域太小，
+        /// 应当覆盖整个怪物模型」）：原来 320×340、故意比模型小一圈 —— 实测有效区只剩
+        /// x 1086…1226 那一条（右边被敌方冷却列的滚动视口吃掉，见
+        /// <see cref="BuildCoolingDragSurface"/>）。现在按模型包围盒给到 420×360。</para>
+        ///
+        /// <para><b>组件由本方法挂</b>（同 <c>HandCount_Monster</c> 那条账）：本构建器会
+        /// <c>DestroyImmediate</c> 整棵 ArtLayer 推倒重建，组件必须与节点同生命周期，
+        /// 才不会先被 M8 挂上、再被 M11 顺手抹掉。<c>BattleUi</c> 里的兜底查找只是防漏配。</para>
+        /// </summary>
+        private static void BuildMonsterClickFace(RectTransform layer, StringBuilder log)
+        {
+            GameObject go = NewUi(MonsterClickNodeName, layer);
+            // ⚠ anchor 必须是 Vector2.zero（底边口径），不是 (0.5,0.5)！
+            //   本层的局部原点在左下角，UiLayout.CharMonsterX / CharGroundY 这批
+            //   Char* 常量全是**底边口径**。第一版把 anchor 写成 (0.5,0.5) 却填了底边口径
+            //   的值，等于在画面中心之外又加了一次半屏偏移 —— 点击面整个跑到屏幕外
+            //   （世界坐标 x 3070…3550 / y 1421…1931，画布只有 1920×1080），
+            //   表现是「点怪物毫无反应」（2026-09-26 踩，与 BuildHandCount 的 anchor 口径对齐）。
+            Box(Rt(go), Vector2.zero, new Vector2(0.5f, 0.5f),
+                new Vector2(UiLayout.CharMonsterX, UiLayout.CharGroundY + UiLayout.ThinkBubbleClickCenterY),
+                new Vector2(UiLayout.ThinkBubbleClickWidth, UiLayout.ThinkBubbleClickHeight));
+
+            // 透明底图只为了「吃射线」—— 用户红线：颜色不写代码，所以这里是全透明
+            //（alpha=0 的 Image 依然参与 GraphicRaycaster 命中判定，raycastTarget 默认开着）。
+            var img = go.AddComponent<Image>();
+            img.color = new Color(0f, 0f, 0f, 0f);
+            img.raycastTarget = true;
+
+            go.AddComponent<MonsterClickCatcher>();
+
+            log.AppendLine("  " + MonsterClickNodeName + " 点击面 "
+                           + UiLayout.ThinkBubbleClickWidth + "×" + UiLayout.ThinkBubbleClickHeight
+                           + " @ y=" + (UiLayout.CharGroundY + UiLayout.ThinkBubbleClickCenterY).ToString("0.#"));
         }
 
         /// <summary>
@@ -378,7 +532,12 @@ namespace MagicBrawl.App.EditorTools
 
             var viewImg = viewGo.AddComponent<Image>();
             viewImg.color = new Color(0f, 0f, 0f, 0f);   // 只当滚动框 / 遮罩载体，本身不画东西
-            viewImg.raycastTarget = true;                // 要能接滚轮
+            // ⚠ 2026-09-27：视口自己**只给玩家侧**留射线。
+            //   敌方视口有 674×621（x 1226…1900 / y 344…965），而怪物模型只到 x ≈1450 ——
+            //   那片「空的、但照样吃射线」的区域正好压在模型右半边，把「点怪物看意图」
+            //   整片吞掉（视口比 Char_Monster_Click 后建 → 兄弟序更靠后 → 先应答射线）。
+            //   敌方那侧的拖拽面改由 BuildCoolingDragSurface 显式挖出「模型以外」的两块。
+            viewImg.raycastTarget = playerSide;
             viewGo.AddComponent<RectMask2D>();
             var scroll = viewGo.AddComponent<ScrollRect>();
             scroll.horizontal = false;
@@ -386,6 +545,17 @@ namespace MagicBrawl.App.EditorTools
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 36f;
             scroll.inertia = true;
+
+            // ⚠ 敌方：补两块隐形拖拽面（必须在建内容列 / 滚动条**之前** ——
+            //   同层绘制顺序 = 兄弟序，靠前 = 在下面，才不会挡住迷你卡与槽位徽标）。
+            if (!playerSide)
+            {
+                float vpRight = UiLayout.ReferenceWidth - UiLayout.SlotRight;
+                float vpTop = UiLayout.ReferenceHeight - top;
+                BuildCoolingDragSurface(viewGo.transform,
+                    vpRight - width, vpTop,
+                    vpRight, vpTop - (UiLayout.ReferenceHeight - UiLayout.HandAreaHeight - top), log);
+            }
 
             GameObject colGo = NewUi(colName, viewGo.transform);
             RectTransform col = Rt(colGo);
@@ -850,7 +1020,17 @@ namespace MagicBrawl.App.EditorTools
 
             var group = panelGo.AddComponent<CanvasGroup>();
             var view = panelGo.AddComponent<PlayedCardView>();
-            view.Configure(panelGo, panel, faces, group,
+
+            // 卡位里画的是**与手牌同一份**组成式卡面（2026-09-30）—— 只差一个缩放。
+            // 取不到就留空，PlayedCardView 会退回「插画铺满」那套旧画法，不会白屏。
+            CardView cardFace = AssetDatabase.LoadAssetAtPath<CardView>(CardFacePrefabPath);
+            if (cardFace == null)
+            {
+                log.AppendLine("  ⚠ 找不到卡面 Prefab（" + CardFacePrefabPath
+                               + "）—— 头顶出牌展示将退回「插画铺满」");
+            }
+
+            view.Configure(panelGo, panel, faces, group, cardFace,
                 UiLayout.PlayedCardDefenseHold, UiLayout.PlayedCardFade);
 
             log.AppendLine("  " + nodeName + " 出牌展示 OK（锚点 x=" + groundX + " y=" + y + "，双卡位；"

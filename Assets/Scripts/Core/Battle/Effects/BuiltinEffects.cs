@@ -40,6 +40,18 @@ namespace MagicBrawl.Core
             Automatic(registry, EffectOp.HealMinusMax, EffectStage.Power, (c, e) => {
                 c.Heal(c.Seat, e.Arg("amount")); c.CutMaxHp(c.Seat, e.Arg("secondary"));
             });
+            // 毒刺（ao）：给被攻击的目标挂虚弱。① 力量阶段的纯写入 —— 无决策、无可放弃。
+            // 目标范围走卡表里的 EffectTargetScope.Opponent（不能是 Participants，那样会削到自己）。
+            Automatic(registry, EffectOp.Weaken, EffectStage.Power, (c, e) => {
+                int amount = e.Arg("amount");
+                if (amount <= 0) return;
+                foreach (int seat in c.TargetSeats(e))
+                {
+                    PlayerState target = c.State.Of(seat);
+                    target.WeakenStacks += amount;
+                    c.Emit(new WeakenAppliedEvent { Seat = seat, Amount = amount, Stacks = target.WeakenStacks });
+                }
+            });
             Automatic(registry, EffectOp.CoolMinusIfUnblocked, EffectStage.AfterCooldown, (c, e) => {
                 if (!c.DefenseSucceeded) for (int i = 0; i < e.Arg("amount") && c.Source.IsCooling; i++) c.ChangeCooldown(c.Source, true);
             });
@@ -66,15 +78,24 @@ namespace MagicBrawl.Core
         private static IEnumerable<EffectChoice> Apply(EffectContext c, EffectDef e, Action<EffectContext, EffectDef> action)
         { action(c, e); yield break; }
 
+        /// <param name="optional">
+        /// 可放弃：会额外发一条「跳过…」选项（加速 / 减速这类「不做也行」的效果）。
+        /// </param>
+        /// <param name="allowEmpty">
+        /// 可以一张都不选、直接确认，但<b>不发「跳过」选项</b>。磁暴 / 充能的选牌弹窗要的就是这一种：
+        /// 界面上「可以空着确认」只由 <c>MinSelect = 0</c> 表达（见 <c>HandPickView.RefreshConfirm</c>），
+        /// 再摆一条「跳过」反而多出一个语义重复的按钮（2026-09-27 用户口径）。
+        /// </param>
         private static DecisionRequest Request(EffectContext c, RequestKind kind, string title, List<Option> options,
-            bool optional = false, int maximum = 1, bool haste = false)
+            bool optional = false, int maximum = 1, bool haste = false, bool allowEmpty = false)
         {
             if (options.Count == 0) return null;
             if (optional) options.Add(new Option { Kind = OptionKind.Skip, Label = "跳过" + title });
             for (int i = 0; i < options.Count; i++) options[i].Index = i;
+            bool canLeaveEmpty = optional || allowEmpty;
             return new DecisionRequest { Seat = c.Seat, Kind = kind, Title = title, Prompt = title,
-                Options = options, MinSelect = optional ? 0 : 1, MaxSelect = maximum,
-                ContextNoSkip = !optional, ContextHaste = haste };
+                Options = options, MinSelect = canLeaveEmpty ? 0 : 1, MaxSelect = maximum,
+                ContextNoSkip = !canLeaveEmpty, ContextHaste = haste };
         }
         private static Option CardOption(CardInstance card)
         { return new Option { Kind = OptionKind.ChooseCard, Seat = card.OwnerSeat, Card = card, Label = card.Def.Name, Value = card.RemainingCooldown }; }
@@ -137,15 +158,30 @@ namespace MagicBrawl.Core
             Option pick = Pick(choice);
             if (pick != null) c.Refresh(pick.Card, reset);
         }
+        /// <summary>
+        /// 漩涡：把己方冷却区里的一张法术永久移出游戏，然后获得 <c>count</c> 次加速。
+        ///
+        /// <para><b>可以一张都不移出（2026-09-28 用户口径）</b>：卡面原文是「<b>可</b>将冷却区中的
+        /// 一张法术永久移出游戏，获得加速 ×3」——「可」就是可选。不移出 → 也拿不到加速
+        /// （下面 <c>pick == null</c> 那一行直接收摊，不会走到 <see cref="Cooldown"/>）。
+        /// 界面上这条由 <c>MinSelect = 0</c> 表达，<b>不发</b> Skip 选项
+        /// （口径与磁暴 / 充能一致：多一条「跳过」反而多一个语义重复的按钮）。</para>
+        ///
+        /// <para>⚠ M31（2026-09-22）曾按当时的用户口径做成「强制选一张」（<c>MinSelect = 1</c>），
+        /// 2026-09-28 按卡面字面意思改回来 —— <c>Tools/RuleSelfTest/RemoveFromGameScenario.cs</c>
+        /// 的断言与注释同步改成 0 / 1。</para>
+        /// </summary>
         private static IEnumerable<EffectChoice> Remove(EffectContext c, EffectDef e)
         {
             var choice = new EffectChoice(() => {
                 var options = new List<Option>();
                 foreach (CardInstance card in c.Owner.CoolingZone) options.Add(CardOption(card));
-                return Request(c, RequestKind.ChooseRemoveFromGame, "移出·获加速", options);
+                return Request(c, RequestKind.ChooseRemoveFromGame, "移出·获加速", options,
+                    allowEmpty: true);
             });
             yield return choice;
             Option pick = Pick(choice);
+            // 一张都没选（或移出失败）→ 这一拍到此为止：牌不移出、加速也不给。
             if (pick == null || !c.RemoveCard(pick.Card)) yield break;
             foreach (EffectChoice next in Cooldown(c, new EffectDef(c.Trigger, EffectOp.Haste, e.Arg("count")))) yield return next;
         }
@@ -156,7 +192,12 @@ namespace MagicBrawl.Core
             var choice = new EffectChoice(() => {
                 var options = new List<Option>();
                 foreach (CardInstance card in c.Owner.Hand) if (card != c.Source) options.Add(CardOption(card));
-                return Request(c, RequestKind.ChooseCoolHandCards, title, options, maximum: single ? 1 : options.Count);
+                // 磁暴 / 充能：一张都不选也是合法答案 —— 玩家可以直接点确认（2026-09-27 用户口径）。
+                // 电弧（CoolHandForCombo）是「冷却一张换一次连击」，必须恰好一张，所以不给 allowEmpty；
+                // 漩涡（RemoveFromGame）走的是完全独立的一条流程，2026-09-28 起它也给 allowEmpty
+                // —— 卡面写的是「<b>可</b>将……」（见 Remove 的注释）。
+                return Request(c, RequestKind.ChooseCoolHandCards, title, options,
+                    maximum: single ? 1 : options.Count, allowEmpty: !single);
             });
             yield return choice;
             int count = 0;
@@ -164,7 +205,15 @@ namespace MagicBrawl.Core
                 if (option.Card != null && c.Owner.Hand.Contains(option.Card) && c.CoolCard(option.Card)) count++;
             if (e.Op == EffectOp.CoolHandForAtk) c.AddAttackPower(count * e.Arg("amount"));
             else if (single) { if (count > 0) c.GrantCombo(); }
-            else foreach (EffectChoice next in Cooldown(c, new EffectDef(c.Trigger, EffectOp.Haste, count * e.Arg("amount")))) yield return next;
+            else
+            {
+                // 充能：选完手牌之后才谈得上「总的加速次数」——
+                //   = 每冷却一张的收益 × 选了几张
+                //   + 本牌那条 Haste 被吸收进来的次数（absorbedHaste，见 BattleEngine.EnqueueEffects）
+                // 算完再一次性把加速目标问完，而不是先问加速、再问选牌。
+                int total = count * e.Arg("amount") + e.Arg("absorbedHaste");
+                foreach (EffectChoice next in Cooldown(c, new EffectDef(c.Trigger, EffectOp.Haste, total))) yield return next;
+            }
         }
         private static IEnumerable<EffectChoice> Copy(EffectContext c, EffectDef e)
         {

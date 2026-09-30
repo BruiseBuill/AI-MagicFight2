@@ -87,7 +87,7 @@ namespace MagicBrawl.App.EditorTools
             TMP_Text error = Text("Status", pool.transform, "", 0, -338, 1450, 45, 24);
             Button back = Button("Back", pool.transform, "返回", -651, -411, 218, 66);
             Button all = Button("SelectAll", pool.transform, "全选", -370, -411, 218, 66);
-            Button reset = Button("ResetDefault", pool.transform, "恢复默认", -64, -411, 280, 66);
+            Button none = Button("SelectNone", pool.transform, "全不选", -64, -411, 280, 66);
             Button save = Button("Save", pool.transform, "保存并重开", 560, -411, 372, 76);
 
             GameObject scrollNode = Node("Cards", pool.transform);
@@ -146,7 +146,7 @@ namespace MagicBrawl.App.EditorTools
             Set(serialized, "_driver", driver); Set(serialized, "_menu", menu); Set(serialized, "_poolPanel", pool);
             Set(serialized, "_resume", resume); Set(serialized, "_restart", restart); Set(serialized, "_test", test);
             Set(serialized, "_back", back); Set(serialized, "_save", save); Set(serialized, "_selectAll", all);
-            Set(serialized, "_resetDefault", reset); Set(serialized, "_count", count); Set(serialized, "_error", error);
+            Set(serialized, "_selectNone", none); Set(serialized, "_count", count); Set(serialized, "_error", error);
             Set(serialized, "_scroll", scroll); Set(serialized, "_content", contentRect); Set(serialized, "_entryTemplate", template);
             serialized.ApplyModifiedPropertiesWithoutUndo();
             SetReference(ui, "_settings", view);

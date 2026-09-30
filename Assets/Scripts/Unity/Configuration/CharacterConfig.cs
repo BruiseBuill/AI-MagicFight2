@@ -16,6 +16,19 @@ namespace MagicBrawl.App
         [Min(1)] public int minimumCardCount = 8;
         public bool useAllCards = true;
         public string[] cardIds = new string[0];
+
+        /// <summary>
+        /// 这个角色用的<b>卡池资产</b>（2026-09-30 起；见 <see cref="CardPoolConfig"/>）。
+        ///
+        /// <para>填了就<b>以它为准</b>，下面的 <see cref="useAllCards"/> / <see cref="cardIds"/>
+        /// 不再生效 —— 旧的单字段写法保留是为了不破坏已经存过值的资产
+        /// （<c>Resources/Characters/DefaultPlayer.asset</c> 等），不是「两个来源都算」。</para>
+        ///
+        /// <para><b>⚠ 别两边各配一半</b>：那正是「卡池分离」之前三处各写一份清单的老问题。</para>
+        /// </summary>
+        [Tooltip("填了就以此卡池资产为准；留空才用下面的 useAllCards / cardIds。")]
+        public CardPoolConfig cardPool;
+
         public CharacterAbilityConfig[] abilities = new CharacterAbilityConfig[0];
 
         public CharacterDefinition CreateDefinition(ICardCatalog catalog = null)
@@ -26,8 +39,11 @@ namespace MagicBrawl.App
                 if (ability == null) throw new ArgumentException("角色能力配置不能为空。");
                 definitions.Add(ability.CreateDefinition());
             }
+            CardPool pool = cardPool != null
+                ? cardPool.CreatePool(catalog)
+                : (useAllCards ? CardPool.AllCards(catalog) : new CardPool(cardIds, catalog));
             return new CharacterDefinition(characterId, displayName, kind, initialHp, maxHp,
-                minimumCardCount, useAllCards ? CardPool.AllCards(catalog) : new CardPool(cardIds, catalog), definitions);
+                minimumCardCount, pool, definitions);
         }
     }
 

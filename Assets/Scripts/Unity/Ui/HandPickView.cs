@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using MagicBrawl.Core;
 using TMPro;
@@ -28,10 +28,17 @@ namespace MagicBrawl.App
     /// <item>玩家点候选牌 → 那张牌<b>飞进卡框</b>（<see cref="UiLayout.HandPickFlySeconds"/>）。</item>
     /// <item>点卡框里的牌 = <b>取消选择</b>（逐张退回）。</item>
     /// <item>可选多张的（磁暴 / 充能）：多张都进框，<b>框与面板按张数横向变宽</b>。</item>
-    /// <item>点确认 = 提交；<b>一张没选也能确认</b>（= 什么都没选）。</item>
-    /// <item>必须选一张的（电弧 <c>MinSelect = 1</c>、漩涡 <c>MinSelect = MaxSelect = 1</c>）：
+    /// <item>点确认 = 提交；<b>一张没选也能确认</b>（= 什么都没选）。
+    /// 这条是引擎给的（磁暴 / 充能的 <c>MinSelect</c> 在 2026-09-27 从 1 改成 0、
+    /// 漩涡在 2026-09-28 从 1 改成 0，见 <c>BuiltinEffects.CoolHand</c> / <c>Remove</c>）
+    /// —— 界面不自己判断，只读那个数字。</item>
+    /// <item>必须选一张的（电弧 <c>MinSelect = MaxSelect = 1</c>）：
     /// <b>确认键在放牌之前不可用</b>，放入一张后可用，且<b>不能再放第二张</b>。</item>
     /// </list>
+    ///
+    /// <para><b>2026-09-27 删掉了标题下方那条「已选 N / M」计数</b>（用户口径：
+    /// 「标题底下会有一个当前选择牌数和当前手牌总数的数字显示，不需要显示这个」）。
+    /// 选了几张本来就看得见 —— 牌摆在中间卡框里、面板还跟着变宽。</para>
     ///
     /// <para><b>不自己判断规则</b>（铁律 3）：能选哪几张、最多几张、能不能空着确认，
     /// 全部读 <c>DecisionSnapshot.Options</c> / <c>MinSelect</c> / <c>MaxSelect</c>。
@@ -48,11 +55,13 @@ namespace MagicBrawl.App
         [SerializeField] private RectTransform _panel;
         [SerializeField] private Image _panelImage;
 
-        [Tooltip("标题（「磁暴」/「充能」/「电弧」，三张牌文案不同）。")]
+        [Tooltip("标题（「冷却·加力量」这类效果名，由引擎按当前生效的效果给）。")]
         [SerializeField] private TMP_Text _title;
 
-        [Tooltip("副标题：这一拍要做什么的一句话。")]
-        [SerializeField] private TMP_Text _subTitle;
+        // ⚠ 2026-09-27：这里原先有一个 `_subTitle`（标题正下方那条「已选 N / M」的计数）。
+        //   用户口径「标题底下会有一个当前选择牌数和当前手牌总数的数字显示，不需要显示这个」
+        //   → 字段与刷它的两句一起删掉，节点也由构建器那侧移除。
+        //   选了几张一眼就看得见（牌摆在中间卡框里、面板还会跟着变宽），不需要再报一遍数。
 
         [Header("卡框区")]
         [Tooltip("装已选牌的一排（卡框 + 覆盖装饰的躯干条都在这一层里）。")]
@@ -635,11 +644,6 @@ namespace MagicBrawl.App
                 _confirmLabel.color = ok ? UiTheme.TextPrimary : UiTheme.HandPickConfirmTextOff;
             }
 
-            if (_subTitle != null)
-            {
-                _subTitle.text = _selected.Count + " / " + Mathf.Max(1, _maxSelect);
-                _subTitle.color = _selected.Count > 0 ? UiTheme.SelectionGlow : UiTheme.TextSecondary;
-            }
         }
 
         private void SetTitle(string title, string prompt)
@@ -651,14 +655,6 @@ namespace MagicBrawl.App
                 _title.text = string.IsNullOrEmpty(title)
                     ? (_zone == CardZone.Cooling ? "选择冷却区法术" : "选择手牌")
                     : title;
-            }
-
-            // 顶部提示条会把引擎的 Prompt 说一遍，这里只说「选了几张 / 最多几张」，
-            // 不重复那句话（与 TargetPicker 的既有做法一致）。
-            if (_subTitle != null)
-            {
-                _subTitle.text = "0 / " + Mathf.Max(1, _maxSelect);
-                _subTitle.color = UiTheme.TextSecondary;
             }
         }
 
@@ -730,12 +726,8 @@ namespace MagicBrawl.App
             CardArtLibrary lib = CardArtLibrary.Instance;
             if (lib != null && card.Def != null)
             {
-                Sprite art = lib.GetArt(card.Def);
-                if (art == null)
-                {
-                    art = lib.GetIllustration(card.Def);
-                }
-
+                // 2026-09-30：卡面只剩插画这一份（成品整图整族已删）。
+                Sprite art = lib.GetIllustration(card.Def);
                 if (art != null)
                 {
                     return art;

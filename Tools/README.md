@@ -18,6 +18,7 @@ dotnet run --project Tools/RuleSelfTest -- 100 20261700
 |---|---|---|
 | `Repo/` | 文档链接、目录约定、旧路径、Python 语法检查 | 终端；可用 `--json` 指定报告 |
 | `art-audit/` | 资源引用检查、切图、核对图 | `Assets/Art/`、`Captures/art-review/`、`Artifacts/work/art/` |
+| `ImageGeneration/` | LikeAI 文生图调用器；只从项目外 key 文件读取凭据 | 指定的 PNG / JPEG / WebP 输出 |
 | `font-audit/` | 字体审计、卡图清单与核对图 | `Artifacts/audits/font/`、`Captures/art-review/` |
 | `RuleSelfTest/` | 链接 Core 的规则与多局自测 | 终端输出 |
 | `ArchitectureSmoke/` | 独立牌堆、角色、控制器定向检查 | 终端输出 |

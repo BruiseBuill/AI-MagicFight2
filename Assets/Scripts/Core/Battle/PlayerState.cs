@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace MagicBrawl.Core
@@ -73,6 +73,36 @@ namespace MagicBrawl.Core
         public int HpLost
         {
             get { return Math.Max(0, InitialHp - Hp); }
+        }
+
+        /// <summary>
+        /// 虚弱层数（毒刺 ao 施加给被攻击的目标）。
+        ///
+        /// <para><b>效果</b>：拥有者打出的牌，<b>最终进攻力量</b>按 <see cref="Weakened"/>
+        /// 折算（有层级就减半）。<b>只削进攻力量</b>，它作为防御方时的防御力量不受影响
+        /// （2026-09-29 用户口径）。</para>
+        ///
+        /// <para><b>递减时机</b>：拥有者<b>自己的一个进攻半场结束之后</b> −1
+        /// （在 <c>BattleEngine.DoEndHalfTurn</c> 里结算）。连击的追加进攻属于同一个半场，
+        /// 整场只减 1 层。</para>
+        ///
+        /// <para>层数可叠加、无上限：毒刺一次给 2 层。</para>
+        /// </summary>
+        public int WeakenStacks { get; internal set; }
+
+        /// <summary>
+        /// 把最终进攻力量按虚弱层数折算：有层数时 ×50% 并<b>向上取整</b>
+        /// （7 → 4 · 9 → 5 · 5 → 3 · 2 → 1）。
+        ///
+        /// <para>⚠ 取整口径是用户 2026-09-29 明确指定的「<b>×50% 后</b>向上取整」，
+        /// 不是「砍掉一半、砍的那份向上取整」（那样 7 会得 3）。两者只在奇数上有差别，
+        /// 但直接决定「这一刀挡不挡得住」，所以引擎、AI、界面一律引这一个函数。</para>
+        ///
+        /// <para>无层数或力量 ≤0 时原样返回。</para>
+        /// </summary>
+        public static int Weakened(int power, int stacks)
+        {
+            return stacks > 0 && power > 0 ? (power + 1) / 2 : power;
         }
 
         /// <summary>手牌中当前进攻可用的最高力量（AI 与 UI 都直接用这个值，不重复算）。</summary>

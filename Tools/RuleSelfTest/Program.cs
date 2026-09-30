@@ -144,6 +144,13 @@ namespace MagicBrawl.SelfTest
             ok &= MimicScenario.Run(report);
             Prune(report);
 
+            // 2026-09-29：毒刺（ao）的「虚弱」是内核里**全新**的一类状态（此前没有），
+            // 击穿（ap）的「快速回填光环」是光环表里的第 7 种类型。两者的共同风险是
+            // 「卡面写了、引擎里没接上」—— 不报错、不崩，只是力量该减半时没减半、
+            // 该 −1 冷却时没减。万局随机对局里这类缺陷一个也抓不到，只能脚本化钉住。
+            ok &= WeakenScenario.Run(report);
+            Prune(report);
+
             Console.WriteLine();
             Console.WriteLine("── 万局统计 ──");
             Console.WriteLine("  局数            : " + mass.Games);

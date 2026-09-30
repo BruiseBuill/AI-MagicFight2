@@ -6,18 +6,21 @@ using UnityEngine;
 namespace MagicBrawl.App
 {
     /// <summary>
-    /// 卡 ID → 卡面 Sprite 的映射表。
+    /// 卡 ID → 卡面 <b>插画</b> Sprite 的映射表。
     ///
-    /// <para><b>为什么需要它</b>：40 张卡面在 `Assets/Art/Cards/`（不在 Resources 下，运行时
-    /// 加载不到），而手牌是运行时按卡 ID 动态取的 —— 所以用一张 ScriptableObject 把
-    /// Sprite 引用烘进去，既能被 Prefab / 场景序列化，也不占 Resources 的打包体积。</para>
+    /// <para><b>为什么需要它</b>：卡面图放在 `Assets/Art/CardArt/`（不在 Resources 下，
+    /// 运行时加载不到），而手牌等是运行时按卡 ID 动态取的 —— 所以用一张 ScriptableObject
+    /// 把 Sprite 引用烘进去，既能被 Prefab / 场景序列化，也不占 Resources 的打包体积。</para>
     ///
-    /// <para><b>卡面是「整卡」</b>：卡名、力量、冷却、效果文字全部烘焙在 760×1056 的图里
-    /// （见 `Docs/engineering/06-美术与字体规范.md`）。所以：
-    /// 手牌大卡直接用整图 + <b>关键数值的 TMP 角标</b>（缩到 208 px 后烘焙文字只有 ~8 px，不可读）；
-    /// 冷却迷你卡不能复用整图（剩余冷却是动态值），必须卡框 + TMP 合成。</para>
+    /// <para><b>⚠ 2026-09-30：只剩插画这一份图</b>（用户口径「任何地方都不要用成品整图，
+    /// 把 `Art/Cards/` 彻底删掉」）。此前还并列存在一族 760×1056 的<b>成品整图</b> ——
+    /// 卡名 / 力量 / 冷却 / 效果文字全烘焙在 PNG 里。它的问题不是难看，而是
+    /// <b>会与卡表各说各话</b>：2026-09-28 磁暴 / 引雷互换力量时，必须回头去改那张 PNG 里
+    /// 烘焙的数字，否则同一张牌在「手牌」与「长按详情」上会显示两个数。
+    /// 现在的口径是：<b>卡面的一切文字与数值都由 TMP 现场渲染</b>（M16 组成式卡面），
+    /// 图片只提供无框无字的插画。</para>
     ///
-    /// 生成方式：菜单 `魔法乱斗/M7 · 构建 UiKit` 会自动扫描 `Assets/Art/Cards/` 重建本资产。
+    /// <para>生成方式：菜单 `魔法乱斗/M7 · 构建 UiKit` 会扫描 `Assets/Art/CardArt/` 重建本资产。</para>
     /// </summary>
     [CreateAssetMenu(fileName = "CardArtLibrary", menuName = "魔法乱斗/卡面映射表")]
     public sealed class CardArtLibrary : ScriptableObject
@@ -28,27 +31,21 @@ namespace MagicBrawl.App
         [Serializable]
         public struct Entry
         {
-            /// <summary>卡 ID（a–an）。</summary>
+            /// <summary>卡 ID（a–ap）。</summary>
             public string CardId;
 
-            /// <summary>整张卡面（`Assets/Art/Cards/`，760×1056，卡名 / 数值 / 文字全烘焙在图上）。</summary>
-            public Sprite Art;
-
             /// <summary>
-            /// 插画原图（`Assets/Art/CardArt/`，784×1168，无框无字）。
+            /// 插画（`Assets/Art/CardArt/`，784×1168，<b>无框无字</b>）。
             ///
-            /// <para>M16 起手牌与冷却迷你卡改用**组成式卡面**：这一张铺满整卡当底图，
-            /// 卡名 / 力量 / 冷却 / 效果文字全部由 TMP 现场渲染。整卡面（<see cref="Art"/>）
-            /// 保留给「长按看完整卡面」的详情浮层与出牌演出 —— 那两处要的就是烘焙好的成品图。</para>
+            /// <para>卡名 / 力量 / 冷却 / 效果文字全部由 TMP 现场渲染（组成式卡面，M16），
+            /// 所以这一份图在手牌、冷却迷你卡、长按放大、选牌弹窗、看对方手牌、
+            /// 头顶出牌、飞行卡这几处<b>是同一张</b> —— 差别只在显示尺寸与渲染精度。</para>
             /// </summary>
             public Sprite Illustration;
         }
 
         [SerializeField]
         private Entry[] _entries = new Entry[0];
-
-        [NonSerialized]
-        private Dictionary<string, Sprite> _map;
 
         [NonSerialized]
         private Dictionary<string, Sprite> _illustrationMap;
@@ -83,28 +80,15 @@ namespace MagicBrawl.App
         public void SetEntries(List<Entry> entries)
         {
             _entries = entries == null ? new Entry[0] : entries.ToArray();
-            _map = null;
             _illustrationMap = null;
         }
 
-        public Sprite GetArt(string cardId)
-        {
-            if (string.IsNullOrEmpty(cardId))
-            {
-                return null;
-            }
-
-            EnsureMap();
-            Sprite sprite;
-            return _map.TryGetValue(cardId, out sprite) ? sprite : null;
-        }
-
-        public Sprite GetArt(CardDef def)
-        {
-            return def == null ? null : GetArt(def.Id);
-        }
-
-        /// <summary>取插画原图（组成式卡面的底图）。</summary>
+        /// <summary>
+        /// 取卡面（插画）。查不到返回 <c>null</c>，由调用方各自决定怎么退化。
+        ///
+        /// <para>⚠ 2026-09-30 之前这里是两步：先取成品整图、缺了再回落到插画。
+        /// 现在整图整族已删，所以只剩这一步 —— 调用方也不必再写「整图 → 插画」的退化链。</para>
+        /// </summary>
         public Sprite GetIllustration(string cardId)
         {
             if (string.IsNullOrEmpty(cardId))
@@ -142,29 +126,6 @@ namespace MagicBrawl.App
                     && !_illustrationMap.ContainsKey(e.CardId))
                 {
                     _illustrationMap.Add(e.CardId, e.Illustration);
-                }
-            }
-        }
-
-        private void EnsureMap()
-        {
-            if (_map != null)
-            {
-                return;
-            }
-
-            _map = new Dictionary<string, Sprite>(StringComparer.Ordinal);
-            if (_entries == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _entries.Length; i++)
-            {
-                Entry e = _entries[i];
-                if (!string.IsNullOrEmpty(e.CardId) && e.Art != null && !_map.ContainsKey(e.CardId))
-                {
-                    _map.Add(e.CardId, e.Art);
                 }
             }
         }

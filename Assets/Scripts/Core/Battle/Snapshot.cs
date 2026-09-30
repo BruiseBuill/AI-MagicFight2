@@ -194,6 +194,12 @@ namespace MagicBrawl.Core
         /// <summary>冷却区中未使用的光环指示物总数。</summary>
         public int AuraTokensReady;
 
+        /// <summary>
+        /// 虚弱层数（0 = 无）。表现层在血条旁显示「虚弱 ×N」——
+        /// 毒刺打出去之后，玩家必须看得见对手被削了，否则这个效果是隐形的。
+        /// </summary>
+        public int WeakenStacks;
+
         public bool IsDead
         {
             get { return Hp <= 0 || MaxHp <= 0; }
@@ -226,6 +232,7 @@ namespace MagicBrawl.Core
                 Team = p.Team,
                 HandCount = p.Hand.Count,
                 AuraTokensReady = aura,
+                WeakenStacks = p.WeakenStacks,
             };
         }
     }

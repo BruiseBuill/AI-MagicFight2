@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3021faac7298c6d4ba062334303ab601, type: 3}
+  m_Name: ShopPool
+  m_EditorClassIdentifier: 
+  poolId: shop
+  displayName: "\u5546\u5E97\u5361\u6C60\uFF08\u8D77\u59CB 8 \u5F20\uFF09"
+  useAllCards: 0
+  cardIds:
+  - a
+  - b
+  - c
+  - d
+  - f
+  - k
+  - s
+  - ag

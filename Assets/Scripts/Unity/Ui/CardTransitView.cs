@@ -1,11 +1,20 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using MagicBrawl.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace MagicBrawl.App
 {
-    /// <summary>Presentation-only card travel, matched by UID across successive snapshots.</summary>
+    /// <summary>
+    /// Presentation-only card travel, matched by UID across successive snapshots.
+    ///
+    /// <para><b>飞的是什么牌面</b>（2026-09-30 用户口径）：飞行卡是<b>组成式卡面</b> ——
+    /// 与手牌 / 冷却迷你卡同一份 `CardView_Hand.prefab`，只是在飞行途中按当帧位姿的宽度
+    /// <see cref="CardView.SetFaceWidth"/> 缩放。老版本是一张纯 `Image` 吃插画，
+    /// 于是「头顶那张卡（有卡框文字）起飞时文字全没了 → 只剩插画飞过去 → 落地文字又冒出来」，
+    /// 中间那一段看着像两张不同的东西。拿不到那份 Prefab 时才退回插画（见
+    /// <see cref="TakeGhost"/> 的退化路径）。</para>
+    /// </summary>
     [DisallowMultipleComponent]
     public sealed class CardTransitView : MonoBehaviour
     {
@@ -35,6 +44,15 @@ namespace MagicBrawl.App
 
             public bool Returning;
             public RectTransform Ghost;
+
+            /// <summary>
+            /// 这张飞行卡是<b>组成式卡面</b>时的实例（<c>null</c> = 退回「纯插画」那条老路）。
+            ///
+            /// <para>飞行途中每帧都要按当帧位姿的宽度重申一次 <see cref="CardView.SetFaceWidth"/>
+            /// —— 卡面的内部缩放只有它一个入口（与手牌 / 冷却迷你卡同一套口径）。</para>
+            /// </summary>
+            public CardView Face;
+
             public Pose From;
             public float Elapsed;
             public float Delay;
@@ -44,14 +62,17 @@ namespace MagicBrawl.App
         [Tooltip("飞牌用的自由层（铺满画布、不吃射线）。")]
         [SerializeField] private RectTransform _layer;
 
-        [Tooltip("一张「飞行中的牌」的模板（失活 Image）—— 运行时从它实例化，用完回收复用。")]
+        [Tooltip("一张「飞行中的牌」的模板（失活 Image）—— **只在拿不到组成式卡面时**用它兜底。")]
         [SerializeField] private Image _flightTemplate;
 
         private HandView _hand;
         private CooldownView _cooldown;
 
-        /// <summary>回收的飞行卡（避免每张牌都走一次 Instantiate / Destroy）。</summary>
+        /// <summary>回收的「插画版」飞行卡（退化路径，见 <see cref="TakeGhost"/>）。</summary>
         private readonly List<Image> _ghostPool = new List<Image>();
+
+        /// <summary>回收的「组成式卡面」飞行卡（正常路径，见 <see cref="TakeGhost"/>）。</summary>
+        private readonly List<CardView> _cardPool = new List<CardView>();
 
         private readonly Dictionary<int, Pose> _handOrigins = new Dictionary<int, Pose>();
 
@@ -104,9 +125,48 @@ namespace MagicBrawl.App
             _cooldown = cooldown;
         }
 
-        /// <summary>取一张飞行卡：优先复用池里的，池空才从模板实例化。</summary>
-        private Image TakeGhost()
+        /// <summary>
+        /// 取一张飞行卡：<b>优先「组成式卡面」</b>（与手牌 / 冷却迷你卡同一份 Prefab），
+        /// 拿不到那份 Prefab 才退回「一张插画铺满」的老路。
+        ///
+        /// <para><b>为什么必须是组成式</b>（2026-09-30 用户口径）：飞行卡原来是一张纯
+        /// <see cref="Image"/> 吃插画 —— 头顶那张牌（组成式：卡框 / 卡名 / 力量 / 冷却 /
+        /// 效果文字俱全）在起飞的一瞬间文字全没了，只剩一张插画飞向冷却区，落地又「啪」地
+        /// 冒出来。换成同一份卡面之后，起点与终点是同一张脸，中间这段才读得出
+        /// 「就是这张牌飞过去了」。</para>
+        ///
+        /// <para>卡面 Prefab 向 <see cref="CooldownView.CardPrefab"/> 要 —— 冷却迷你卡与飞行卡
+        /// <b>必须</b>是同一份，否则落地那一刻还是会跳一下（铁律 9「组成式卡面只有一份」）。</para>
+        /// </summary>
+        private RectTransform TakeGhost(out CardView face)
         {
+            face = null;
+
+            CardView prefab = _cooldown == null ? null : _cooldown.CardPrefab;
+            if (prefab != null)
+            {
+                if (_cardPool.Count > 0)
+                {
+                    int last = _cardPool.Count - 1;
+                    face = _cardPool[last];
+                    _cardPool.RemoveAt(last);
+                }
+                else
+                {
+                    face = Instantiate(prefab, _layer);
+                    face.name = "CardFlightFace";
+                }
+
+                face.gameObject.SetActive(true);
+
+                // 锚点 / 轴心都在中心：ApplyPose 用 localPosition 直接摆到「世界角点算出的中心」，
+                // 与 FlightTemplate 那张 Image 同一套口径 —— 不依赖卡面 Prefab 自己的锚点怎么设。
+                RectTransform rt = (RectTransform)face.transform;
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+                return rt;
+            }
+
+            // 退化路径：没接上卡面 Prefab（老 Prefab / 冷却区未接线）→ 一张插画铺满卡位。
             if (_flightTemplate == null)
             {
                 return null;
@@ -118,30 +178,36 @@ namespace MagicBrawl.App
                 Image reused = _ghostPool[last];
                 _ghostPool.RemoveAt(last);
                 reused.gameObject.SetActive(true);
-                return reused;
+                return reused.rectTransform;
             }
 
             Image ghost = Instantiate(_flightTemplate, _layer);
             ghost.gameObject.SetActive(true);
-            return ghost;
+            return ghost.rectTransform;
         }
 
-        private void ReleaseGhost(RectTransform ghost)
+        private void ReleaseGhost(RectTransform ghost, CardView face)
         {
             if (ghost == null)
             {
                 return;
             }
 
-            var img = ghost.GetComponent<Image>();
-            if (img == null)
+            ghost.SetParent(_layer, false);
+            ghost.gameObject.SetActive(false);
+
+            if (face != null)
             {
+                face.Clear();
+                _cardPool.Add(face);
                 return;
             }
 
-            ghost.SetParent(_layer, false);
-            ghost.gameObject.SetActive(false);
-            _ghostPool.Add(img);
+            var img = ghost.GetComponent<Image>();
+            if (img != null)
+            {
+                _ghostPool.Add(img);
+            }
         }
 
         public void CaptureBeforeBind(IReadOnlyList<CardSnapshot> hand,
@@ -287,19 +353,44 @@ namespace MagicBrawl.App
                 if (_flights[i].Uid == card.Uid) Finish(i);
             CardView target = Find(card.Uid, returning, seat);
             if (target == null) return;
-            Image face = TakeGhost();
-            if (face == null) return;
-            RectTransform rect = (RectTransform)face.transform;
+
+            CardView cardFace;
+            RectTransform rect = TakeGhost(out cardFace);
+            if (rect == null) return;
+
             rect.name = "CardFlight_" + card.Uid;
-            var library = CardArtLibrary.Instance;
-            face.sprite = library == null ? null : library.GetArt(card.CardId);
-            face.preserveAspect = true;
-            face.raycastTarget = false;
+
+            if (cardFace != null)
+            {
+                // 组成式卡面：同一份 Prefab、同一张快照 —— 「起飞那一帧」与「刚被撤下的
+                // 头顶卡」长得一模一样，所以那一下替换看不见（这正是本次要修的东西）。
+                cardFace.Bind(card, CardView.ViewMode.Mini, 0);
+                cardFace.SetFaceWidth(Mathf.Max(1f, from.Size.x));
+
+                // ⚠ 用 SetGestureHold（停 Button 组件）而**不是** SetInteractable(false)：
+                //   后者会顺带 SetDimmed(true)，卡面会当场压暗一截，像「这张牌不能打」。
+                //   层上的 CanvasGroup 已经 blocksRaycasts=false，这里是第二道保险。
+                cardFace.SetGestureHold(true);
+            }
+            else
+            {
+                var flatFace = rect.GetComponent<Image>();
+                if (flatFace != null)
+                {
+                    var library = CardArtLibrary.Instance;
+                    // 2026-09-30：卡面只剩插画这一份（成品整图整族已删）。
+                    flatFace.sprite = library == null ? null : library.GetIllustration(card.CardId);
+                    flatFace.preserveAspect = true;
+                    flatFace.raycastTarget = false;
+                }
+            }
+
             ApplyPose(rect, from);
             target.SetPresentationHidden(true);
             _flights.Add(new Flight
             {
-                Uid = card.Uid, Seat = seat, Returning = returning, Ghost = rect, From = from, Delay = delay,
+                Uid = card.Uid, Seat = seat, Returning = returning,
+                Ghost = rect, Face = cardFace, From = from, Delay = delay,
             });
         }
 
@@ -336,6 +427,14 @@ namespace MagicBrawl.App
                     pose.Rotation = Quaternion.Slerp(Quaternion.identity, to.Rotation, eased);
                 }
                 ApplyPose(flight.Ghost, pose);
+
+                // 组成式卡面的内部缩放只有 `SetFaceWidth` 一个入口（与手牌 / 冷却迷你卡同一套
+                // 口径）—— 位姿每帧在变，这里就得每帧重申一次，否则卡面会停在起飞时的尺寸。
+                if (flight.Face != null)
+                {
+                    flight.Face.SetFaceWidth(Mathf.Max(1f, pose.Size.x));
+                }
+
                 if (elapsed >= prepare + travel) Finish(i);
             }
         }
@@ -388,7 +487,7 @@ namespace MagicBrawl.App
             Flight flight = _flights[index];
             CardView target = Find(flight.Uid, flight.Returning, flight.Seat);
             if (target != null) target.SetPresentationHidden(false);
-            ReleaseGhost(flight.Ghost);
+            ReleaseGhost(flight.Ghost, flight.Face);
             _flights.RemoveAt(index);
         }
 

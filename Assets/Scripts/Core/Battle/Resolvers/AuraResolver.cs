@@ -26,6 +26,9 @@ namespace MagicBrawl.Core
             {
                 case AuraKind.AtkPower:
                 case AuraKind.Combo:
+                // 2026-09-29 · 击穿（ap）：这枚指示物赐予的是「本次打出的牌获得快速回填」，
+                //   作用对象与连击一样是「当场打出的那张牌」，所以同侧 —— 只有进攻场合可用。
+                case AuraKind.QuickRefill:
                     return ctx == AuraContext.Attack;
 
                 case AuraKind.DefPower:
@@ -38,6 +41,113 @@ namespace MagicBrawl.Core
 
                 default:
                     return false;
+            }
+        }
+
+        /// <summary>
+        /// 这张卡面是否<b>自带连击</b>（α 效果里有 <see cref="EffectOp.Combo"/>）。
+        ///
+        /// <para>读卡表而不是读 <c>AttackContext.HasCombo</c>：卡面自带的那条连击是在
+        /// <c>EffectStage.Power</c>（结算第 ① 步）才写进去的，而「准备的光环要不要收」这件事
+        /// 发生在 <c>DoChooseAttackCard</c> 里 —— 那时第 ① 步还没跑，<c>HasCombo</c> 必然是 false。
+        /// 要判「这张牌本来就会给连击吗」只能问卡表。</para>
+        /// </summary>
+        public static bool CardGrantsCombo(CardDef card)
+        {
+            if (card == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < card.Effects.Count; i++)
+            {
+                EffectDef e = card.Effects[i];
+                if (e.Op == EffectOp.Combo && e.Trigger == EffectTrigger.Attack)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 挑出「准备使用、但最终<b>不会消耗</b>」的那几枚光环（返回在 <paramref name="auras"/>
+        /// 里的下标，升序）。
+        ///
+        /// <para><b>为什么要有这个函数</b>：同一件事有两个消费者，两边必须永远一致 ——</para>
+        /// <list type="bullet">
+        /// <item><b>引擎</b>（<c>BattleEngine.ApplyPreparedAttackAuras</c>）：这几枚<b>不生效、也不消耗</b>；</item>
+        /// <item><b>界面</b>（<c>BattleUi.Pick</c>）：这几枚要按「玩家最终取消了使用」处理 ——
+        /// 出牌之后那枚图标<b>从准备位滑回默认位</b>，而不是「原地消失又在原位冒出来」。</item>
+        /// </list>
+        /// <para>各写一份判据迟早会分叉（一边退回、一边消耗 = 玩家看见图标回去了、指示物却没了），
+        /// 所以判据只留在这里，两处都调它（铁律 3 的落法：规则事实在 Core 一处）。</para>
+        ///
+        /// <para><b>判据（三条，都是既有规则）</b>：</para>
+        /// <list type="number">
+        /// <item><b>沉重打击</b>（卡面带「此法术的进攻力量不能增加」）→ 本次准备的光环<b>全部</b>都不生效
+        /// —— 这条在 <c>ApplyPreparedAttackAuras</c> 里原本就是「整批 continue」；</item>
+        /// <item><b>连击阈值</b>：连击光环只对「基础力量 ≤ A」的牌有效，超了就无事发生；</item>
+        /// <item><b>连击不可叠加</b>（2026-09-30 用户口径）：卡面自带连击、或本次进攻前面已经有一枚
+        /// 连击光环真的生效了，后面的连击光环就是纯浪费 —— 按「取消使用」处理。</item>
+        /// </list>
+        ///
+        /// <para>⚠ 只用于<b>进攻</b>那一拍。防御拍走 <c>ConsumeDefenseAuras</c>，它只认
+        /// <see cref="IsPowerBonus"/> 那一类，而连击不在其中。</para>
+        /// </summary>
+        public static void CollectRefunded(List<Option> auras, CardDef card, List<int> into)
+        {
+            if (into == null)
+            {
+                return;
+            }
+
+            into.Clear();
+
+            if (auras == null || auras.Count == 0)
+            {
+                return;
+            }
+
+            bool forbidden = card != null && card.ForbidsAtkBuff;
+            bool comboGranted = CardGrantsCombo(card);
+            int power = card == null ? 0 : card.Power;
+
+            for (int i = 0; i < auras.Count; i++)
+            {
+                Option o = auras[i];
+                if (o == null)
+                {
+                    continue;
+                }
+
+                if (forbidden)
+                {
+                    // ① 力量不能增加 → 整批都不生效（原来是「整批 continue」，口径不变）
+                    into.Add(i);
+                    continue;
+                }
+
+                if (o.AuraKind != AuraKind.Combo)
+                {
+                    continue;                       // 其余光环照旧生效
+                }
+
+                if (power > o.Value)
+                {
+                    into.Add(i);                    // ② 连击阈值：基础力量超过 A
+                    continue;
+                }
+
+                if (comboGranted)
+                {
+                    into.Add(i);                    // ③ 连击不可叠加
+                    continue;
+                }
+
+                // 这一枚真的会给连击 → 后面再来的连击光环全部没有意义。
+                comboGranted = true;
             }
         }
 
@@ -142,6 +252,9 @@ namespace MagicBrawl.Core
 
                 case AuraKind.AtkOrDefPower:
                     return "进攻力量 +" + value + " 或防御力量 +" + value;
+
+                case AuraKind.QuickRefill:
+                    return "本次打出的法术获得快速回填（进入冷却区时剩余冷却额外 −" + value + "）";
 
                 default:
                     return "无效果";

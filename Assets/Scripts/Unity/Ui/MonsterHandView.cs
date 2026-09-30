@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using MagicBrawl.Core;
 using TMPro;
 using UnityEngine;
@@ -342,8 +342,8 @@ namespace MagicBrawl.App
                 return null;
             }
 
-            Sprite art = lib.GetArt(cardId);
-            return art != null ? art : lib.GetIllustration(cardId);
+            // 2026-09-30：卡面只剩插画这一份（成品整图整族已删）。
+            return lib.GetIllustration(cardId);
         }
 
         private TweenScale PanelTween()

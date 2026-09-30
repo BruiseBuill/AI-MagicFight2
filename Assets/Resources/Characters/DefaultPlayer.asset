@@ -20,4 +20,5 @@ MonoBehaviour:
   minimumCardCount: 8
   useAllCards: 1
   cardIds: []
+  cardPool: {fileID: 11400000, guid: 31b8062060b114b4691800e6ea278fbb, type: 2}
   abilities: []

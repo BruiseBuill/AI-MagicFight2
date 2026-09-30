@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e34f0418fcb6dc4da779b9d2331fde8, type: 3}
+  m_Name: Card_a_Up
+  m_EditorClassIdentifier: 
+  cardId: a+
+  displayName: "\u66B4\u98CE\u96EA+"
+  power: 6
+  cooldown: 4
+  hiddenPower: 0
+  artId: a
+  version: 1
+  effects:
+  - trigger: 0
+    operation: 1
+    handlerId: Haste
+    amount: 1
+    secondary: 0
+    cooldownAdjustment: 0
+    aura: 0
+    mandatory: 0
+    targets: 0
+    specialEvent: 
+    distinctTargetGroup: 
+    text: "\u52A0\u901F"
+    conditions: []
+  - trigger: 0
+    operation: 4
+    handlerId: SlowZone
+    amount: 0
+    secondary: 0
+    cooldownAdjustment: 0
+    aura: 0
+    mandatory: 0
+    targets: 0
+    specialEvent: 
+    distinctTargetGroup: 
+    text: "\u533A\u57DF\u51CF\u901F"
+    conditions: []
