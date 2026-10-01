@@ -88,29 +88,4 @@ namespace MagicBrawl.App
         public string id;
         public int value;
     }
-
-    [CreateAssetMenu(menuName = "魔法乱斗/卡牌目录", fileName = "CardCatalog")]
-    public sealed class CardCatalogAsset : ScriptableObject
-    {
-        public bool includeBuiltinCards = true;
-        public CardDefinitionAsset[] cards = new CardDefinitionAsset[0];
-        public CardDefinitionAsset[] generatedCards = new CardDefinitionAsset[0];
-
-        public ICardCatalog CreateCatalog()
-        {
-            var list = new List<CardDef>();
-            if (includeBuiltinCards) list.AddRange(CardLibrary.All);
-            foreach (CardDefinitionAsset card in cards ?? new CardDefinitionAsset[0])
-                if (card != null) list.Add(card.CreateDefinition(list.Count + 1000));
-            foreach (CardDefinitionAsset card in generatedCards ?? new CardDefinitionAsset[0])
-                if (card != null) list.Add(card.CreateDefinition(list.Count + 10000));
-            return new CardCatalog(list);
-        }
-
-        public CardDef CreateRuntimeCard(CardDefinitionAsset card)
-        {
-            if (card == null) throw new ArgumentNullException(nameof(card));
-            return card.CreateDefinition(10000 + generatedCards.Length);
-        }
-    }
 }

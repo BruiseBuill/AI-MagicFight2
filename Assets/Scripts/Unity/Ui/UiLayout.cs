@@ -2524,5 +2524,203 @@ namespace MagicBrawl.App
         /// <summary>动画总时长（四段之和）。</summary>
         public const float UpgradeFxTotalDuration = UpgradeFxShrinkDuration + UpgradeFxBurstDuration
                                                    + UpgradeFxRevealDuration + UpgradeFxCountDuration;
+
+        // ══════════════════════════════════════════════════════
+        //  女巫的工坊 · 特殊强化场景（2026-10-01 · P6）
+        // ══════════════════════════════════════════════════════
+        //
+        //  与 P5 强化场景（Upgrade.unity）是**两套并存的强化口径**：
+        //    · P5 石台  = 免费给一张牌基础力量 +2（**不消耗任何牌**）；
+        //    · 本场景    = **献祭一张牌**，换另一张牌的特殊强化（消耗 + 目标两个空位）。
+        //
+        //  版式同样「照商店背包那套」——面板底图、滚动网格、底部按钮直接取 `ShopBag*` 常量，
+        //  不另抄一份同值常量（抄一份的下场是改了一处、另一处留在旧版，且零报错）。
+        //  所以这一段只写**本场景独有**的那几样：背景、水晶球命中区、两个空位。
+        //
+        //  背景 = `Art/Backgrounds/Bg_WitchWorkshop.png`（1672×941，帐篷内景：
+        //  女巫 + 中央水晶球 + 两侧货架），**没有任何烘焙 UI** ——
+        //  场景里唯一可点的东西是那个水晶球（外加右下角的「离开」）。
+        //
+        //  ⚠ 坐标口径与商店 / 强化一致：**画布绝对坐标 + 左下角原点**（铁律 10），
+        //    别跟战斗里 `(0f,1f)` 那批左上角口径混用。
+
+        /// <summary>女巫工坊场景背景（1672×941，无烘焙 UI）。</summary>
+        public const string WitchBgSpritePath = "Assets/Art/Backgrounds/Bg_WitchWorkshop.png";
+
+        /// <summary>背景原图尺寸（cover 铺法要按它算）。</summary>
+        public const float WitchBgNativeWidth = 1672f;
+
+        public const float WitchBgNativeHeight = 941f;
+
+        /// <summary>cover 铺法下背景放大后的显示尺寸（≥ 画布，多出来的被裁掉）。</summary>
+        public static Vector2 WitchBgCoverSize()
+        {
+            float ratio = WitchBgNativeWidth / WitchBgNativeHeight;
+            float need = ReferenceWidth / ReferenceHeight;
+            return ratio > need
+                ? new Vector2(ReferenceHeight * ratio, ReferenceHeight)
+                : new Vector2(ReferenceWidth, ReferenceWidth / ratio);
+        }
+
+        /// <summary>背景图左上角相对画布左上角的偏移（居中铺 → 恒为负）。</summary>
+        public static Vector2 WitchBgCoverOffset()
+        {
+            Vector2 size = WitchBgCoverSize();
+            return new Vector2((ReferenceWidth - size.x) * 0.5f, (ReferenceHeight - size.y) * 0.5f);
+        }
+
+        /// <summary>
+        /// 背景图像素 → 画布坐标（左下角为原点，y 向上）。
+        ///
+        /// <para><b>⚠ 必须乘缩放</b>：cover 放大倍率 = 1080 / 941 ≈ <b>1.14833</b>。
+        /// 忘了乘这一下，「对着背景量的坐标」会系统性地缩在画面左上角，且不报任何错
+        /// —— 商店首次落版就是这么错的。</para>
+        /// </summary>
+        public static Vector2 WitchBgPointToCanvas(float bgPixelX, float bgPixelY)
+        {
+            float scale = WitchBgCoverSize().y / WitchBgNativeHeight;
+            Vector2 offset = WitchBgCoverOffset();
+            return new Vector2(offset.x + bgPixelX * scale, ReferenceHeight - (bgPixelY * scale));
+        }
+
+        // ── 水晶球命中区 ────────────────────────────────────────
+        //
+        //  用户口径（2026-10-01）：**点水晶球**弹出特殊强化界面。
+        //  下面四个数是**对着背景图量的像素**（左上为原点，1682×941 的图上）：
+        //  球体轮廓约 x 660…795 / y 480…610，四周各留一点余量好点 ——
+        //  多出来的那几个像素本来也是球周围的暗色桌面。
+
+        public const float WitchOrbBgLeft = 645f;
+        public const float WitchOrbBgTop = 470f;
+        public const float WitchOrbBgRight = 800f;
+        public const float WitchOrbBgBottom = 615f;
+
+        /// <summary>水晶球命中区的中心（画布坐标）。</summary>
+        public static Vector2 WitchOrbCenter()
+        {
+            Vector2 topLeft = WitchBgPointToCanvas(WitchOrbBgLeft, WitchOrbBgTop);
+            Vector2 bottomRight = WitchBgPointToCanvas(WitchOrbBgRight, WitchOrbBgBottom);
+            return new Vector2((topLeft.x + bottomRight.x) * 0.5f, (topLeft.y + bottomRight.y) * 0.5f);
+        }
+
+        /// <summary>水晶球命中区的尺寸（画布单位）。</summary>
+        public static Vector2 WitchOrbSize()
+        {
+            Vector2 topLeft = WitchBgPointToCanvas(WitchOrbBgLeft, WitchOrbBgTop);
+            Vector2 bottomRight = WitchBgPointToCanvas(WitchOrbBgRight, WitchOrbBgBottom);
+            return new Vector2(Mathf.Abs(bottomRight.x - topLeft.x), Mathf.Abs(bottomRight.y - topLeft.y));
+        }
+
+        // ── 标题 / 引导行 / 离开键 ────────────────────────────────
+        //
+        //  与强化场景同一条水平带（两个场景的标题与离开键读起来应当是一套）。
+
+        /// <summary>场景标题「女巫的工坊」。</summary>
+        public const float WitchTitleCenterY = 1002f;
+
+        public const float WitchTitleWidth = 620f;
+
+        public const float WitchTitleHeight = 76f;
+
+        public const float FontSizeWitchTitle = 52f;
+
+        /// <summary>
+        /// 水晶球下方的引导文字（「点击水晶球，进行一次特殊强化」）。
+        ///
+        /// <para>没有它玩家进场景只看到一张帐篷图，不知道要点哪儿；
+        /// 浮层一打开这行就藏起来。</para>
+        /// </summary>
+        public const float WitchHintCenterY = 158f;
+
+        public const float WitchHintWidth = 1300f;
+
+        public const float WitchHintHeight = 56f;
+
+        public const float FontSizeWitchHint = 34f;
+
+        /// <summary>「离开」按钮（右下角；本场景没有背包键，所以右边距用 64 原值）。</summary>
+        public const float WitchLeaveRight = 64f;
+
+        public const float WitchLeaveBottom = 44f;
+
+        // ── 浮层（两个空位那一层）────────────────────────────────
+        //
+        //  面板本身取 `ShopBagPanelWidth × ShopBagPanelHeight`（1620×880，与商店背包 /
+        //  强化弹窗同一张 Peek_Panel）。下面这一组是**面板内部坐标**
+        //  （锚点与轴心都是 Mid，原点 = 面板中心），纵向可用 y ∈ [−440, 440]。
+        //
+        //  纵向版式账（自上而下）：
+        //    标题      y ∈ [ 340,  400]   高 60，面板顶 440 之下留 40
+        //    两个空位  y ∈ [  24,  316]   高 292，标题底 340 之下留 24
+        //    空位标签  y ∈ [ -30,   18]   高 48，挂在空位下缘再往下 30
+        //    状态行    y ∈ [-188, -132]   高 56，标签底 −30 之下留 102
+        //    底部按钮  y ∈ [-412, -344]   高 68，面板底 −440 之上留 28
+        //
+        //  横向：两个空位并排，中心 x = ±265（步进 530），中间净空 300 放「→」；
+        //        状态行宽 980（±490），底部两个按钮各 240 宽、中心 x = ±630。
+
+        /// <summary>空位（槽）的尺寸 —— 与商店背包网格的一格同尺寸，卡面才塞得进去。</summary>
+        public const float WitchSlotWidth = ShopBagCellWidth;
+
+        public const float WitchSlotHeight = ShopBagCellHeight;
+
+        /// <summary>空位里那张卡面的宽度（与商店背包 / 强化弹窗同一口径）。</summary>
+        public const float WitchSlotCardFaceWidth = ShopBagCardFaceWidth;
+
+        /// <summary>两个空位中心的横向间距（步进）。</summary>
+        public const float WitchSlotSpacing = 530f;
+
+        /// <summary>两个空位中心的纵向位置。</summary>
+        public const float WitchSlotCenterY = 170f;
+
+        /// <summary>空位标签中心相对空位中心再往下多少（挂在下缘外侧）。</summary>
+        public const float WitchSlotLabelDrop = WitchSlotHeight * 0.5f + 30f;
+
+        public const float WitchSlotLabelWidth = WitchSlotWidth;
+
+        public const float WitchSlotLabelHeight = 48f;
+
+        public const float FontSizeWitchSlotLabel = 28f;
+
+        /// <summary>两个空位中间那个「→」的尺寸（纯装饰，不吃射线）。</summary>
+        public const float WitchArrowWidth = 160f;
+
+        public const float WitchArrowHeight = 100f;
+
+        public const float FontSizeWitchArrow = 64f;
+
+        /// <summary>状态行（提示 / 校验失败的原因）。</summary>
+        public const float WitchStatusCenterY = -160f;
+
+        public const float WitchStatusWidth = 980f;
+
+        public const float WitchStatusHeight = 56f;
+
+        public const float FontSizeWitchStatus = 30f;
+
+        /// <summary>底部两个按钮的中心 Y（与商店背包的「关闭」同一条线）。</summary>
+        public const float WitchButtonCenterY = ShopBagCloseCenterY;
+
+        public const float WitchButtonWidth = ShopBagCloseWidth;
+
+        public const float WitchButtonHeight = ShopBagCloseHeight;
+
+        /// <summary>按钮离面板左右边缘的间距（与商店背包同一个数）。</summary>
+        public const float WitchButtonInset = ShopBagCloseRightInset;
+
+        /// <summary>按钮中心的横向位置（左右对称）。</summary>
+        public const float WitchButtonSideX = ShopBagPanelWidth * 0.5f - WitchButtonInset
+                                              - WitchButtonWidth * 0.5f;
+
+        public const float FontSizeWitchButton = FontSizeShopBagClose;
+
+        /// <summary>浮层标题（面板顶部那一行）。</summary>
+        public const float WitchPanelTitleCenterY = ShopBagTitleCenterY;
+
+        public const float WitchPanelTitleWidth = ShopBagTitleWidth;
+
+        public const float WitchPanelTitleHeight = ShopBagTitleHeight;
+
+        public const float FontSizeWitchPanelTitle = FontSizeShopBagTitle;
     }
 }

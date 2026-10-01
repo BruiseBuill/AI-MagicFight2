@@ -87,6 +87,12 @@ namespace MagicBrawl.App.EditorTools
                 log.AppendLine("  DefaultMonster：保持原样（useAllCards）");
             }
 
+            // 顺手把「卡目录 → 动态卡清单」与磁盘对齐：目录损坏 / 被删过时，
+            // 强化卡会凭空从卡池里消失且零报错，这一步是它的自愈点。
+            CardCatalogAsset catalog = GeneratedCardAssetUtility.RebuildCatalog();
+            log.AppendLine("  卡目录：" + (catalog.generatedCards == null ? 0 : catalog.generatedCards.Length)
+                           + " 张动态卡（" + GeneratedCardAssetUtility.CatalogPath + "）");
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             log.AppendLine("[CardPool] ==== 完成 ====");

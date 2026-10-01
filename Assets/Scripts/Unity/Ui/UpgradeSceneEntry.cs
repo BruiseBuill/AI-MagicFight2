@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using MagicBrawl.Core;
 using UnityEngine;
@@ -14,10 +15,13 @@ namespace MagicBrawl.App
     ///
     /// <para><b>独立场景契约</b>（<c>Docs/design/冒险事件架构.md</c> §3）：</para>
     /// <list type="number">
-    /// <item><b>E1 不依赖地图</b>：卡池由序列化字段 / <see cref="CardPoolConfig"/> 给；</item>
-    /// <item><b>E2 不依赖前一节点</b>：直接以「一份起始卡池」开局；</item>
-    /// <item><b>E3 不写真实存档</b>：本类<b>完全不碰存档</b>（唯一会落盘的东西是强化后的
-    /// <c>CardDefinitionAsset</c> —— 那是「新卡」本身，不是进度）；</item>
+    /// <item><b>E1 不依赖地图</b>：卡池从<see cref="SaveSlot.Main"/>读（或由序列化字段覆盖）；</item>
+    /// <item><b>E2 不依赖前一节点</b>：直接以「主存档里那份卡池」开局；</item>
+    /// <item><b>E3 只读存档、不写存档</b>（2026-10-01 统一卡池时订正，原先是「完全不碰存档」）：
+    /// 玩家卡池从 <see cref="SaveSlot.Main"/> 读；强化<b>不改卡池的 ID</b>（那张牌原地变成
+    /// <c>"a+"</c>，由 <see cref="CardUpgrade.PreferUpgraded"/> 在读取时解析），
+    /// 所以这里没有「写回」这一步。⚠ 真正会落盘的只有强化后的
+    /// <c>CardDefinitionAsset</c> —— 那是「新卡」本身，不是进度；</item>
     /// <item><b>E4 Core 一行不改</b>：这里只<b>读</b>卡表与 <see cref="CardUpgrade"/> 的判定
     /// （那是唯一的规则实现），不存在「第二套强化逻辑」。</item>
     /// </list>
@@ -35,7 +39,10 @@ namespace MagicBrawl.App
         // ── 调试参数（正式接入后由地图层 / 存档给）────────────────────
 
         [Header("调试 · 卡池")]
-        [Tooltip("这份卡池就是「玩家现在持有的牌」。留空 = 用 Resources/Pools/UpgradePool。")]
+        [Tooltip("调试覆盖：直接指向一份卡池资产（不读存档）。\n"
+                 + "留空 = 读**主存档**（存档 2）里那个玩家的卡池 —— 与战斗 / 商店 / 女巫工坊"
+                 + "同一份（2026-10-01 起；原先默认的 Resources/Pools/UpgradePool 已不再被读取）。\n"
+                 + "⚠ 主存档不存在时会被**现场创建**（随机 10 张），所以进本场景不需要先有存档。")]
         [SerializeField] private CardPoolConfig _pool;
 
         [Tooltip("直接写卡 ID 覆盖上面的卡池资产（留空 = 用资产）。\n"
@@ -151,7 +158,19 @@ namespace MagicBrawl.App
             return asset == null ? CardCatalog.Builtin() : asset.CreateCatalog();
         }
 
-        /// <summary>解析「玩家现在持有哪些牌」的 ID：Inspector 覆盖 &gt; 卡池资产 &gt; 空。</summary>
+        /// <summary>
+        /// 解析「玩家现在持有哪些牌」的 ID：Inspector 覆盖 &gt; 调试卡池资产 &gt; <b>主存档</b>。
+        ///
+        /// <para><b>⚠ 2026-10-01 统一</b>：原先第三档是 <c>Resources/Pools/UpgradePool</c>
+        /// 那份 8 张的资产 —— 与商店看的、战斗看的都不是同一份。现在默认读
+        /// <see cref="SaveSlot.Main"/>，也就是「一个存档 = 一个玩家卡池」的那一份；
+        /// 商店买下的牌会出现在这里，不落盘。卡池资产只剩「调试覆盖」这一个用途。</para>
+        ///
+        /// <para><b>⚠ 两条解析必须走同一处</b>：<see cref="CardUpgrade.PreferUpgraded"/>
+        /// 带着「基础版 / 强化版只留一份」的规则 —— 也就是「强化过一次，下次进来那张牌
+        /// 还是 6 点」这条**永久性**。在这里另走一遍 <c>cardIds</c> 会把这层规则漏掉
+        /// （表现为「强化完回场景，牌又变回 4 点」，零报错）。</para>
+        /// </summary>
         private void ResolveIds()
         {
             _ids.Clear();
@@ -166,35 +185,36 @@ namespace MagicBrawl.App
                 return;
             }
 
-            CardPoolConfig pool = _pool != null
-                ? _pool
-                : Resources.Load<CardPoolConfig>(CardPoolConfig.UpgradePoolResourcePath);
-
-            if (pool == null)
+            // 调试覆盖：直接指向一份卡池资产
+            if (_pool != null)
             {
-                Debug.LogWarning("[UpgradeSceneEntry] 找不到卡池资产（" + CardPoolConfig.UpgradePoolResourcePath
-                                 + "）—— 先跑 `魔法乱斗/P5 · 构建 Upgrade 场景`。");
-                return;
-            }
-
-            if (pool.useAllCards)
-            {
-                foreach (CardDef card in _catalog.All)
+                IReadOnlyList<string> assetIds = _pool.ResolveIds(_catalog);
+                for (int i = 0; i < assetIds.Count; i++)
                 {
-                    AddId(card.Id);
+                    AddId(assetIds[i]);
                 }
 
                 return;
             }
 
-            if (pool.cardIds == null)
+            // 正式来源：主存档的玩家卡池
+            PlayerData player;
+            string error;
+            if (!SaveStore.TryLoadPlayer(SaveSlot.Main, out player, out error))
+            {
+                Debug.LogWarning("[UpgradeSceneEntry] 读主存档失败，本局卡池为空：" + error);
+                return;
+            }
+
+            if (player == null || player.cardIds == null)
             {
                 return;
             }
 
-            for (int i = 0; i < pool.cardIds.Length; i++)
+            IReadOnlyList<string> ids = CardUpgrade.PreferUpgraded(player.cardIds, _catalog);
+            for (int i = 0; i < ids.Count; i++)
             {
-                AddId(pool.cardIds[i]);
+                AddId(ids[i]);
             }
         }
 
@@ -208,37 +228,40 @@ namespace MagicBrawl.App
             _ids.Add(id);
         }
 
-        /// <summary>把 ID 解析成卡定义（**按卡目录顺序**，与 <see cref="CardPool.Resolve"/> 同口径）。</summary>
+        /// <summary>
+        /// 把 ID 解析成卡定义。
+        ///
+        /// <para><b>⚠ 顺序按 <see cref="_ids"/>（卡池自己声明的顺序），不是按卡目录顺序</b>：
+        /// 强化卡的序号是「动态卡区」（10000 起），按目录序排会**跳到网格最后一行**
+        /// —— 玩家强化完一张牌，它会从原来那一格挪到队尾，看起来像「卡被换掉了」。
+        /// 按卡池出的顺序排，强化版就留在基础版原来的位置上。
+        /// （这与 <c>CardPool.Resolve</c> 的「按目录序」口径不同，是对齐「玩家自己的卡池」
+        /// 这个语义的有意选择；同种子复现仍然稳定，因为 <see cref="_ids"/> 是确定的。）</para>
+        /// </summary>
         private void ResolveCards()
         {
             _cards.Clear();
 
+            var byId = new Dictionary<string, CardDef>(StringComparer.Ordinal);
             foreach (CardDef card in _catalog.All)
             {
-                if (card != null && _ids.Contains(card.Id))
+                if (card != null && !byId.ContainsKey(card.Id))
                 {
-                    _cards.Add(card);
+                    byId.Add(card.Id, card);
                 }
             }
 
-            // 目录里查不到的 ID 单独报一声 —— 少了这一条，症状是「卡池资产里写了 8 张，
-            // 界面上只有 6 张」，而且不报任何错。
             for (int i = 0; i < _ids.Count; i++)
             {
-                bool found = false;
-                for (int c = 0; c < _cards.Count; c++)
+                CardDef card;
+                if (byId.TryGetValue(_ids[i], out card))
                 {
-                    if (_cards[c].Id == _ids[i])
-                    {
-                        found = true;
-                        break;
-                    }
+                    _cards.Add(card);
+                    continue;
                 }
 
-                if (!found)
-                {
-                    Debug.LogWarning("[UpgradeSceneEntry] 卡池里的 ID 不在卡目录里，已跳过：" + _ids[i]);
-                }
+                // 少了这一条，症状是「卡池资产里写了 8 张，界面上只有 6 张」，而且不报任何错。
+                Debug.LogWarning("[UpgradeSceneEntry] 卡池里的 ID 不在卡目录里，已跳过：" + _ids[i]);
             }
         }
 

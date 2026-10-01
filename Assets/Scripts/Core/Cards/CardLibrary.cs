@@ -4,11 +4,11 @@ using System.Collections.Generic;
 namespace MagicBrawl.Core
 {
     /// <summary>
-    /// 40 张卡的静态定义表（a–an）。
+    /// 45 张卡的静态定义表（a–as）。
     ///
     /// 录入依据：`Docs/rules/02-卡牌图鉴.md`。任何数值改动只改这一处。
     /// 校验钩子：<see cref="ValidatePowerDistribution"/> / <see cref="ValidateCooldownDistribution"/>
-    /// —— M11 自测会调用它们做「力量分布 = 1:3 / 2:4 / 3:5 / 4:5 / 5:6 / 6:5 / 7:5 / 8:4 / 9:2 / X:1」的断言。
+    /// —— M11 自测会调用它们做「力量分布 = 1:4 / 2:4 / 3:6 / 4:5 / 5:6 / 6:6 / 7:7 / 8:4 / 9:2 / X:1」的断言。
     /// </summary>
     public static class CardLibrary
     {
@@ -205,6 +205,26 @@ namespace MagicBrawl.Core
             Add(41, "ap", "击穿", 3, 4, CardElement.Electric,
                 A(EffectOp.Aura, 1, aura: AuraKind.QuickRefill, text: "光环：使本次打出的法术获得快速回填"),
                 A(EffectOp.Combo, text: "连击"));
+
+            // ── 2026-10-01 新增（43–45）──────────────────────────
+            // 水之形（水 · 力量 1 / 冷却 2）：α 每次进攻后本卡基础力量 +2、
+            // β 每次防御后本卡基础力量 +1。成长写在**这张牌的实例**上
+            // （CardInstance.BattlePowerBonus），只在本场战斗内有效 —— 进冷却区 / 回手都不清。
+            // 两条效果**必须同用一个算子**（GrowBasePower），由触发符号区分 α / β。
+            Add(42, "aq", "水之形", 1, 2, CardElement.Water,
+                A(EffectOp.GrowBasePower, 2, text: "每次进攻后，此卡的基础力量 +2（本场战斗内有效）"),
+                D(EffectOp.GrowBasePower, 1, text: "每次防御后，此卡的基础力量 +1（本场战斗内有效）"));
+
+            // 闪电球（电 · 力量 7 / 冷却 3）：α 加速；α **只有**「这是你的最后一张手牌」
+            // 时才连击（条件由 EffectDef 构造时自动挂 hand-at-play = 1）。
+            Add(43, "ar", "闪电球", 7, 3, CardElement.Electric,
+                A(EffectOp.Haste, 1, text: "加速"),
+                A(EffectOp.ComboIfLastHand, text: "若这是你的最后一张手牌，连击"));
+
+            // 冷冻核心（冰 · 力量 6 / 冷却 3）：α 减速；α 光环：防御力量 +3。
+            Add(44, "as", "冷冻核心", 6, 3, CardElement.Ice,
+                A(EffectOp.Slow, 1, text: "减速"),
+                A(EffectOp.Aura, 3, aura: AuraKind.DefPower, text: "光环：防御力量 +3"));
         }
 
         // ── 查询 ────────────────────────────────────────────────
@@ -238,16 +258,18 @@ namespace MagicBrawl.Core
         // ── 校验 ────────────────────────────────────────────────
 
         /// <summary>
-        /// 力量分布校验：1:3 / 2:4 / 3:6 / 4:5 / 5:6 / 6:5 / 7:6 / 8:4 / 9:2 / X:1（共 42 张）。
+        /// 力量分布校验：1:4 / 2:4 / 3:6 / 4:5 / 5:6 / 6:6 / 7:7 / 8:4 / 9:2 / X:1（共 45 张）。
         ///
         /// <para>前 40 张的一组数字来自原始文档、与逐卡录入完全吻合 —— 是最硬的数据断言。
-        /// 2026-09-29 新增御刺（力量 7）/ 击穿（力量 3）之后，两档各 +1：
-        /// <b>3:5 → 3:6、7:5 → 7:6</b>，总数 40 → 42。加卡时忘了改这里，报出来的是
-        /// 「力量分布不符」，看不出问题在新卡上。</para>
+        /// 2026-09-29 新增毒刺（力量 7）/ 击穿（力量 3）之后，两档各 +1
+        /// （<b>3:5 → 3:6、7:5 → 7:6</b>，总数 40 → 42）；
+        /// 2026-10-01 新增水之形（力量 1）/ 闪电球（力量 7）/ 冷冻核心（力量 6），
+        /// 三档各 +1（<b>1:3 → 1:4、7:6 → 7:7、6:5 → 6:6</b>，总数 42 → 45）。
+        /// 加卡时忘了改这里，报出来的是「力量分布不符」，看不出问题在新卡上。</para>
         /// </summary>
         public static bool ValidatePowerDistribution(out string report)
         {
-            int[] expected = { 3, 4, 6, 5, 6, 5, 6, 4, 2 };
+            int[] expected = { 4, 4, 6, 5, 6, 6, 7, 4, 2 };
             int[] actual = new int[9];
             int hidden = 0;
 
@@ -279,19 +301,20 @@ namespace MagicBrawl.Core
             }
 
             report = diffs.Count == 0
-                ? "力量分布 OK：1:3 2:4 3:5 4:5 5:6 6:5 7:5 8:4 9:2 X:1"
+                ? "力量分布 OK：1:4 2:4 3:6 4:5 5:6 6:6 7:7 8:4 9:2 X:1（共 45 张）"
                 : "力量分布不符 → " + string.Join(" / ", diffs.ToArray());
             return diffs.Count == 0;
         }
 
         /// <summary>
-        /// 冷却分布校验：以逐卡数值为准 —— 2:7 / 3:21 / 4:14（共 42 张）。
+        /// 冷却分布校验：以逐卡数值为准 —— 2:8 / 3:23 / 4:14（共 45 张）。
         /// （原始文档标注为 3:20 / 4:13，相差 1 张，见 `02-卡牌图鉴.md` §统计校验；
-        /// 2026-09-29 新增的毒刺 / 击穿都是冷却 4，所以 4:12 → 4:14。）
+        /// 2026-09-29 新增的毒刺 / 击穿都是冷却 4，所以 4:12 → 4:14；
+        /// 2026-10-01 新增水之形（冷却 2）/ 闪电球与冷冻核心（冷却 3），2:7 → 2:8、3:21 → 3:23。）
         /// </summary>
         public static bool ValidateCooldownDistribution(out string report)
         {
-            int[] expected = { 0, 0, 7, 21, 14 };  // 下标 0..4，只用 2/3/4
+            int[] expected = { 0, 0, 8, 23, 14 };  // 下标 0..4，只用 2/3/4
             int[] actual = new int[5];
             for (int i = 0; i < Defs.Count; i++)
             {
@@ -312,7 +335,7 @@ namespace MagicBrawl.Core
             }
 
             report = diffs.Count == 0
-                ? "冷却分布 OK：2:7 3:21 4:12（以逐卡数值为准）"
+                ? "冷却分布 OK：2:8 3:23 4:14（共 45 张，以逐卡数值为准）"
                 : "冷却分布不符 → " + string.Join(" / ", diffs.ToArray());
             return diffs.Count == 0;
         }

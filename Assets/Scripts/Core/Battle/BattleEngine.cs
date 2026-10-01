@@ -642,7 +642,10 @@ namespace MagicBrawl.Core
                     Seat = attacker.Seat,
                     Card = c,
                     Value = c.EffectivePower,
-                    Label = "打出 " + c.Def.Name + "（力量 " + c.Def.PowerText + " · 冷却 " + c.Def.Cooldown + "）",
+                    // ⚠ 用实例的 PowerLabelText（不是 c.Def.PowerText）：水之形（aq）成长之后
+                    //   这一行必须与它卡面上画的力量一致，否则同屏两处数字对不上。
+                    Label = "打出 " + c.Def.Name + "（力量 " + c.PowerLabelText
+                            + " · 冷却 " + c.Def.Cooldown + "）",
                 });
             }
 

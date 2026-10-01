@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e34f0418fcb6dc4da779b9d2331fde8, type: 3}
+  m_Name: Card_c_Up
+  m_EditorClassIdentifier: 
+  cardId: c+
+  displayName: "\u51DD\u56FA+"
+  power: 5
+  cooldown: 2
+  hiddenPower: 0
+  artId: c
+  version: 1
+  effects:
+  - trigger: 0
+    operation: 2
+    handlerId: Slow
+    amount: 2
+    secondary: 0
+    cooldownAdjustment: 0
+    aura: 0
+    mandatory: 0
+    targets: 0
+    specialEvent: 
+    distinctTargetGroup: 
+    text: "\u51CF\u901F \xD72"
+    conditions: []

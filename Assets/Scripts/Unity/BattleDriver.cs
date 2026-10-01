@@ -48,6 +48,15 @@ namespace MagicBrawl.App
         [SerializeField] private CardCatalogAsset _cardCatalog;
         [SerializeField] private int _localSeat;
 
+        [Header("存档（玩家卡池的来源）")]
+        [Tooltip("本场战斗读哪个存档的卡池。\n"
+                 + "· 战斗测试档（存档 1）= 默认。只有战斗读得到它；没有存档时用角色自带的卡池"
+                 + "（BattlePool = 全 45 张），点了设置面板的「保存并重开」才落盘。\n"
+                 + "· 主存档（存档 2）= 商店 / 强化 / 女巫工坊共用的那一份。正式跑冒险链路时切到它，"
+                 + "这样战斗里用的牌就是商店买来的那些。\n"
+                 + "⚠ 这两个档位是**两套独立的卡池**，互不影响。")]
+        [SerializeField] private SaveSlot _saveSlot = SaveSlot.Test;
+
         [Header("演出节奏")]
         [Tooltip("节拍总倍率：0 = 关闭演出（事件仍逐条发，只不等待）。")]
         [SerializeField] private float _beatScale = 1f;
@@ -66,7 +75,6 @@ namespace MagicBrawl.App
         private readonly Dictionary<int, IParticipantController> _controllers = new Dictionary<int, IParticipantController>();
         private IParticipantController _activeController;
         private BattleSetup _setup;
-        private PlayerCardPoolStore _poolStore;
         private bool _paused;
         public Func<IBattleMode> ModeFactory { get; set; }
         public Func<EffectRegistry> EffectRegistryFactory { get; set; }
@@ -74,8 +82,16 @@ namespace MagicBrawl.App
         public int LocalSeat { get { return _localSeat; } }
         public int ParticipantCount { get { return _engine == null ? 0 : _engine.State.Players.Count; } }
         public bool IsPaused { get { return _paused; } }
-        public string CardPoolSavePath { get { return PoolStore.FilePath; } }
-        private PlayerCardPoolStore PoolStore { get { return _poolStore ?? (_poolStore = new PlayerCardPoolStore()); } }
+        /// <summary>
+        /// 本场战斗读的存档档位。默认 <see cref="SaveSlot.Test"/>（战斗测试档）。
+        ///
+        /// <para>切到 <see cref="SaveSlot.Main"/> 之后，本场战斗用的就是商店买过、女巫消耗过的
+        /// 那一份卡池 —— 也就是「冒险链路里的那个玩家」。</para>
+        /// </summary>
+        public SaveSlot ActiveSaveSlot { get { return _saveSlot; } }
+
+        /// <summary>当前档位的落盘路径（设置面板显示用）。</summary>
+        public string CardPoolSavePath { get { return SaveStore.FilePathFor(_saveSlot); } }
         public void SetPaused(bool paused) { _paused = paused; }
         public int OpponentSeat { get { return _engine == null ? (_localSeat == 0 ? 1 : 0) : _engine.State.Mode.SelectDefender(_engine.State, _localSeat); } }
         public BattleOutcome Outcome { get { return _engine == null ? null : _engine.State.Outcome; } }
@@ -555,7 +571,7 @@ namespace MagicBrawl.App
                     CardPool pool;
                     string error;
                     if (localOverride != null) pool = localOverride;
-                    else if (!PoolStore.TryLoad(character, out pool, out error)) Debug.LogWarning(error + " 本局使用角色默认卡池。");
+                    else if (!SaveStore.TryLoadCardPool(_saveSlot, character, out pool, out error)) Debug.LogWarning(error + " 本局使用角色默认卡池。");
                     character = character.WithCardPool(pool);
                 }
                 bool defaults = _participants == null || _participants.Length == 0;
@@ -599,7 +615,7 @@ namespace MagicBrawl.App
                 error = ex.Message;
                 return false;
             }
-            if (!PoolStore.TrySave(setup.Participants[_localSeat].Character, pool, out error)) return false;
+            if (!SaveStore.TrySaveCardPool(_saveSlot, pool, out error)) return false;
             StartBattle();
             return true;
         }

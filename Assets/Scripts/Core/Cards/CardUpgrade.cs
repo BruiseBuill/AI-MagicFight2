@@ -54,12 +54,87 @@ namespace MagicBrawl.Core
         /// <summary>去掉尾部的 <c>+</c>（反复强化时不能越挂越多，见 <see cref="UpgradedId"/>）。</summary>
         public static string BaseId(CardDef def)
         {
-            if (def == null || string.IsNullOrEmpty(def.Id))
+            return def == null ? string.Empty : BaseIdOf(def.Id);
+        }
+
+        /// <summary>
+        /// 同上，但吃的是字符串 ID。
+        ///
+        /// <para><b>为什么需要它</b>：存档里存的是<b>基础 ID</b>（<c>"a"</c>），而界面上拿到的
+        /// 常常是<b>解析后</b>的 ID（<c>"a+"</c>）—— 两边要做「同一张牌」的比较、写入存档前
+        /// 要做归一，都得能把后缀削掉。卡池 / 商店 / 女巫工坊三处共用这一处实现。</para>
+        /// </summary>
+        public static string BaseIdOf(string id)
+        {
+            if (string.IsNullOrEmpty(id))
             {
                 return string.Empty;
             }
 
-            return def.Id.TrimEnd(SuffixChar);
+            return id.TrimEnd(SuffixChar);
+        }
+
+        /// <summary>
+        /// 从一份卡池 ID 清单解析出「**最终该用哪几份定义**」：清单里若写着 <c>a</c>，
+        /// 而卡表里已经存在 <c>a+</c>（强化卡已落盘），就换成 <c>a+</c>。
+        ///
+        /// <para><b>这是「强化过一次，下次进来那张牌还是 6 点」的唯一闭环点</b>，
+        /// 卡池资产（<c>CardPoolConfig.ResolveIds</c>）与存档（<c>SaveStore</c>）都必须走它 ——
+        /// 两边各写一份的下场是「从卡池资产进场景是强化版、从存档进场景又变回基础版」，
+        /// 而且零报错。</para>
+        ///
+        /// <para><b>⚠ 判据是「<paramref name="catalog"/> 里有没有 <c>&lt;id&gt;+</c>」，
+        /// 不是「清单里有没有」</b>：清单里永远只写基础 ID，强化版只存在于卡目录的
+        /// 「动态卡」区（<c>CardCatalogAsset.generatedCards</c>）。第一版写成看清单，
+        /// 于是永远不触发。</para>
+        ///
+        /// <para>顺带<b>去重</b>（保持首次出现的顺序）：清单里同时有 <c>a</c> 与 <c>a+</c> 时
+        /// 只留一份，不会出现「同名牌两张」。</para>
+        /// </summary>
+        public static IReadOnlyList<string> PreferUpgraded(IEnumerable<string> ids, ICardCatalog catalog = null)
+        {
+            ICardCatalog source = catalog ?? CardCatalog.Builtin();
+            var list = new List<string>();
+
+            if (ids != null)
+            {
+                foreach (string id in ids)
+                {
+                    if (!string.IsNullOrEmpty(id) && !list.Contains(id))
+                    {
+                        list.Add(id);
+                    }
+                }
+            }
+
+            var catalogIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (CardDef card in source.All)
+            {
+                if (card != null)
+                {
+                    catalogIds.Add(card.Id);
+                }
+            }
+
+            var kept = new List<string>(list.Count);
+            for (int i = 0; i < list.Count; i++)
+            {
+                string id = list[i];
+                string upgradedId = id + Suffix;
+                if (catalogIds.Contains(upgradedId))
+                {
+                    if (!kept.Contains(upgradedId))
+                    {
+                        kept.Add(upgradedId);   // 强化版在 → 用强化版
+                    }
+
+                    continue;
+                }
+
+                kept.Add(id);
+            }
+
+            return kept.AsReadOnly();
         }
 
         /// <summary>强化后的卡 ID。<b>不叠加</b> —— 强化过的牌再强化仍是 <c>"a+"</c>。</summary>

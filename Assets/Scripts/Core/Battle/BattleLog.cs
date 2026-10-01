@@ -294,6 +294,38 @@ namespace MagicBrawl.Core
         }
     }
 
+    /// <summary>
+    /// 某张牌的<b>基础力量发生持久成长</b>（水之形 aq 的 α / β）—— 2026-10-01 新增。
+    ///
+    /// <para>成长落在<b>卡牌实例</b>上（<see cref="CardInstance.BattlePowerBonus"/>），
+    /// 本场战斗内一直有效。它不改变本次攻防已经结算完的力量
+    /// （<see cref="AttackPowerResolvedEvent"/> 报的仍是成长前的数），
+    /// 所以这条事件是「从下一拍开始，这张牌更强了」的凭据。</para>
+    /// </summary>
+    public sealed class BasePowerGrownEvent : BattleEvent
+    {
+        /// <summary>成长发生在谁的牌上。</summary>
+        public int Seat;
+
+        /// <summary>发生成长的牌。</summary>
+        public CardInstance Card;
+
+        /// <summary>本次增量。</summary>
+        public int Amount;
+
+        /// <summary>累计成长（本场战斗内）。</summary>
+        public int BattlePowerBonus;
+
+        /// <summary>成长后的有效力量。</summary>
+        public int Power;
+
+        public override string Describe()
+        {
+            return "成长 seat" + Seat + " " + Card.Def.Name + " 基础力量 +" + Amount
+                   + "（累计 +" + BattlePowerBonus + " → 力量 " + Power + "）";
+        }
+    }
+
     /// <summary>胜负已分。</summary>
     public sealed class GameOverEvent : BattleEvent
     {

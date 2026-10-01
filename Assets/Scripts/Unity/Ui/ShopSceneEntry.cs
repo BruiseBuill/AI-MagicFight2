@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using MagicBrawl.Core;
 using UnityEngine;
@@ -15,8 +16,13 @@ namespace MagicBrawl.App
     /// <para><b>独立场景契约</b>（<c>Docs/design/冒险事件架构.md</c> §3）：</para>
     /// <list type="number">
     /// <item><b>E1 不依赖地图</b>：一切参数由本组件的序列化字段给（调试默认值），不做任何前置加载；</item>
-    /// <item><b>E2 不依赖前一节点</b>：场景直接以「一个金币 50、生命 4/4、未持有任何卡」的假 Run 开局；</item>
-    /// <item><b>E3 不写真实存档</b>：本类<b>完全不碰存档</b>，也不会被存档碰到；</item>
+    /// <item><b>E2 不依赖前一节点</b>：场景直接以「一个金币 50、生命 4/4」的假 Run 开局；</item>
+    /// <item><b>E3 读主存档、也写主存档</b>（<b>2026-10-01 改口径</b>，原先写的是「完全不碰存档」）：
+    /// 玩家卡池从 <see cref="SaveSlot.Main"/> 读，买下一张牌之后<b>写回同一份</b>。
+    /// 「一个存档 = 一个玩家卡池」要求战斗 / 商店 / 强化 / 女巫工坊读的是同一份，
+    /// 所以商店不能再自带一份清单。⚠ 写回只在「没走 <c>_ownedCardIds</c> 调试覆盖」
+    /// 且「读档成功」时才发生（见 <c>_loadedFromMainSave</c>）——
+    /// 否则拿调试数据覆盖真实存档是另一种事故；</item>
     /// <item><b>E4 Core 一行不改</b>：这里只<b>读</b>卡表与商店规则，
     /// 自己把结果翻译成 <see cref="ShopView.ShelfEntry"/>，不存在「第二套商店逻辑」。</item>
     /// </list>
@@ -63,7 +69,8 @@ namespace MagicBrawl.App
         [SerializeField] private bool _logLeaveClick = true;
 
         [Tooltip("「玩家已持有」的卡 id —— 货架只卖这张单子之外的卡，背包里显示的就是这一份。\n"
-                 + "留空 = 用卡池资产 Resources/Pools/ShopPool（2026-09-30 起，原先写死在这里的那 8 张已搬进资产）。\n"
+                 + "留空 = 读主存档（Resources 下的卡池资产已不再参与，2026-10-01 起）。\n"
+                 + "填了就走调试覆盖：此时**不读写存档**（拿调试数据覆盖真实存档是事故）。\n"
                  + "想验「牌不够 4 张时缺位显示卖光了」就把这里填到只剩两三张。")]
         [SerializeField] private string[] _ownedCardIds = new string[0];
 
@@ -71,32 +78,44 @@ namespace MagicBrawl.App
 
         [SerializeField] private ShopView _view;
 
+        /// <summary>本次运行用的卡目录（内置 45 张 + 已落盘的强化卡）—— 背包里要显示强化版就得用它。</summary>
+        private ICardCatalog _catalog;
+
         /// <summary>当前货架（内部保留，供点击时查价）。</summary>
         private readonly List<ShopView.ShelfEntry> _shelf = new List<ShopView.ShelfEntry>();
 
         /// <summary>
         /// 主角<b>当前持有</b>的卡 id（= 背包的内容）。
         ///
-        /// <para>开局由 <see cref="_ownedCardIds"/> 或商店卡池资产解析而来，
-        /// 买下一张牌之后会当场加进来 —— 所以「买完点开背包，多出来的那一张就在里面」
-        /// 这条链路是通的。</para>
+        /// <para>开局由主存档（或 <see cref="_ownedCardIds"/> 调试覆盖）解析而来，
+        /// 买下一张牌之后会当场加进来并<b>写回主存档</b> —— 所以
+        /// 「买完点开背包，多出来的那一张就在里面」与「换个场景它还在」两条链路都是通的。</para>
         /// </summary>
         private readonly List<string> _owned = new List<string>();
 
         /// <summary>
-        /// 起始牌池（调试口径）的**唯一来源** = 卡池资产 <c>Resources/Pools/ShopPool</c>。
+        /// 本次 <see cref="_owned"/> 是不是从<b>主存档</b>读来的。
         ///
-        /// <para><b>⚠ 2026-09-30 搬家</b>：原先这里是写死的 8 张静态数组
-        /// （暴风雪 / 冰风暴 / 凝固 / 寒流 / 滚石冲击 / 电弧 / 喷泉 / 淬火，见
-        /// <c>Docs/design/冒险事件架构.md</c> §5.3）。用户要求「各场景卡池分离」之后，
-        /// 那份清单搬进了 <see cref="CardPoolConfig"/> 资产 —— 本类<b>只读、不再自带一份</b>。
-        /// 两边各留一份的下场是「改了资产，货架照旧按旧清单排」，而且零报错。</para>
+        /// <para>只有为 <c>true</c> 才允许写回：调试覆盖（<see cref="_ownedCardIds"/> 非空）
+        /// 与「读档失败回退空卡池」两种情形都不该拿手上的数据去覆盖存档。</para>
+        /// </summary>
+        private bool _loadedFromMainSave;
+
+        /// <summary>
+        /// 起始（已持有）卡池的**唯一来源** —— <b>主存档</b>的玩家卡池。
+        ///
+        /// <para><b>⚠ 2026-10-01 统一</b>：原先这里是「Inspector 覆盖 → <c>ShopPool</c> 资产」，
+        /// 而强化 / 女巫工坊读的是另一份 <c>UpgradePool</c>、战斗读的是第三份 ——
+        /// 四个场景四个玩家。现在四个场景都从 <see cref="SaveStore"/> 取同一个玩家
+        /// （按 <see cref="SaveSlot"/> 分档），本类只认 <see cref="SaveSlot.Main"/>。
+        /// <c>ShopPool</c> / <c>UpgradePool</c> 两份资产因此<b>不再被运行时读取</b>。</para>
         /// </summary>
         private void ResolveOwned()
         {
             _owned.Clear();
+            _loadedFromMainSave = false;
 
-            // ① Inspector 直接写的 id（调试用，优先级最高）
+            // ① Inspector 直接写的 id（调试用，优先级最高；此时不碰存档）
             if (_ownedCardIds != null && _ownedCardIds.Length > 0)
             {
                 for (int i = 0; i < _ownedCardIds.Length; i++)
@@ -107,38 +126,32 @@ namespace MagicBrawl.App
                 return;
             }
 
-            // ② 商店卡池资产
-            CardPoolConfig pool = Resources.Load<CardPoolConfig>(CardPoolConfig.ShopPoolResourcePath);
-            if (pool == null)
+            // ② 主存档（唯一的正式来源）
+            PlayerData player;
+            string error;
+            if (!SaveStore.TryLoadPlayer(SaveSlot.Main, out player, out error))
             {
-                Debug.LogWarning("[ShopSceneEntry] 找不到商店卡池资产（" + CardPoolConfig.ShopPoolResourcePath
-                                 + "）—— 先跑 `魔法乱斗/P5 · 构建 Upgrade 场景`（连同卡池一起建）。");
+                Debug.LogWarning("[ShopSceneEntry] 读主存档失败，本局按空卡池起步：" + error);
                 return;
             }
 
-            if (pool.useAllCards)
-            {
-                IReadOnlyList<CardDef> every = CardLibrary.All;
-                for (int i = 0; i < every.Count; i++)
-                {
-                    AddOwned(every[i].Id);
-                }
-
-                return;
-            }
-
-            if (pool.cardIds == null)
+            if (player == null || player.cardIds == null)
             {
                 return;
             }
 
-            for (int i = 0; i < pool.cardIds.Length; i++)
+            IReadOnlyList<string> ids = CardUpgrade.PreferUpgraded(player.cardIds, _catalog);
+            for (int i = 0; i < ids.Count; i++)
             {
-                AddOwned(pool.cardIds[i]);
+                AddOwned(ids[i]);
             }
+
+            _loadedFromMainSave = true;
+            Debug.Log("[ShopSceneEntry] 主存档卡池 " + _owned.Count + " 张（"
+                      + SaveStore.FilePathFor(SaveSlot.Main) + "）");
         }
 
-        /// <summary>把一个 id 收进「已持有」（去重 + 查卡表；不在卡表里的跳过并报警）。</summary>
+        /// <summary>把一个 id 收进「已持有」（去重 + 查目录；不在目录里的跳过并报警）。</summary>
         private void AddOwned(string id)
         {
             if (string.IsNullOrEmpty(id) || _owned.Contains(id))
@@ -146,14 +159,35 @@ namespace MagicBrawl.App
                 return;
             }
 
-            CardDef def;
-            if (!CardLibrary.TryGet(id, out def))
+            if (!KnownInCatalog(id))
             {
-                Debug.LogWarning("[ShopSceneEntry] 已持有卡 id 不在卡表里，已跳过：" + id);
+                Debug.LogWarning("[ShopSceneEntry] 已持有卡 id 不在卡目录里，已跳过：" + id);
                 return;
             }
 
             _owned.Add(id);
+        }
+
+        /// <summary>这个 id 在不在<b>本次运行的卡目录</b>里。
+        /// ⚠ 不能用 <c>CardLibrary.TryGet</c>：强化卡（<c>"a+"</c>）只存在于卡目录的动态卡区，
+        /// 用内置卡表查会查不到 → 症状是「强化过的牌在背包里凭空消失」，零报错。</summary>
+        private bool KnownInCatalog(string id)
+        {
+            if (_catalog == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<CardDef> all = _catalog.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i] != null && string.Equals(all[i].Id, id, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void Awake()
@@ -199,6 +233,8 @@ namespace MagicBrawl.App
                 return;
             }
 
+            _catalog = ResolveCatalog();
+
             _view.SetTitle("商店");
             _view.SetLeaveLabel("离开");
             _view.BindResources(_playerName, _hp, _maxHp, _gold);
@@ -210,20 +246,37 @@ namespace MagicBrawl.App
             _view.BindShelf(_shelf);
         }
 
+        /// <summary>
+        /// 取本次运行用的卡目录（内置 45 张 + 已落盘的强化卡）。
+        ///
+        /// <para>必须与战斗 / 强化 / 女巫用的是**同一份** <c>CardCatalogAsset</c> ——
+        /// 强化卡只存在于那份目录的「动态卡」清单里。</para>
+        /// </summary>
+        private ICardCatalog ResolveCatalog()
+        {
+            CardCatalogAsset asset = Resources.Load<CardCatalogAsset>("CardCatalog");
+            return asset == null ? CardCatalog.Builtin() : asset.CreateCatalog();
+        }
+
         // ══════════════════════════════════════════════════════
         //  主角当前持有（= 背包的内容）
         // ══════════════════════════════════════════════════════
         //
-        //  ⚠ <c>ResolveOwned</c> 与 <c>AddOwned</c> 在文件上半部分（紧挨着 <c>_owned</c> 字段）——
+        //  ⚠ <c>ResolveOwned</c> / <c>AddOwned</c> 在文件上半部分（紧挨着 <c>_owned</c> 字段）——
         //    因为那一处口径要同时喂两个地方：货架的「未持有池」（补集）与背包的卡池。
         //    两者各算各的，就会出现「背包里明明有暴风雪、货架上还在卖暴风雪」这种
         //    一眼假、但零报错的画面，所以合一，并且只有一份实现。
 
-        /// <summary>把「已持有 id」翻译成卡表定义（按<b>卡表顺序</b>，与 <c>CardPool.Resolve</c> 同口径）。</summary>
+        /// <summary>把「已持有 id」翻译成卡表定义（按<b>目录顺序</b>，与 <c>CardPool.Resolve</c> 同口径）。</summary>
         private List<CardDef> ResolveOwnedCards()
         {
             var cards = new List<CardDef>();
-            IReadOnlyList<CardDef> all = CardLibrary.All;
+            if (_catalog == null)
+            {
+                return cards;
+            }
+
+            IReadOnlyList<CardDef> all = _catalog.All;
 
             for (int i = 0; i < all.Count; i++)
             {
@@ -260,7 +313,7 @@ namespace MagicBrawl.App
 
             // 用派生种子（与商店种子区分开）洗牌，这样「换存档种子」和「刷新货架」
             // 不会碰巧给出同一个排列。
-            int seed = _rerollEveryTime ? Random.Range(int.MinValue, int.MaxValue) : _seed;
+            int seed = _rerollEveryTime ? UnityEngine.Random.Range(int.MinValue, int.MaxValue) : _seed;
             var rng = new System.Random(seed ^ 0x5A17);
             for (int i = pool.Count - 1; i > 0; i--)
             {
@@ -293,19 +346,30 @@ namespace MagicBrawl.App
         /// <summary>
         /// 「玩家尚未持有」的卡池 = <b>当前持有（<see cref="_owned"/>）的补集</b>。
         ///
-        /// <para>用 <c>_ownedCardIds</c> 那串 id 当「已持有」—— 留空就是 §5.3 的 8 张起始牌池
-        /// （所以正常流程下货架从 32 张里抽，恒走「≥4」那一档）。
-        /// 想验「牌少的时候缺位显示卖光了」就把这个数组填到只剩两三张。</para>
+        /// <para>两个口径要点：</para>
+        /// <list type="number">
+        /// <item>候选只取<b>内置卡表</b>（<c>CardLibrary.All</c>）—— 已经落盘的强化卡
+        /// （<c>"a+"</c>）是玩家自己强化出来的，不该出现在货架上；</item>
+        /// <item>「已持有」按<b>基础 ID</b> 比（<see cref="CardUpgrade.BaseIdOf"/>）——
+        /// 否则持有 <c>a+</c> 时货架会再一次卖 <c>a</c>，玩家买下去卡池里就同时有
+        /// <c>a</c> 与 <c>a+</c> 两张同名牌，而且零报错。</item>
+        /// </list>
         /// </summary>
         private List<CardDef> CollectUnshelvedPool()
         {
+            var ownedBase = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < _owned.Count; i++)
+            {
+                ownedBase.Add(CardUpgrade.BaseIdOf(_owned[i]));
+            }
+
             var pool = new List<CardDef>();
 
             IReadOnlyList<CardDef> all = CardLibrary.All;
             for (int i = 0; i < all.Count; i++)
             {
                 CardDef def = all[i];
-                if (def == null || _owned.Contains(def.Id))
+                if (def == null || ownedBase.Contains(CardUpgrade.BaseIdOf(def.Id)))
                 {
                     continue;
                 }
@@ -346,11 +410,13 @@ namespace MagicBrawl.App
                       + " 金 → 余 " + _gold);
 
             // 买下的牌**进背包**：这才是「背包 = 主角当前卡池」在玩法上的意义 ——
-            // 不把 id 记进 _owned 的话，背包永远停在开局那 8 张，买完点开看不见新牌。
+            // 不把 id 记进 _owned 的话，背包永远停在开局那几张，买完点开看不见新牌。
             if (!_owned.Contains(entry.Card.Id))
             {
                 _owned.Add(entry.Card.Id);
             }
+
+            PersistOwned();
 
             _shelf[index] = new ShopView.ShelfEntry { Index = entry.Index };
 
@@ -377,6 +443,32 @@ namespace MagicBrawl.App
             _view.BindResources(_playerName, _hp, _maxHp, _gold);
             _view.BindBag(ResolveOwnedCards());
             _view.BindShelf(_shelf);
+        }
+
+        /// <summary>
+        /// 把「当前持有」写回主存档（2026-10-01 起：买下的牌<b>真的落盘</b>）。
+        ///
+        /// <para>⚠ 只在 <see cref="_loadedFromMainSave"/> 为真时写 —— 调试覆盖与读档失败
+        /// 两种情形都不该拿手上的数据去覆盖真实存档。</para>
+        ///
+        /// <para>归一成基础 ID 这一步在 <see cref="SaveStore.TrySaveCardIds"/> 里做，
+        /// 这里只管把手上这份清单交出去。</para>
+        /// </summary>
+        private void PersistOwned()
+        {
+            if (!_loadedFromMainSave)
+            {
+                return;
+            }
+
+            string error;
+            if (!SaveStore.TrySaveCardIds(SaveSlot.Main, _owned, out error))
+            {
+                Debug.LogWarning("[ShopSceneEntry] 买下的牌没能写回主存档：" + error);
+                return;
+            }
+
+            Debug.Log("[ShopSceneEntry] 主存档卡池已更新：" + _owned.Count + " 张");
         }
 
         private void OnBagClicked()

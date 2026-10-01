@@ -235,6 +235,40 @@ namespace MagicBrawl.Core
         /// <see cref="PlayerState.WeakenStacks"/>）。</para>
         /// </summary>
         Weaken = 32,
+
+        // ── 2026-10-01 新增（水之形 / 闪电球）──────────────────
+        /// <summary>
+        /// 水之形（aq）：<b>本卡的「基础力量」永久成长</b>（A = 每次增量；<b>只在本场战斗内有效</b>）。
+        ///
+        /// <para><b>它和 <see cref="AtkPlus"/> 的区别是「落在哪儿」</b>：AtkPlus 改的是
+        /// <see cref="AttackContext"/> 上的<b>本次</b>增量（攻防结束即蒸发）；本算子写的是
+        /// <see cref="CardInstance.BattlePowerBonus"/> —— <b>挂在牌实例上的持久成长</b>，
+        /// 进冷却区、回手都不会清（<see cref="CardInstance.ToHand"/> 只是按
+        /// <c>Def.Power + BattlePowerBonus</c> 重算有效力量）。</para>
+        ///
+        /// <para><b>「进攻后 / 防御后」是自然得到的，不需要额外时机</b>：本算子归
+        /// <see cref="EffectStage.Power"/>，α 在 ① 力量阶段结算、β 被
+        /// <c>StageOf</c> 重定向到 ② 防御阶段。两处都<b>晚于</b>本次攻防的力量快照与比拼
+        /// —— 进攻侧的 <c>AttackContext.BasePower</c> 在选牌那一刻就取好了、
+        /// 防御侧的 <c>DefenseResolver</c> 在提交那一刻就算完了，所以成长只对
+        /// <b>以后</b>的攻击 / 防御生效，正好是卡面写的「每次进攻 / 防御后」。</para>
+        ///
+        /// <para>⚠ <b>力量视为 X 的牌（模仿 x）不吃成长</b>：它的力量由 <see cref="Copy"/>
+        /// 临时接管、卡面恒定「未复制时视为 1」，写进成长会与卡面直接矛盾。</para>
+        ///
+        /// <para>无决策、无可放弃，纯写入（另发一条 <c>BasePowerGrownEvent</c> 便于回放）。</para>
+        /// </summary>
+        GrowBasePower = 33,
+
+        /// <summary>
+        /// 闪电球（ar）：<b>只有「这是你的最后一张手牌」时才获得「连击」</b>。
+        ///
+        /// <para>与 <see cref="SlowIfLastTwoHand"/> 同一类：<b>同一个算子不允两种触发条件</b>，
+        /// 所以条件连击是独立算子。构造时会自动挂上 <c>hand-at-play = 1</c> 条件
+        /// （<see cref="PlayerState.Hand"/> 在出牌之后为空），条件不满足则<b>整条不结算</b>
+        /// —— 不弹决策、不消耗任何东西。</para>
+        /// </summary>
+        ComboIfLastHand = 34,
     }
 
     /// <summary>Immutable, serializable effect recipe. Handler identity is independent of card identity.</summary>
@@ -291,6 +325,10 @@ namespace MagicBrawl.Core
                 rules.Add(new EffectCondition("hand-at-play", 2));
             if (legacy == EffectOp.SlowIfUnblocked && !rules.Exists(r => r.Id == "unblocked"))
                 rules.Add(new EffectCondition("unblocked"));
+            // 闪电球（ar）：条件连击 = 「出牌那一刻手上只有这一张」。口径与 SlowIfLastTwoHand
+            // 同源（HandCountAtPlay 已经含正在打出的这一张），只是阈值从 2 变成 1。
+            if (legacy == EffectOp.ComboIfLastHand && !rules.Exists(r => r.Id == "hand-at-play"))
+                rules.Add(new EffectCondition("hand-at-play", 1));
             if (rules.Contains(null)) throw new System.ArgumentException("Null effect condition.");
             Conditions = rules.AsReadOnly();
             Mandatory = mandatory || !(legacy == EffectOp.Haste || legacy == EffectOp.Slow

@@ -13,16 +13,16 @@ namespace MagicBrawl.Tests
     public class CoreSmokeTests
     {
         [Test]
-        public void 卡表_共40张且力量分布吻合原始统计()
+        public void 卡表_共45张且力量分布吻合原始统计()
         {
-            Assert.AreEqual(40, CardLibrary.Count);
+            Assert.AreEqual(45, CardLibrary.Count);
 
             string report;
             Assert.IsTrue(CardLibrary.ValidatePowerDistribution(out report), report);
         }
 
         [Test]
-        public void 卡表_冷却分布为2比7_3比21_4比12()
+        public void 卡表_冷却分布为2比8_3比23_4比14()
         {
             string report;
             Assert.IsTrue(CardLibrary.ValidateCooldownDistribution(out report), report);
@@ -55,7 +55,7 @@ namespace MagicBrawl.Tests
 
             // 每条光环都必须落在一个「会被第 ⑤ 步点亮」的符号上（α / β）——
             // 落到 Passive 或 γ 就是永远不亮的死效果。
-            // （本批 40 张卡的光环全部标着 α，见 `Docs/rules/02-卡牌图鉴.md`；
+            // （本批 45 张卡的光环全部标着 α，见 `Docs/rules/02-卡牌图鉴.md`；
             //   这是当前卡表的事实，不是需要钉死的约束，所以这里只校验完整性。）
             for (int i = 0; i < CardLibrary.Count; i++)
             {

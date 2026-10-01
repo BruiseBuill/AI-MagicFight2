@@ -140,6 +140,13 @@ namespace MagicBrawl.App.EditorTools
             // 2026-09-30 · 强化场景的**版式参考图**（同一张背景 + 左下角站着的巫师 = 目标构图）。
             //     与 Reference / Reference-2 / Reference-3 同族，编号接着排。
             new[] { ArtRoot + "/Reference4.png", RefDir + "/Reference-4.png" },
+
+            // 2026-10-01 · **女巫工坊场景的成品背景**（帐篷内景：女巫 + 中央水晶球 + 两侧货架，
+            //     1672×941，无任何烘焙 UI）。拖进来时是 Unity 给的 UUID 文件名
+            //     （和 `d30f41c7-….png` 那批一样，说明是直接拖进 `Art/` 根目录的），
+            //     按 `<用途>_背景` 的既有口径规范成 `Bg_WitchWorkshop.png`。
+            new[] { ArtRoot + "/2529ac9f-48ea-442c-8c58-760b693787ba.png",
+                    BgDir + "/Bg_WitchWorkshop.png" },
         };
 
         // ── 菜单入口（带确认弹窗，不能给脚本化调用）─────────────────────
@@ -154,7 +161,8 @@ namespace MagicBrawl.App.EditorTools
                     "② 第二批主角动画源表（Idle / Attack / defense / BeHit / Death）\n" +
                     "    → Chars/_Source/Hero_Anim_*.png\n" +
                     "③ 背景 → Backgrounds/Bg_Dungeon.png、商店背景 → Backgrounds/Bg_Shop.png、\n" +
-                    "    强化背景 → Backgrounds/Bg_Upgrade.png，参考图 → _Reference/\n" +
+                    "    强化背景 → Backgrounds/Bg_Upgrade.png、\n" +
+                    "    女巫工坊背景 → Backgrounds/Bg_WitchWorkshop.png，参考图 → _Reference/\n" +
                     "④ 清掉 Art 根目录上与已归档正本重复的散图（搬进 Artifacts/backups/）\n" +
                     "⑤ 重设全部新图的导入参数\n" +
                     "⑥ 重建 Assets/Resources/BattleArtLibrary.asset\n\n" +

@@ -1,6 +1,6 @@
 ﻿# 实现记录索引
 
-> 状态：现行索引 · 核对日期：2026-09-25 · 范围：实现记录的导航与替代关系
+> 状态：现行索引 · 核对日期：2026-10-01 · 范围：实现记录的导航与替代关系
 
 本目录记录单次实现的背景、方案和验证，不保证旧记录的全部细节仍然生效。
 当前规则见 [规则基线](../rules/01-规则基线.md)，当前表现见 [状态板](../00-当前基线.md) 与
@@ -53,6 +53,11 @@
 | — | [`2026-09-29-毒刺击穿与虚弱系统.md`](2026-09-29-毒刺击穿与虚弱系统.md) | **两张新卡 + 本作第一个「状态」**：毒刺（`ao`，草 7/4，α 使被攻击目标虚弱 ×2）与击穿（`ap`，电 3/4，α 光环「快速回填」+ α 连击）。虚弱 = 该方打出的牌**最终进攻力量 ×50% 向上取整**（只削进攻）、它自己一个进攻半场结束后 −1 层；`PlayerState.WeakenStacks` + `AttackContext.FinalPower` 单一折扣点 + `DoEndHalfTurn` 递减；`AuraKind.QuickRefill` 是第 7 种光环。界面加**头顶血条上方的「虚弱 ×N」徽标**（⚠ 第一版错挂在被 M11 停用的 `PlayerBar` 上）。含 `WeakenScenario` 两层断言与两条**既有**问题的量测 |
 | — | [`2026-09-30-卡面统一到插画与删除成品整图.md`](2026-09-30-卡面统一到插画与删除成品整图.md) | **卡面只剩插画一份图**（用户口径「任何地方都不要用成品整图」）：`Assets/Art/Cards/` 那 40 张 760×1056 成品整图连同 `.meta` 整族删除（备份在 `Artifacts/backups/2026-09-30-artcards-removed/`）。动机 = **同一个事实两个来源**（图里烘着卡名与数值，卡表又有另一份；2026-09-28 磁暴/引雷换力量时必须回头改 PNG 里的数字）。改 8 处调用点：`PlayedCardView`（头顶出牌展示 —— 用户报的「黑块」根因）、`CardTransitView`、`CardView`、`HandPickView`、`MonsterHandView`、`PeekView` 等 |
 | — | [`2026-09-30-飞行卡改用组成式卡面与连击光环退回.md`](2026-09-30-飞行卡改用组成式卡面与连击光环退回.md) | **飞行卡也改组成式卡面**（`CardTransitView` 从 `CooldownView.CardPrefab` 借唯一那份 `CardView_Hand.prefab`，飞行途中按位姿宽度 `SetFaceWidth`）—— 头顶那张牌「起飞时文字全没了、只剩插画飞过去、落地又冒出来」的三段瞬变就此消失。**连击光环按「取消使用」处理**：判据（沉重打击 / 连击阈值 / 连击不可叠加）只在 `AuraResolver.CollectRefunded` 一处，引擎不消耗 + 界面出牌后播**归位动画**（复用 M34 那套 `FlyHome`，`ClearDecision` 为此加了 `keepReturning` 重载）。⚠ 本次**没动任何 Prefab**、没跑构建菜单 |
+| — | [`2026-10-01-三张新卡水之形闪电球冷冻核心.md`](2026-10-01-三张新卡水之形闪电球冷冻核心.md) | **三张新卡 + 第一个「跨回合不消失」的力量**：水之形（`aq`，水 1/2，α 每次进攻后基础力量 +2 / β 每次防御后 +1，**只在本场战斗内累积**）· 闪电球（`ar`，电 7/3，α 加速 + α **条件**连击「若这是你的最后一张手牌」）· 冷冻核心（`as`，冰 6/3，α 减速 + α 光环「防御力量 +3」）。落点：`CardInstance.BattlePowerBonus` + `ResetEffectivePower()`（`ToHand` / `ToPool` / `PutIntoCooldown` **三处重置都必须走它**，写成 `= Def.Power` 会把成长静默吃掉）+ 新算子 `GrowBasePower` / `ComboIfLastHand` + 新事件 `BasePowerGrownEvent`。⚠ 闪电球那条条件在现行「连击 = 再打出 1 张」的规则下**正例不可达**（用户已确认按字面实现，且不会反噬掉血）。卡表 42 → **45**（力量 1:4 / 6:6 / 7:7、冷却 2:8 / 3:23 / 4:14）；三张草稿插画归位为 `Card_43~45_*.png` 并重建 `CardArtLibrary` |
+| P5 | [`2026-10-01-强化卡牌场景.md`](2026-10-01-强化卡牌场景.md) | **强化卡牌场景 + 三场景卡池分离**：`Upgrade.unity`（点石台 → 选牌弹窗（暖金描边）→ 确认 → 力量永久 +2 → 1.26 s 强化动画 → 结束节点）。Core 新增 `CardUpgrade`（唯一口径：`+2` / 封顶 9 / 模仿 `X` 与沉重打击不可强化，**不写卡 ID**）；新增 `CardPoolConfig` 资产类型与 `BattlePool` / `ShopPool` / `UpgradePool` 三份卡池（`preferUpgraded` = 卡表里存在 `<id>+` 就用强化版 —— 既是「永久 +2」的闭环点，也是规格 §10.2「不让两张同名牌同时进卡池」的落点）；强化卡落盘成 `CardDefinitionAsset`（`Card_a_Up.asset`，一个基础卡一个资产、反复强化就地更新 + **落盘后逐项校验**，不一致就退回内存版）；`Assets/Art` 根目录散图归类（新增 `ArtImportBuilder.DuplicateDeletes`）。⚠ 顺带修两个既有隐患：`CardCatalogAsset` 与 `CardDefinitionAsset` 同文件导致 `m_Script: {fileID:0}`（强化卡凭空消失）、`GeneratedCardAssetUtility` 用 `UnityEditor` 却落在运行时程序集（打包必炸） |
+| P6 | [`2026-10-01-女巫工坊特殊强化场景.md`](2026-10-01-女巫工坊特殊强化场景.md) | **第二种强化场景（女巫的工坊）**：`WitchWorkshop.unity`（点水晶球 → **两个空位**各选一张牌 → 确认 → **第一张从卡池消耗**，效果待做）。Core 新增 `WitchWorkshop`（唯一口径：卡池 **≤ 8 张禁止开工** / 目标必须**恰好 1 条效果且从未强化过** / 两张不能相同 / 两个空位角色固定为**左献祭 · 右目标**，同样**不写卡 ID**）。两层浮层：**主浮层**（两个空位 + 状态行 + 确认 / 关闭）+ **卡池浏览层**（点一张直接返回，格子**复用 `UpgradePickerCell`**）；面板仍吃 `Peek_Panel` + `ShopBag*` 常量。空位底衬 / 描边复用 `CardBox` / `CardBox_Line` 九宫格。背景 `Bg_WitchWorkshop.png` 归位。⚠ 含两条新踩坑：**`Rebuild()` 后同帧连点会被未排布的网格骗到**（射线落到面板上、零报错）、**`MoveAsset` 后 Unity 的「未应用导入设置」模态框会挂死主线程**（`telemetry` 通而其它工具全不通就是这个症状） |
+
+| — | [`2026-10-01-存档统一玩家卡池.md`](2026-10-01-存档统一玩家卡池.md) | **一个存档 = 一个玩家 = 一份卡池**：新增 `SaveSlot`（档位）/ `SaveData`（存档数据体）/ `PlayerData`（玩家数据体）/ `SaveStore`（静态读写，取代 `PlayerCardPoolStore`）。**战斗默认读存档 1**（测试档，`BattleDriver._saveSlot` 可切）、**商店 / 强化 / 女巫工坊读存档 2**（主存档，首次随机 10 张并落盘）；**商店买入与女巫消耗写回主存档**（原先只活在本局内存）。`CardUpgrade.PreferUpgraded` / `BaseIdOf` 从 `CardPoolConfig` 抽进 Core —— 存档与卡池资产从此走同一条「基础版 / 强化版只留一份」。⚠ `ShopPool` / `UpgradePool` 两份资产保留但**不再被运行时读取**；⚠ 四个场景的端到端 Play 链路未实跑 |
 
 ## 2. 历史实现记录（只作追溯，别照它改）
 

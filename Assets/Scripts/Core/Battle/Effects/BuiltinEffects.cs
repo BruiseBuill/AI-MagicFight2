@@ -52,6 +52,31 @@ namespace MagicBrawl.Core
                     c.Emit(new WeakenAppliedEvent { Seat = seat, Amount = amount, Stacks = target.WeakenStacks });
                 }
             });
+            // 水之形（aq）：α / β「本卡**基础力量**成长」。
+            //   写的是**卡牌实例**上的 BattlePowerBonus（本场战斗内有效），不是本次攻防的临时增量
+            //   —— 归 ① 力量阶段 / ② 防御阶段，两处都晚于本次的力量快照与比拼
+            //   （进攻侧 BasePower 在选牌那一刻取好、防御侧 DefenseResolver 在提交那一刻算完），
+            //   所以「本次用不上、以后才生效」，正好是卡面写的「每次进攻 / 防御后」。
+            //   ⚠ 力量视为 X 的牌（模仿 x）不吃成长：它的力量由 Copy 临时接管、
+            //     卡面恒定「未复制时视为 1」，写进去会与卡面直接矛盾
+            //     （模仿确实能把水之形复制过来 —— 它无光环、基础冷却 2 ≤ 3）。
+            Automatic(registry, EffectOp.GrowBasePower, EffectStage.Power, (c, e) => {
+                int amount = e.Arg("amount");
+                if (amount <= 0 || c.Source.Def.HiddenPower) return;
+                c.Source.BattlePowerBonus += amount;
+                c.Source.ResetEffectivePower();
+                c.Emit(new BasePowerGrownEvent
+                {
+                    Seat = c.Seat,
+                    Card = c.Source,
+                    Amount = amount,
+                    BattlePowerBonus = c.Source.BattlePowerBonus,
+                    Power = c.Source.EffectivePower,
+                });
+            });
+            // 闪电球（ar）：条件连击。条件 hand-at-play = 1 由 EffectDef 构造时自动挂上；
+            //   条件不满足时 EffectWindow 根本不会执行这一条 —— 不弹决策、不消耗任何东西。
+            Automatic(registry, EffectOp.ComboIfLastHand, EffectStage.Power, (c, e) => c.GrantCombo());
             Automatic(registry, EffectOp.CoolMinusIfUnblocked, EffectStage.AfterCooldown, (c, e) => {
                 if (!c.DefenseSucceeded) for (int i = 0; i < e.Arg("amount") && c.Source.IsCooling; i++) c.ChangeCooldown(c.Source, true);
             });

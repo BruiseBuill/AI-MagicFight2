@@ -78,8 +78,48 @@ namespace MagicBrawl.Core
         /// <summary>当前所在区域。</summary>
         public CardZone Zone { get; internal set; }
 
-        /// <summary>本牌当前的有效力量：模仿复制成功后被改写，其余情况等于 <see cref="CardDef.Power"/>。</summary>
+        /// <summary>本牌当前的有效力量：模仿复制成功后被改写，其余情况等于 <c>Def.Power + BattlePowerBonus</c>。</summary>
         public int EffectivePower { get; internal set; }
+
+        /// <summary>
+        /// 卡面上该写的<b>力量文本</b>：模仿（力量显示为 X）恒为 <c>"X"</c>，
+        /// 其余取<b>当前有效力量</b>。
+        ///
+        /// <para><b>为什么需要它、而不是直接用 <see cref="CardDef.PowerText"/></b>：
+        /// 卡表那份是<b>静态</b>的，而水之形（aq）的 <see cref="BattlePowerBonus"/> 会让
+        /// 「这张牌现在的力量」≥ 卡表值 —— 拿静态值画卡面，玩家的牌长到 3 了、
+        /// 卡上还写着 1，整条效果在界面上是隐形的。快照与出牌提示都读这一个（2026-10-01）。</para>
+        /// </summary>
+        public string PowerLabelText
+        {
+            get { return Def.HiddenPower ? Def.PowerText : EffectivePower.ToString(); }
+        }
+
+        /// <summary>
+        /// 本牌「基础力量」的<b>持久成长</b>（水之形 aq 的 α / β 效果写入）。
+        ///
+        /// <para><b>为什么需要一个独立字段，而不是直接改 <see cref="EffectivePower"/></b>：
+        /// 有效力量是会被反复重算的（进冷却区 / 回手 / 回牌池都重算一次，见
+        /// <see cref="ResetEffectivePower"/>），光改它的话成长会在下一次重算时被抹掉 ——
+        /// 表现是「第一次进攻明明加了 2，回手又变回 1」，不报任何错。</para>
+        ///
+        /// <para><b>只在<b>本场战斗</b>内有效</b>（用户 2026-10-01 口径「仅针对于本场战斗」）：
+        /// 它挂在<b>卡牌实例</b>上，而实例的生命周期就是这一局 —— 所以「本场战斗内有效」
+        /// 是天然成立的，不需要额外的清理点。回牌池（换牌）时才清零（那张实例已被丢弃）。</para>
+        /// </summary>
+        public int BattlePowerBonus { get; internal set; }
+
+        /// <summary>
+        /// 按 <c>Def.Power + BattlePowerBonus</c> 重算有效力量。
+        ///
+        /// <para><b>所有「重置有效力量」的地方都必须走这里</b>（<see cref="ToHand"/> /
+        /// <see cref="ToPool"/> / <c>CooldownOps.PutIntoCooldown</c>）—— 写成
+        /// <c>EffectivePower = Def.Power</c> 就会静默吃掉成长。</para>
+        /// </summary>
+        internal void ResetEffectivePower()
+        {
+            EffectivePower = Def.Power + BattlePowerBonus;
+        }
 
         /// <summary>是否已被永久移出游戏。</summary>
         public bool RemovedFromGame
@@ -109,17 +149,20 @@ namespace MagicBrawl.Core
             RemainingCooldown = 0;
             AuraTokens = 0;
             AuraLive = false;
-            EffectivePower = Def.Power;
+            // ⚠ 不能写成 EffectivePower = Def.Power —— 那会把水之形（aq）的
+            //   BattlePowerBonus 成长静默吃掉（见 ResetEffectivePower）。
+            ResetEffectivePower();
         }
 
-        /// <summary>回到牌池（替换时用）。</summary>
+        /// <summary>回到牌池（替换时用）。成长清零 —— 这张实例已被丢弃，重新抽到的是新实例。</summary>
         internal void ToPool()
         {
             Zone = CardZone.Deck;
             RemainingCooldown = 0;
             AuraTokens = 0;
             AuraLive = false;
-            EffectivePower = Def.Power;
+            BattlePowerBonus = 0;
+            ResetEffectivePower();
         }
 
         public override string ToString()

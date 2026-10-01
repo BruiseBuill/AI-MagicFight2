@@ -151,6 +151,27 @@ namespace MagicBrawl.SelfTest
             ok &= WeakenScenario.Run(report);
             Prune(report);
 
+            // 2026-10-01：卡牌强化（基础力量 +2 / 封顶 9）。它**完全发生在战斗之外**
+            // （强化场景），万局随机对局一个缺陷也抓不到；而失效方式全是无声的
+            // （判据反了 → 点了没反应；封顶写错 → 8 变成 10；后缀不去重 → 暴风雪++）。
+            ok &= CardUpgradeScenario.Run(report);
+            Prune(report);
+
+            // 2026-10-01：女巫的工坊（特殊强化）—— 献祭一张牌换另一张牌的强化。
+            // 它与 CardUpgrade 是**两套并存**的口径（那个不消耗牌），同样完全在战斗之外。
+            // 无声失效的样子：卡池门槛写成 > 8 → 起始 8 张也能开工；
+            // 「单效果」判成「不含光环」→ 纯光环牌被误拒；
+            // 漏判「两张不能相同」→ 玩家把同一张牌填进两个空位，确认后牌没了、什么也没得到。
+            ok &= WitchWorkshopScenario.Run(report);
+            Prune(report);
+
+            // 2026-10-01：三张新卡（水之形 aq / 闪电球 ar / 冷冻核心 as）。
+            // 水之形带进内核里**第一处写在牌实例上、跨回合不消失**的力量改动
+            // （BattlePowerBonus）—— 最典型的错法是直接改 EffectivePower，
+            // 进冷却区 / 回手时被重算抹掉，统计里完全无声。
+            ok &= NewCardsScenario.Run(report);
+            Prune(report);
+
             Console.WriteLine();
             Console.WriteLine("── 万局统计 ──");
             Console.WriteLine("  局数            : " + mass.Games);

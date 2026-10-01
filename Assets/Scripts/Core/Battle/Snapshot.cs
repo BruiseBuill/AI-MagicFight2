@@ -111,7 +111,9 @@ namespace MagicBrawl.Core
                 CardId = card.Def.Id,
                 Name = card.Def.Name,
                 Power = card.EffectivePower,
-                PowerText = card.Def.PowerText,
+                // ⚠ 取实例的 PowerLabelText（模仿 = "X"，其余 = 当前有效力量），
+                //   不是卡表那份静态值 —— 否则水之形（aq）成长之后手牌上还写着原值。
+                PowerText = card.PowerLabelText,
                 NoAtkBuff = card.Def.ForbidsAtkBuff,
                 BaseCooldown = card.Def.Cooldown,
                 RemainingCooldown = card.RemainingCooldown,

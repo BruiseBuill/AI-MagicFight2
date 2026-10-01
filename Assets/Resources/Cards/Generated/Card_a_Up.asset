@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardId: a+
   displayName: "\u66B4\u98CE\u96EA+"
-  power: 6
+  power: 8
   cooldown: 4
   hiddenPower: 0
   artId: a

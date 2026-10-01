@@ -326,7 +326,9 @@ namespace MagicBrawl.Core
             card.RemainingCooldown = cd;
             card.AuraLive = false;
             card.AuraTokens = 0;
-            card.EffectivePower = card.Def.Power;
+            // ⚠ 走 ResetEffectivePower 而不是 EffectivePower = Def.Power ——
+            //   水之形（aq）的 BattlePowerBonus 成长要陪着这张牌一起进冷却区 / 回手。
+            card.ResetEffectivePower();
 
             if (sink != null)
             {

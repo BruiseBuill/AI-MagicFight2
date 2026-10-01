@@ -47,6 +47,17 @@ namespace MagicBrawl.App.EditorTools
                     : AssetDatabase.LoadAssetAtPath<CardCatalogAsset>(AssetDatabase.GUIDToAssetPath(found[0]));
             }
 
+            if (catalog == null && System.IO.File.Exists(CatalogPath))
+            {
+                // ⚠ 文件在、但读不出 `CardCatalogAsset` → 它是一具**空壳**：
+                //   2026-09-30 那次 `CardCatalogAsset` 与 `CardDefinitionAsset` 挤在同一个 .cs 里，
+                //   Unity 报 `No script asset for CardCatalogAsset` 并把 m_Script 写成 {fileID: 0}。
+                //   这种资产永远修不好（脚本引用没有归属），只能删掉重建 ——
+                //   留着的后果是「强化卡整批从卡池消失」，而且零报错。
+                Debug.LogWarning("[GeneratedCard] 卡目录资产读不出来（m_Script 无效）→ 删掉重建：" + CatalogPath);
+                AssetDatabase.DeleteAsset(CatalogPath);
+            }
+
             if (catalog == null)
             {
                 catalog = ScriptableObject.CreateInstance<CardCatalogAsset>();
@@ -76,6 +87,55 @@ namespace MagicBrawl.App.EditorTools
             catalog.generatedCards = generated.ToArray();
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// <b>重建卡目录</b>：以 <see cref="Folder"/> 里的实际文件为准，重写「动态卡」清单。
+        ///
+        /// <para><b>为什么需要它</b>：目录资产一旦损坏 / 被删（例如那次
+        /// <c>m_Script: {fileID: 0}</c>），卡定义资产还好好躺在磁盘上，但没人引用它们 ——
+        /// 症状是「强化卡凭空消失」，而且没有任何报错。清单可推导的东西就不要靠手工维护：
+        /// 目录的 <c>generatedCards</c> 恒等于那个文件夹里的内容，这里按文件名排序重建。</para>
+        ///
+        /// <para>⚠ 只动 <c>generatedCards</c>，不碰 <c>cards</c>（那是手工登记的额外卡）。</para>
+        /// </summary>
+        public static CardCatalogAsset RebuildCatalog()
+        {
+            CardCatalogAsset catalog = EnsureCatalog();
+            var found = new System.Collections.Generic.List<CardDefinitionAsset>();
+            var paths = new System.Collections.Generic.List<string>();
+
+            if (AssetDatabase.IsValidFolder(Folder))
+            {
+                foreach (string guid in AssetDatabase.FindAssets("t:CardDefinitionAsset", new[] { Folder }))
+                {
+                    paths.Add(AssetDatabase.GUIDToAssetPath(guid));
+                }
+            }
+
+            paths.Sort(System.StringComparer.Ordinal);
+            foreach (string path in paths)
+            {
+                CardDefinitionAsset card = AssetDatabase.LoadAssetAtPath<CardDefinitionAsset>(path);
+                if (card != null)
+                {
+                    found.Add(card);
+                }
+            }
+
+            catalog.generatedCards = found.ToArray();
+            EditorUtility.SetDirty(catalog);
+            AssetDatabase.SaveAssets();
+            return catalog;
+        }
+
+        /// <summary>菜单：把磁盘上的动态卡重新扫进目录（目录丢了 / 手删了文件时用）。</summary>
+        [MenuItem("魔法乱斗/卡牌/从 Generated 目录重建卡目录", false, 42)]
+        public static void RebuildCatalogMenu()
+        {
+            CardCatalogAsset catalog = RebuildCatalog();
+            Debug.Log("[GeneratedCard] 卡目录已重建：" + (catalog.generatedCards == null
+                ? 0 : catalog.generatedCards.Length) + " 张动态卡 → " + CatalogPath);
         }
 
         private static void EnsureFolder(string path)

@@ -24,10 +24,11 @@ namespace MagicBrawl.SelfTest
             bool ok = true;
             report.Add("── 数据类断言 ──");
 
-            // 2026-09-29：40 → 42（新增 ao 毒刺 / ap 击穿）。总数一旦变化，
+            // 2026-09-29：40 → 42（新增 ao 毒刺 / ap 击穿）；
+            // 2026-10-01：42 → 45（新增 aq 水之形 / ar 闪电球 / as 冷冻核心）。总数一旦变化，
             // 下面的力量 / 冷却分布断言必须同步 —— 否则报的是「分布不符」，
             // 看不出到底是哪一步错了。
-            ok &= Check(report, CardLibrary.Count == 42, "卡表共 42 张（实为 " + CardLibrary.Count + "）");
+            ok &= Check(report, CardLibrary.Count == 45, "卡表共 45 张（实为 " + CardLibrary.Count + "）");
 
             string powerReport;
             bool powerOk = CardLibrary.ValidatePowerDistribution(out powerReport);

@@ -542,6 +542,60 @@ namespace MagicBrawl.App
         /// <summary>动画里那句「力量 +2」的说明字。</summary>
         public static readonly Color UpgradeFxCaption = Hex("FFF3DE");
 
+        // ══════════════════════════════════════════════════════
+        //  女巫的工坊 · 特殊强化场景（2026-10-01 · P6）
+        // ══════════════════════════════════════════════════════
+        //
+        //  与 P5 强化场景同一套口径：这里只放**文字与逻辑态**的颜色；
+        //  提示类颜色一律只写进 prefab 的 Image.color，运行时只切 active / enabled。
+
+        /// <summary>场景标题「女巫的工坊」（与商店 / 强化标题同一支暖金）。</summary>
+        public static readonly Color WitchTitleText = ShopTitleText;
+
+        /// <summary>水晶球下方那行引导文字（近白，压在暗色帐篷地面上）。</summary>
+        public static readonly Color WitchHintText = Hex("FFF3DE");
+
+        /// <summary>主界面浮层的遮罩（与商店背包 / 强化弹窗同一支）。</summary>
+        public static readonly Color WitchVeil = ShopBagVeil;
+
+        /// <summary>浮层标题（同上）。</summary>
+        public static readonly Color WitchTitleColor = ShopTitleText;
+
+        /// <summary>
+        /// 空位的底衬（半透明暗，压在水晶球场景之上）。
+        ///
+        /// <para>与卡面底衬 <c>CardFaceBackdrop</c> 的区别：那是卡面自己的、不透；
+        /// 这一块是「这里<b>还空着</b>」，所以要能透出后面的背景，读起来才像凹槽。</para>
+        /// </summary>
+        public static readonly Color WitchSlotBackdrop = new Color(0f, 0f, 0f, 0.42f);
+
+        /// <summary>空位的描边（未填 —— 冷灰，表示「还是个空位」）。</summary>
+        public static readonly Color WitchSlotEdgeEmpty = Hex("8C97AB");
+
+        /// <summary>空位的描边（已填 —— 暖金，与「选中」「确认」同一支）。</summary>
+        public static readonly Color WitchSlotEdgeFilled = Hex("FFD166");
+
+        /// <summary>空位下方的角色标签（「献祭」「强化目标」）。</summary>
+        public static readonly Color WitchSlotLabel = Hex("E8EEF8");
+
+        /// <summary>空位里那张牌身上盖的一层淡暖光（表示「它就要被吃掉了」）。</summary>
+        public static readonly Color WitchSacrificeTint = new Color(1f, 0.72f, 0.36f, 0.30f);
+
+        /// <summary>状态行（「请为两个空位各选一张牌」这类中性提示）。</summary>
+        public static readonly Color WitchStatusText = Hex("FFF3DE");
+
+        /// <summary>状态行变成**警告**时的色（两个空位撞了同一张牌 / 卡池不够）。</summary>
+        public static readonly Color WitchStatusWarn = Hex("FFB4B4");
+
+        /// <summary>浮层里「确认」键禁用时的底图色调。</summary>
+        public static readonly Color WitchConfirmOff = new Color(0.42f, 0.42f, 0.42f, 0.75f);
+
+        /// <summary>「确认」键可用时的底图色调。</summary>
+        public static readonly Color WitchConfirmOn = Color.white;
+
+        /// <summary>「关闭」按钮文字色。</summary>
+        public static readonly Color WitchCloseText = ShopLeaveText;
+
         /// <summary>把 "RRGGBB" 转成 Color（不解析 # 前缀之外的花样，够用即可）。</summary>
         public static Color Hex(string hex)
         {

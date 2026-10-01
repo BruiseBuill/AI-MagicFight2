@@ -114,7 +114,13 @@ namespace MagicBrawl.App
             string error;
             _save.interactable = _draft.Validate(_character.MinimumCardCount, out error);
             _count.text = "已选 " + _draft.Count + " / " + _driver.GetCardCatalog().All.Count + " 张    ·    至少 " + _character.MinimumCardCount + " 张";
-            _error.text = error ?? "保存后立即重新开局，并从新卡池随机发牌。";
+
+            // ⚠ 把「正在改哪一个存档」写出来：战斗可以指向两个档位（测试档 / 主存档），
+            //   不显示的话「保存并重开」到底写了哪一份完全看不出来 —— 而这两档
+            //   是两套独立的卡池，写错了不会报错、只会「换个场景发现牌不对」。
+            string save = "存档：" + SaveSlots.DisplayName(_driver.ActiveSaveSlot)
+                          + " · " + SaveSlots.FileName(_driver.ActiveSaveSlot);
+            _error.text = (error ?? "保存后立即重新开局，并从新卡池随机发牌。") + "\n" + save;
         }
 
         private void SelectAll() { _draft = _driver.GetAllCardPool(); RefreshSelection(); }
