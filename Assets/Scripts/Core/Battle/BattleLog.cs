@@ -326,6 +326,31 @@ namespace MagicBrawl.Core
         }
     }
 
+    /// <summary>
+    /// <b>角色自爆</b>（2026-10-03）—— <see cref="CharacterAbilityOp.SelfDestruct"/> 的落点。
+    ///
+    /// <para>为什么不用 <see cref="DamageTakenEvent"/> 顶替：那个事件的语义是
+    /// 「吃了多少伤害」，会走减伤（<see cref="CharacterAbilityOp.ReduceDamage"/>）、
+    /// 会在表现层播「挨打」动作；而自爆是<b>不经过伤害结算</b>的自身归零，
+    /// 表现上也该是「炸开」而不是「被打了一下」。</para>
+    ///
+    /// <para>它<b>与强制的 <see cref="DamageTakenEvent"/> 并列发出</b>（同一个半场）——
+    /// 一条描述谁炸了，另一条描述被炸的那一方掉了多少血。</para>
+    /// </summary>
+    public sealed class SelfDestructEvent : BattleEvent
+    {
+        /// <summary>自爆的那个座位。</summary>
+        public int Seat;
+
+        /// <summary>自爆前它还剩多少生命（记进日志用；实际伤害由它自己的能力另外指定）。</summary>
+        public int HpBefore;
+
+        public override string Describe()
+        {
+            return "💥 自爆 seat" + Seat + "（原生命 " + HpBefore + "）";
+        }
+    }
+
     /// <summary>胜负已分。</summary>
     public sealed class GameOverEvent : BattleEvent
     {

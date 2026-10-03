@@ -110,6 +110,19 @@ namespace MagicBrawl.App
         [SerializeField] private TMP_Text _resultSub;
         [SerializeField] private Button _againButton;
 
+        /// <summary>
+        /// 这一局的结算键是不是「回到地图」（2026-10-02）。
+        ///
+        /// <para>为真 = 这一局是从冒险地图的<b>战斗节点</b>走进来的。
+        /// 于是结算面板上那个键的语义从「再来一局」变成「回到地图」——
+        /// 玩家在冒险里打输了不该能原地重开一局（<c>冒险模式实施规格.md</c> §7.4 是「重开本场」，
+        /// 那是设置面板里的事，不是结算面板）。</para>
+        /// </summary>
+        private bool _mapBattleReturn;
+
+        /// <summary>这一局赢了没有（只在 <see cref="_mapBattleReturn"/> 为真时有意义）。</summary>
+        private bool _mapBattleWin;
+
         [Header("战斗日志（规划 §7：默认关闭，M10 从设置里开）")]
         [SerializeField] private GameObject _logPanel;
         [SerializeField] private TMP_Text _logText;
@@ -491,6 +504,32 @@ namespace MagicBrawl.App
             BindCharacter(_monster, art.Monster);
         }
 
+        /// <summary>
+        /// 每局开始时把<b>这只会用的那只怪自带的美术</b>换上去（2026-10-03，怪物框架）。
+        ///
+        /// <para><b>为什么不能放在 <see cref="WireArtLayer"/></b>：那一步在 <c>Start</c> 里跑，
+        /// 而怪物的角色资产是 <c>BattleDriver.StartBattle</c> 才解析的（它比 Start 晚一帧，
+        /// 见 <c>CoAutoStart</c>）—— 在 Start 里读只会永远读到 null。</para>
+        ///
+        /// <para>没配美术（或没配怪物资产）时<b>什么都不做</b>：保留
+        /// <see cref="WireArtLayer"/> 绑上去的那份 <c>BattleArtLibrary.Monster</c>。</para>
+        /// </summary>
+        private void ApplyMonsterArt()
+        {
+            if (_monster == null || _driver == null)
+            {
+                return;
+            }
+
+            BattleArtLibrary.CharacterSet set = _driver.MonsterArtSet;
+            if (set == null)
+            {
+                return;
+            }
+
+            BindCharacter(_monster, set);
+        }
+
         private static void BindCharacter(CharacterView view, BattleArtLibrary.CharacterSet set)
         {
             if (view == null)
@@ -566,6 +605,7 @@ namespace MagicBrawl.App
         private void HandleStarted()
         {
             BindSeats();
+            ApplyMonsterArt();
             _actorSeat = LocalSeat;
             _attacksRemaining = 0;
             if (_hand != null) _hand.ResetOrder();
@@ -576,6 +616,11 @@ namespace MagicBrawl.App
             {
                 _resultRoot.SetActive(false);
             }
+
+            // 2026-10-02：新一局开始 → 结算键回到「再来一局」。
+            // 上一局要是从地图走进来的，标签会被改成「回到地图」，不收回来下一局就错着。
+            _mapBattleReturn = false;
+            SetAgainLabel("再来一局");
 
             // M35：新一局开始 → 两侧头顶的牌（以及在册名单）一起清掉
             HideHeadAll();
@@ -748,6 +793,18 @@ namespace MagicBrawl.App
                 //   掉血发生在引擎第 ③ 步（防御结算里），而进攻牌要等第 ④ 步才进冷却区 ——
                 //   拿掉血当收牌信号会让那张牌在进冷却区之前就先消失，随后冷却槽里凭空冒出来一张。
                 //   现在唯一的收牌判据是「它进冷却区了没有」（DetectPlayedDepartures）。
+            }
+            else if (e is SelfDestructEvent)
+            {
+                // 2026-10-03：角色自爆 → 播一次「挨打」的插播（美术里没有专门的爆照动作，
+                // 而这是一次性的冲击，用待机或防御都不对）。若它当场阵亡，
+                // 紧接着的 GameOverEvent 会用 PlayPoseHold(Death) 把它定住。
+                var sd = (SelfDestructEvent)e;
+                CharacterView actor = CharacterFor(sd.Seat);
+                if (actor != null)
+                {
+                    actor.PlayPose(CharacterPose.BeHit);
+                }
             }
             else if (e is GameOverEvent)
             {
@@ -1109,6 +1166,11 @@ namespace MagicBrawl.App
                 var cr = (CardRemovedEvent)e;
                 _stage.SetPrompt("「" + cr.Card.Def.Name + "」被永久移出游戏");
             }
+            else if (e is SelfDestructEvent)
+            {
+                var sd = (SelfDestructEvent)e;
+                _stage.SetPrompt(SeatName(sd.Seat) + " 自爆（原生命 " + sd.HpBefore + "）");
+            }
             else if (e is GameOverEvent)
             {
                 _stage.SetPrompt(string.Empty);
@@ -1193,7 +1255,10 @@ namespace MagicBrawl.App
             }
 
             _driver.CollectHand(OpponentSeat, _monsterHandBuf);
-            _monsterHand.Bind(_monsterHandBuf, _seenMonsterCards);
+
+            // 设置面板里的测试开关（2026-10-03）：打开后不再按「已知 / 未知」盖牌背，全部正面显示。
+            bool force = _driver.ForceRevealMonsterHand;
+            _monsterHand.Bind(_monsterHandBuf, force ? null : _seenMonsterCards, force);
         }
 
         /// <summary>
@@ -1249,8 +1314,9 @@ namespace MagicBrawl.App
         /// 的返回类型上就已经收死了 —— 这里拿到的是一个 <see cref="CardElement"/>，
         /// 想多显示也拿不到牌名。</para>
         ///
-        /// <para><b>预判口径</b>由 <c>AttackForecast</c> 负责（与 <c>SimpleAiAgent</c> 同源），
-        /// 本类不做任何规则判断（铁律 3）。以下几种情况<b>静默不出提示</b>：</para>
+        /// <para><b>预判口径</b>由 <see cref="HeuristicAgent"/> / <c>AttackForecast</c> 负责
+        /// （2026-10-03 起与四流派 AI 同源），本类不做任何规则判断（铁律 3）。
+        /// 以下几种情况<b>静默不出提示</b>：</para>
         /// <list type="bullet">
         /// <item>对局还没开始 / 已经结束（<see cref="_driver"/> 为空或引擎已收场）；</item>
         /// <item>还在发牌台选替换牌的那几拍（<b>那时候「下一次进攻」根本无从谈起</b>，
@@ -1676,6 +1742,17 @@ namespace MagicBrawl.App
             }
 
             _resultRoot.SetActive(true);
+
+            // 2026-10-02：这一局是从冒险地图的战斗节点走进来的话，
+            // 结算键换成「回到地图」—— 点它就带着胜负回地图层，而不是在这儿再打一局。
+            // ⚠ 判据只有 MapRun 一处（地图在跑 + 这一趟外出的节点是战斗类）。
+            _mapBattleReturn = MapRun.HasActiveRun && MapRun.InMapBattle;
+            if (_mapBattleReturn)
+            {
+                // 平局按失败算（规格 §4.3：适配器把「无胜者」映射成 PlayerLose）。
+                _mapBattleWin = win;
+                SetAgainLabel("回到地图");
+            }
 
             if (_stage != null)
             {
@@ -3096,9 +3173,40 @@ namespace MagicBrawl.App
                 return;
             }
 
+            // 2026-10-02：冒险里的战斗节点 —— 结算键是「回到地图」。
+            // 先把胜负交给 MapRun（地图那边 MapSceneEntry.Awake 会据它结算这一步），再切场景。
+            if (_mapBattleReturn)
+            {
+                MapRun.ReportBattle(_mapBattleWin);
+                UnityEngine.SceneManagement.SceneManager.LoadScene(MapRoutes.MapScene);
+                return;
+            }
+
             // 由 driver 决定这一局用随机种子还是固定种子（BattleDriver._randomSeed）——
             // 本类不再自己算，否则会出现「两套种子口径」，随机开关也会被绕过。
             _driver.StartBattle();
+        }
+
+        /// <summary>
+        /// 改结算键上的文字（2026-10-02）。
+        ///
+        /// <para>⚠ <b>不去动 prefab / 不加序列化字段</b>：那个 <c>Label</c> 是
+        /// <c>BattleUiBuilder</c> 建的，改 Prefab 就得多跑一次 M7→M8→M11 三趟构建，
+        /// 而这里要的只是「换两个字」。用 <c>GetComponentInChildren</c> 找它是安全的 ——
+        /// 它下面只有那一个 <c>TMP_Text</c>。</para>
+        /// </summary>
+        private void SetAgainLabel(string text)
+        {
+            if (_againButton == null)
+            {
+                return;
+            }
+
+            TMP_Text label = _againButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.text = text;
+            }
         }
 
         // ══════════════════════════════════════════════════════

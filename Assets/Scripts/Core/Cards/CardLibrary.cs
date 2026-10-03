@@ -36,9 +36,13 @@ namespace MagicBrawl.Core
                 A(EffectOp.Haste, 1, text: "加速"),
                 A(EffectOp.SlowZone, text: "区域减速"));
 
+            // ⚠ 2026-10-03（用户口径）：冰风暴的「α 光环：防御力量 +2」直接换成「β 守护」。
+            //   它从此**不再是防御光环卡** —— CardRole.HasDefenseAura / DefensePotential 归零，
+            //   AI 的「双发流派优先打防御光环卡」与「减速流派的 tier1」都不再把它算进去
+            //   （原本它就是靠「区域减速 + 防御光环」被流派 2 排除的，现在这条排除自然成立）。
             Add(1, "b", "冰风暴", 5, 4, CardElement.Ice,
                 A(EffectOp.SlowZone, text: "区域减速"),
-                A(EffectOp.Aura, 2, aura: AuraKind.DefPower, text: "光环：防御力量 +2"));
+                D(EffectOp.Guard, text: "守护"));
 
             Add(2, "c", "凝固", 3, 2, CardElement.Ice,
                 A(EffectOp.Slow, 2, text: "减速 ×2"));
@@ -50,9 +54,9 @@ namespace MagicBrawl.Core
                 S(EffectOp.ReadyRefresh, text: "本牌冷却完毕时，使一个法术立即冷却完毕"),
                 D(EffectOp.DefPlus, 1, text: "防御时力量 +1"));
 
+            // ⚠ 2026-10-03（用户口径）：滚石冲击移除「β 守护」，只剩 α 加速。
             Add(5, "f", "滚石冲击", 9, 4, CardElement.Stone,
-                A(EffectOp.Haste, 1, text: "加速"),
-                D(EffectOp.Guard, text: "守护"));
+                A(EffectOp.Haste, 1, text: "加速"));
 
             Add(6, "g", "陨石", 9, 4, CardElement.Stone,
                 A(EffectOp.QuickRefill, text: "快速回填"));

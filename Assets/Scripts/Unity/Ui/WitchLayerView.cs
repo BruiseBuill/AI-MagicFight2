@@ -59,6 +59,23 @@ namespace MagicBrawl.App
         /// <summary>两个空位中间那个「→」（纯装饰）。</summary>
         [SerializeField] private TMP_Text _arrow;
 
+        // ── 价钱（2026-10-03 · 特殊强化改成要花金币）──────────────────
+        // 一整行：价格牌（木质六边形 + 烘在图上的金币） + 左「本次强化花费」 + 右「现有 N 金」，
+        // 下面再一行明细（等式 / 「为什么和刚才不一样」）。
+        // ⚠ 两张牌没选满时**整行藏起来**（价钱算不出来），不是显示 0。
+
+        /// <summary>价格牌那一整行（价格牌 + 左右两块字）。</summary>
+        [SerializeField] private GameObject _costRow;
+
+        /// <summary>价钱数字（压在价格牌的金币右侧）。</summary>
+        [SerializeField] private TMP_Text _costText;
+
+        /// <summary>「现有 N 金」那一块。</summary>
+        [SerializeField] private TMP_Text _goldLabel;
+
+        /// <summary>价钱明细（等式 / 变化解释）。两张牌没选满时由上层写「底价 …起」。</summary>
+        [SerializeField] private TMP_Text _costDetail;
+
         /// <summary>左空位 = 献祭（会被消耗掉的那张）。</summary>
         [SerializeField] private WitchSlotView _slotSacrifice;
 
@@ -150,6 +167,11 @@ namespace MagicBrawl.App
             SetConfirmEnabled(false);
             SetInteractable(true);
 
+            // 2026-10-03：价钱两行复位 —— 两个空位都是空的，价钱根本算不出来，
+            // 所以**连价格牌都不显示**（显示 0 会被读成「这次免费」）。
+            SetCostVisible(false);
+            SetCostDetail(string.Empty);
+
             IsOpen = true;
             if (!gameObject.activeSelf)
             {
@@ -239,6 +261,61 @@ namespace MagicBrawl.App
             if (_slotTarget != null)
             {
                 _slotTarget.SetInteractable(value);
+            }
+        }
+
+        // ── 价钱（2026-10-03）────────────────────────────────────────
+
+        /// <summary>
+        /// 价钱那一整行的显隐。
+        ///
+        /// <para>口径：<b>两张牌没选满 = 整行藏起来</b> —— 价钱算不出来，
+        /// 显示 0 会被玩家读成「这次免费」，比不显示更糟。</para>
+        /// </summary>
+        public void SetCostVisible(bool visible)
+        {
+            if (_costRow != null && _costRow.activeSelf != visible)
+            {
+                _costRow.SetActive(visible);
+            }
+        }
+
+        /// <summary>
+        /// 写价钱：数字 + 「现有 N 金」，并按**买不买得起**换色。
+        ///
+        /// <para>⚠ 「买不买得起」不在这里判：<paramref name="affordable"/> 是上层拿
+        /// <see cref="WitchWorkshop.CanAfford"/> 算好递进来的（红线 3 —— 规则只收敛在一处）。
+        /// 本类只负责「不够就把它涂红」。</para>
+        /// </summary>
+        public void SetCost(int cost, int gold, bool affordable)
+        {
+            if (_costText != null)
+            {
+                _costText.text = cost.ToString();
+                _costText.color = affordable ? UiTheme.ShopPriceText : UiTheme.ShopPriceTooExpensive;
+            }
+
+            if (_goldLabel != null)
+            {
+                _goldLabel.text = "现有 " + gold + " 金";
+                _goldLabel.color = affordable ? UiTheme.WitchGoldLabel : UiTheme.WitchStatusWarn;
+            }
+
+            SetCostVisible(true);
+        }
+
+        /// <summary>
+        /// 价钱明细（等式 / 「为什么和刚才不一样」）。传空串 = 清掉。
+        ///
+        /// <para>⚠ 文案本身在 <see cref="WitchWorkshop"/> 里（<c>CostLine</c> /
+        /// <c>CostChangeLine</c> / <c>CostFloorLine</c>）—— 本类不拼句子，
+        /// 否则「界面说的」与「规则算的」会分叉。</para>
+        /// </summary>
+        public void SetCostDetail(string text)
+        {
+            if (_costDetail != null)
+            {
+                _costDetail.text = text ?? string.Empty;
             }
         }
 

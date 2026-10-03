@@ -87,8 +87,12 @@ namespace MagicBrawl.App
         ///
         /// <para><b>张数自适应</b>：1–4 张一行、5–8 张换两行（与 M25 查看手牌同一笔版式账，
         /// 面板只往纵向长、横向恒为原宽 992 —— 顶部那块凸起的标题牌位横向一拉就被抻开）。</para>
+        ///
+        /// <para><paramref name="forceAllKnown"/>（2026-10-03）= 设置面板的<b>测试开关</b>：
+        /// 为 true 时忽略 <paramref name="known"/>、全部按已知画正面（副标题自然显示
+        /// 「已知 N / N」）。只改本面板的显示，不动引擎规则。</para>
         /// </summary>
-        public void Bind(IReadOnlyList<CardSnapshot> hand, ICollection<int> known)
+        public void Bind(IReadOnlyList<CardSnapshot> hand, ICollection<int> known, bool forceAllKnown = false)
         {
             if (_group == null || _panel == null || hand == null)
             {
@@ -129,7 +133,7 @@ namespace MagicBrawl.App
             for (int i = 0; i < n; i++)
             {
                 CardSnapshot card = hand[i];
-                bool isKnown = known != null && known.Contains(card.Uid);
+                bool isKnown = forceAllKnown || (known != null && known.Contains(card.Uid));
 
                 if (isKnown)
                 {

@@ -235,6 +235,9 @@ namespace MagicBrawl.App.EditorTools
             // 离开键（只有它一个，所以右边距用 64 而不是给背包键让位的 176）
             Button leaveButton = BuildLeaveButton(canvasGo.transform, body, leave, out TMP_Text leaveLabel);
 
+            // 右上角那行金币（2026-10-03：特殊强化要花金币，本场景没有商店那条 Hud_Bar）
+            TMP_Text goldText = BuildGoldLine(canvasGo.transform, body);
+
             // 主浮层（两个空位那一层，默认失活）
             WitchLayerView layer = BuildLayer(canvasGo.transform, body, title, panel, button, box, boxLine,
                 handPrefab, log);
@@ -252,6 +255,7 @@ namespace MagicBrawl.App.EditorTools
             SetRef(serialized, "_title", titleText);
             SetRef(serialized, "_hint", hintGo);
             SetRef(serialized, "_hintText", hintText);
+            SetRef(serialized, "_goldText", goldText);
             SetRef(serialized, "_layer", layer);
             SetRef(serialized, "_picker", picker);
             serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -352,6 +356,26 @@ namespace MagicBrawl.App.EditorTools
             return button;
         }
 
+        /// <summary>
+        /// <b>右上角那行金币</b>（2026-10-03）。
+        ///
+        /// <para><b>为什么本场景要单独补一行金币</b>：特殊强化从 2026-10-03 起<b>要花钱</b>，
+        /// 而女巫工坊没有商店 / 战斗那条 <c>Hud_Bar</c>（那套顶栏带名字与血条，本场景用不上）。
+        /// 不把余额摆出来的话，玩家只能从「确认键为什么是灰的」反推自己没钱。</para>
+        ///
+        /// <para>位置与左下角的「离开」键<b>镜像对称</b>（同一对边距常量），
+        /// 不占用水晶球与标题那一带。</para>
+        /// </summary>
+        private static TMP_Text BuildGoldLine(Transform parent, TMP_FontAsset body)
+        {
+            GameObject go = NewUi("GoldLine", parent);
+            Box(Rt(go), new Vector2(1f, 1f), new Vector2(1f, 1f),
+                new Vector2(-UiLayout.WitchGoldRight, -UiLayout.WitchGoldTop),
+                new Vector2(UiLayout.WitchGoldWidth, UiLayout.WitchGoldHeight));
+            return AddText(go, body, UiLayout.FontSizeWitchGold, UiTheme.WitchGold,
+                TextAlignmentOptions.Right, "金币 " + MapRun.DefaultGold);
+        }
+
         // ══════════════════════════════════════════════════════
         //  主浮层（两个空位）
         // ══════════════════════════════════════════════════════
@@ -432,6 +456,13 @@ namespace MagicBrawl.App.EditorTools
             TMP_Text statusText = AddText(statusGo, body, UiLayout.FontSizeWitchStatus,
                 UiTheme.WitchStatusText, TextAlignmentOptions.Center, "点空位，从卡池里选一张牌");
 
+            // ⑥′ 价钱那一行 + 明细那一行（2026-10-03 · 特殊强化改成要花金币）
+            TMP_Text costText;
+            TMP_Text goldLabel;
+            TMP_Text costDetail;
+            GameObject costRow = BuildCostRow(panelGo.transform, body, out costText, out goldLabel,
+                out costDetail);
+
             // ⑦ 「关闭」（左下）与「确认」（右下）—— 与商店背包镜像同一条线
             Button closeButton = BuildPanelButton(panelGo.transform, "CloseButton", title,
                 UiTheme.WitchCloseText, new Vector2(-UiLayout.WitchButtonSideX, UiLayout.WitchButtonCenterY),
@@ -459,6 +490,10 @@ namespace MagicBrawl.App.EditorTools
             SetRef(serialized, "_arrow", arrowGo.GetComponent<TMP_Text>());
             SetRef(serialized, "_slotSacrifice", slotSacrifice);
             SetRef(serialized, "_slotTarget", slotTarget);
+            SetRef(serialized, "_costRow", costRow);
+            SetRef(serialized, "_costText", costText);
+            SetRef(serialized, "_goldLabel", goldLabel);
+            SetRef(serialized, "_costDetail", costDetail);
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // ⚠ 默认失活。**不要在 Awake 里 Hide**。
@@ -627,12 +662,19 @@ namespace MagicBrawl.App.EditorTools
         ///    │  ├─ Viewport → Content  网格（GridLayoutGroup + ContentSizeFitter）
         ///    │  │  └─ CellTemplate     UpgradePickerCell（失活）
         ///    │  └─ Scrollbar
+        ///    ├─ EffectChoice           「选哪一条效果」那一屏（与 Cards 同块矩形，切换显示；失活）
+        ///    │  ├─ EffectTitle
+        ///    │  ├─ Options → OptionTemplate   WitchEffectOptionView（失活）
+        ///    │  ├─ EffectHint
+        ///    │  └─ BackButton（右下）
         ///    ├─ Empty                  一张牌都没有时的提示
         ///    └─ CloseButton            左下「关闭」
         /// </code>
         ///
         /// <para><b>⚠ 没有「确认」键</b>：这里点一张牌就直接返回（下单式），
-        /// 外层浮层已经有自己的「确认」了 —— 再来一个是两层确认，玩家会懵。</para>
+        /// 外层浮层已经有自己的「确认」了 —— 再来一个是两层确认，玩家会懵。
+        /// <b>例外</b>：点中的献祭牌有 &gt;1 条效果时先切到 <c>EffectChoice</c> 那一屏
+        /// （2026-10-02），选完才返回。</para>
         /// </summary>
         private static WitchPickerView BuildPicker(Transform parent, TMP_FontAsset body,
             TMP_FontAsset title, Sprite panelSprite, Sprite buttonSprite, GameObject handPrefab,
@@ -751,6 +793,9 @@ namespace MagicBrawl.App.EditorTools
             // ⑤ 格子模板（复用强化选牌弹窗那一份 —— 「卡面 + 压暗纱 + 命中区」两个场景一模一样）
             UpgradePickerCell cell = BuildCellTemplate(contentGo.transform, handPrefab, body, log);
 
+            // ⑤′ 「选哪一条效果」那一屏（2026-10-02）：与滚动区**同一块矩形**，靠 active 切换。
+            GameObject effectRoot = BuildEffectChoice(panelGo.transform, body, title, buttonSprite, log);
+
             // ⑥ 空提示
             GameObject emptyGo = NewUi("Empty", panelGo.transform);
             Box(Rt(emptyGo), Mid, Mid, new Vector2(0f, UiLayout.ShopBagScrollCenterY),
@@ -775,6 +820,7 @@ namespace MagicBrawl.App.EditorTools
             SetRef(serialized, "_content", contentRt);
             SetRef(serialized, "_cellTemplate", cell);
             SetRef(serialized, "_empty", emptyGo);
+            WireEffectChoice(serialized, scrollGo, effectRoot);
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // ⚠ 默认失活。**不要在 Awake 里 Hide**。
@@ -782,8 +828,603 @@ namespace MagicBrawl.App.EditorTools
 
             log.AppendLine("  浏览层：" + UiLayout.ShopBagColumns + " 列网格（格 "
                            + UiLayout.ShopBagCellWidth + "×" + UiLayout.ShopBagCellHeight
-                           + "）+ 关闭 · 格子复用 UpgradePickerCell");
+                           + "）+ 关闭 + 效果选择屏（最多 " + UiLayout.WitchEffectMaxOptions + " 行）"
+                           + " · 格子复用 UpgradePickerCell");
             return picker;
+        }
+
+        /// <summary>
+        /// <b>浏览层里的「选哪一条效果」那一屏</b>（2026-10-02）。层级（默认失活）：
+        /// <code>
+        /// EffectChoice              ← 与 Cards 滚动区同一块矩形（切换显示）
+        /// ├─ Backstop               背板（吃射线 —— 点空白不该穿到遮罩上去把整层关掉）
+        /// ├─ EffectTitle            「《暴风雪》有 2 条效果，选一条转移」
+        /// ├─ Options                行容器（VerticalLayoutGroup 自动往下排）
+        /// │  └─ OptionTemplate      WitchEffectOptionView（失活；运行时按需克隆）
+        /// ├─ EffectHint             底部说明
+        /// └─ BackButton（右下）      「返回」= 回到卡池列表换一张牌
+        /// </code>
+        ///
+        /// <para><b>⚠ 背板必须是本节点自己的 <c>Image</c></b>：这一屏盖住了滚动区，
+        /// 而滚动区原本靠自己的 Image 吃拖拽 / 挡射线。少了背板，点这一屏的空白处会<b>穿过</b>
+        /// 到下面的遮罩（Veil 是「点它关闭」）把整层关掉 —— 玩家会以为点了就崩了，
+        /// 而且零报错。</para>
+        /// </summary>
+        private static GameObject BuildEffectChoice(Transform panel, TMP_FontAsset body,
+            TMP_FontAsset title, Sprite buttonSprite, StringBuilder log)
+        {
+            GameObject root = NewUi("EffectChoice", panel);
+            Box(Rt(root), Mid, Mid, new Vector2(0f, UiLayout.ShopBagScrollCenterY),
+                new Vector2(UiLayout.ShopBagScrollWidth, UiLayout.ShopBagScrollHeight));
+
+            var backstop = root.AddComponent<Image>();
+            backstop.color = UiTheme.ShopBagGridBacking;
+            backstop.raycastTarget = true;
+
+            // ① 标题
+            GameObject titleGo = NewUi("EffectTitle", root.transform);
+            Box(Rt(titleGo), Mid, Mid, new Vector2(0f, UiLayout.WitchEffectTitleCenterY),
+                new Vector2(UiLayout.WitchEffectTitleWidth, UiLayout.WitchEffectTitleHeight));
+            AddText(titleGo, body, UiLayout.FontSizeWitchEffectTitle, UiTheme.WitchEffectTitle,
+                TextAlignmentOptions.Center, "选一条要转移的效果");
+
+            // ② 行容器（pivot 顶中 → 行从第一行的位置往下排）
+            GameObject optionsGo = NewUi("Options", root.transform);
+            RectTransform optionsRt = Rt(optionsGo);
+            optionsRt.anchorMin = Mid;
+            optionsRt.anchorMax = Mid;
+            optionsRt.pivot = new Vector2(0.5f, 1f);
+            optionsRt.anchoredPosition = new Vector2(0f,
+                UiLayout.WitchEffectFirstRowY + UiLayout.WitchEffectRowHeight * 0.5f);
+            optionsRt.sizeDelta = new Vector2(UiLayout.WitchEffectRowWidth,
+                UiLayout.WitchEffectRowStep * (UiLayout.WitchEffectMaxOptions - 1)
+                + UiLayout.WitchEffectRowHeight);
+
+            var layout = optionsGo.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = UiLayout.WitchEffectRowStep - UiLayout.WitchEffectRowHeight;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            // ③ 一行（模板，失活）
+            WitchEffectOptionView template = BuildEffectRow(optionsGo.transform, body);
+
+            // ④ 底部说明
+            GameObject hintGo = NewUi("EffectHint", root.transform);
+            Box(Rt(hintGo), Mid, Mid, new Vector2(0f, UiLayout.WitchEffectHintCenterY),
+                new Vector2(UiLayout.WitchEffectHintWidth, UiLayout.WitchEffectHintHeight));
+            AddText(hintGo, body, UiLayout.FontSizeWitchEffectHint, UiTheme.WitchEffectHint,
+                TextAlignmentOptions.Center, "这条效果会加到右边那张牌上，并成为它自己的效果");
+
+            // ⑤ 「返回」（右下 —— 与主浮层的「确认」同一个位置，读作「次要动作」）
+            Button back = BuildPanelButton(root.transform, "BackButton", title,
+                UiTheme.WitchCloseText, new Vector2(UiLayout.WitchButtonSideX, UiLayout.WitchEffectBackCenterY),
+                buttonSprite, false, "返回");
+
+            root.SetActive(false);
+
+            log.AppendLine("  效果选择屏：标题 + " + UiLayout.WitchEffectMaxOptions
+                           + " 行（步进 " + UiLayout.WitchEffectRowStep + "）+ 说明 + 返回 · 背板吃射线");
+            return root;
+        }
+
+        /// <summary>
+        /// 效果选择屏里的<b>一行</b>（模板，失活）。<b>整行就是按钮</b>（自带 Image 吃射线），
+        /// 下面挂一行文案 —— 不需要额外的命中区节点。
+        /// </summary>
+        private static WitchEffectOptionView BuildEffectRow(Transform parent, TMP_FontAsset body)
+        {
+            GameObject go = NewUi("OptionTemplate", parent);
+
+            // 尺寸的两处来源：LayoutElement 是给 VerticalLayoutGroup 读的（运行时真正生效的），
+            // RectTransform 上这份只是让**编辑器里**（还没跑布局时）看着是对的大小。
+            Rt(go).sizeDelta = new Vector2(UiLayout.WitchEffectRowWidth, UiLayout.WitchEffectRowHeight);
+
+            var img = go.AddComponent<Image>();
+            img.color = UiTheme.WitchEffectRowBack;
+            img.raycastTarget = true;
+
+            var button = go.AddComponent<Button>();
+            button.targetGraphic = img;
+            button.transition = Selectable.Transition.None;
+
+            // ⚠ 尺寸由 VerticalLayoutGroup 读 LayoutElement 的 preferred 值给 ——
+            //   没有这个组件，行会被压成 0 高（全叠在一起）且零报错。
+            var element = go.AddComponent<LayoutElement>();
+            element.preferredWidth = UiLayout.WitchEffectRowWidth;
+            element.preferredHeight = UiLayout.WitchEffectRowHeight;
+
+            GameObject labelGo = NewUi("Label", go.transform);
+            Stretch(Rt(labelGo), 28f, 0f, 28f, 0f);
+            TMP_Text label = AddText(labelGo, body, UiLayout.FontSizeWitchEffectRow,
+                UiTheme.WitchEffectRowText, TextAlignmentOptions.Center, string.Empty);
+            label.enableWordWrapping = true;        // 效果文案有长有短，允许折行
+
+            var option = go.AddComponent<WitchEffectOptionView>();
+            var serialized = new SerializedObject(option);
+            SetRef(serialized, "_button", button);
+            SetRef(serialized, "_label", label);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            go.SetActive(false);
+            return option;
+        }
+
+        /// <summary>
+        /// 把效果选择屏的引用接进 <see cref="WitchPickerView"/>。
+        ///
+        /// <para><b>⚠ 单独抽一个方法是为了「整场景构建」与「只补这一块」（<see cref="PatchPickerEffectArea"/>）
+        /// 用同一份接线</b>：字段名一旦分叉，两条路会编过、跑起来一个装一个不装，而且零报错。</para>
+        /// </summary>
+        private static void WireEffectChoice(SerializedObject pickerData, GameObject cardsRoot,
+            GameObject effectRoot)
+        {
+            SetRef(pickerData, "_cardsRoot", cardsRoot);
+            SetRef(pickerData, "_effectPanel", effectRoot);
+            SetRef(pickerData, "_effectTitle", Child<TMP_Text>(effectRoot, "EffectTitle"));
+            SetRef(pickerData, "_effectList", Child<RectTransform>(effectRoot, "Options"));
+            SetRef(pickerData, "_effectTemplate", Child<WitchEffectOptionView>(effectRoot,
+                "Options/OptionTemplate"));
+            SetRef(pickerData, "_effectHint", Child<TMP_Text>(effectRoot, "EffectHint"));
+            SetRef(pickerData, "_backButton", Child<Button>(effectRoot, "BackButton"));
+        }
+
+        /// <summary>按相对路径取子节点上的组件（找不到返回 null，让 SetRef 去报那句话）。</summary>
+        private static T Child<T>(GameObject root, string path) where T : Component
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Transform found = root.transform.Find(path);
+            return found == null ? null : found.GetComponent<T>();
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  价钱两行（2026-10-03 · 特殊强化改成要花金币）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// <b>价钱那一行 + 明细那一行</b>。层级（整行默认失活）：
+        /// <code>
+        /// CostRow                      ← 整行开关（两张牌没选满时藏起来）
+        /// ├─ LeftLabel                「本次强化花费」（静态）
+        /// ├─ Plate                    商店货位那张 Shop_PricePlate（金币已烘在图上）
+        /// │  └─ Cost                  价钱数字（压在金币右侧；买不起时由 WitchLayerView 标红）
+        /// └─ RightLabel               「现有 N 金」（运行时由 WitchLayerView 写）
+        /// CostDetail                   等式 /「为什么和刚才不一样」（**不在 CostRow 里**：
+        ///                              只选了献祭牌时它还要用「底价…起」露着，而价格牌那时是藏着的）
+        /// </code>
+        ///
+        /// <para><b>⚠ 为什么价格牌那一行整行要能藏</b>：两张牌没选满时价钱根本算不出来
+        /// （公式要用到目标牌的冷却），显示 <c>0</c> 会被玩家读成「这次免费」，比不显示更糟。</para>
+        ///
+        /// <para><b>⚠ 三行的 y 是一起定的</b>（状态 −160 / 价格牌 −232 / 明细 −304）——
+        /// 见 <c>UiLayout</c> 里那段注释：面板底部两个按钮的顶边在 −344，
+        /// 明细再往下挪 4px 就会压到按钮上，而且零报错。</para>
+        ///
+        /// <para><b>⚠ 价格牌必须 Sliced</b>：六边形两端的圆角靠九宫格 border 保住，
+        /// 用 Simple 会把两端拉变形。</para>
+        /// </summary>
+        private static GameObject BuildCostRow(Transform panel, TMP_FontAsset body,
+            out TMP_Text costText, out TMP_Text goldLabel, out TMP_Text costDetail)
+        {
+            Sprite plate = AssetDatabase.LoadAssetAtPath<Sprite>(UiLayout.ShopPricePlateSpritePath);
+            if (plate == null)
+            {
+                Debug.LogWarning("[Witch] 缺价格牌底图：" + UiLayout.ShopPricePlateSpritePath
+                                 + "（价钱只剩数字，没有那块木质六边形）");
+            }
+
+            // ① 整行（空容器，只管开关；自己没有 Graphic，也不吃射线）
+            GameObject row = NewUi("CostRow", panel);
+            Box(Rt(row), Mid, Mid, new Vector2(0f, UiLayout.WitchCostPlateCenterY),
+                new Vector2(UiLayout.WitchCostLabelSideX * 2f + UiLayout.WitchCostLabelWidth,
+                    UiLayout.WitchCostPlateHeight));
+
+            // ② 左：「本次强化花费」
+            GameObject leftGo = NewUi("LeftLabel", row.transform);
+            Box(Rt(leftGo), Mid, Mid, new Vector2(-UiLayout.WitchCostLabelSideX, 0f),
+                new Vector2(UiLayout.WitchCostLabelWidth, UiLayout.WitchCostLabelHeight));
+            AddText(leftGo, body, UiLayout.FontSizeWitchCostLabel, UiTheme.WitchCostLabel,
+                TextAlignmentOptions.Center, "本次强化花费");
+
+            // ③ 中：价格牌 + 价钱数字
+            GameObject plateGo = NewUi("Plate", row.transform);
+            Box(Rt(plateGo), Mid, Mid, Vector2.zero,
+                new Vector2(UiLayout.WitchCostPlateWidth, UiLayout.WitchCostPlateHeight));
+            var plateImg = plateGo.AddComponent<Image>();
+            plateImg.sprite = plate;
+            plateImg.color = Color.white;
+            plateImg.raycastTarget = false;
+            if (plate != null)
+            {
+                plateImg.type = Image.Type.Sliced;
+                plateImg.pixelsPerUnitMultiplier = 1f;
+            }
+
+            GameObject costGo = NewUi("Cost", plateGo.transform);
+            Box(Rt(costGo), Mid, Mid,
+                new Vector2(UiLayout.WitchCostTextOffsetX, UiLayout.WitchCostTextOffsetY),
+                new Vector2(UiLayout.WitchCostTextWidth, UiLayout.WitchCostTextHeight));
+            costText = AddText(costGo, body, UiLayout.FontSizeWitchCost, UiTheme.ShopPriceText,
+                TextAlignmentOptions.Left, "0");
+
+            // ④ 右：「现有 N 金」
+            GameObject rightGo = NewUi("RightLabel", row.transform);
+            Box(Rt(rightGo), Mid, Mid, new Vector2(UiLayout.WitchCostLabelSideX, 0f),
+                new Vector2(UiLayout.WitchCostLabelWidth, UiLayout.WitchCostLabelHeight));
+            goldLabel = AddText(rightGo, body, UiLayout.FontSizeWitchCostLabel, UiTheme.WitchGoldLabel,
+                TextAlignmentOptions.Center, "现有 0 金");
+
+            // ⑤ 明细（等式 / 变化解释）—— 两行，允许折行
+            GameObject detailGo = NewUi("CostDetail", panel);
+            Box(Rt(detailGo), Mid, Mid, new Vector2(0f, UiLayout.WitchCostDetailCenterY),
+                new Vector2(UiLayout.WitchCostDetailWidth, UiLayout.WitchCostDetailHeight));
+            costDetail = AddText(detailGo, body, UiLayout.FontSizeWitchCostDetail,
+                UiTheme.WitchCostDetail, TextAlignmentOptions.Center, string.Empty);
+            costDetail.enableWordWrapping = true;
+
+            row.SetActive(false);       // 默认藏起来（两个空位都是空的）
+            return row;
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  只补「价钱」那两行 + 金币行（2026-10-03）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// <b>给已存在的女巫界面补上「价钱」两行与右上角的金币行，不重跑整场景。</b>
+        ///
+        /// <para><b>为什么要有这条补丁路</b>：<see cref="RunAll"/> 是「拆掉整棵 Canvas 重建」，
+        /// 而那份界面上可能有手工调过的值（用户手调过的东西一经重建就没了，本工程定过这条规矩）。
+        /// 这次要加的只是主浮层里的两行节点，完全可以就地「加节点 + 接字段」。</para>
+        ///
+        /// <para><b>⚠⚠ 必须补两处：<c>Assets/Prefabs/Ui/WitchCanvas.prefab</c> <b>和</b>
+        /// 当前打开的场景</b>。构建器是「在场景里建 → 存一份 Prefab」，而
+        /// <c>SaveAsPrefabAsset</c> <b>不会</b>把场景里那份变成 Prefab 实例 ——
+        /// 场景里留的是它<b>自己的一份拷贝</b>（<c>PrefabInstanceStatus = NotAPrefab</c>）。
+        /// 只补 Prefab 的话，进 Play 跑的是场景那份 → 新节点一个都不存在，
+        /// 而界面看起来「就是原来那样」，<b>零报错</b>。</para>
+        ///
+        /// <para>幂等：已经有的 <c>CostRow</c> / <c>CostDetail</c> 会先被拆掉再重建；
+        /// 已经在的 <c>GoldLine</c> 不动（那上面可能有人手调过位置）。</para>
+        /// </summary>
+        [MenuItem("魔法乱斗/P6 · 给主浮层补「价钱」两行", false, 44)]
+        private static void PatchCostAreaMenu()
+        {
+            Debug.Log(PatchCostArea());
+        }
+
+        public static string PatchCostArea()
+        {
+            var log = new StringBuilder();
+            log.AppendLine("[Witch] ==== 补「价钱」两行 ====");
+
+            if (EditorApplication.isPlaying)
+            {
+                log.AppendLine("✘ 请先退出 Play 再改界面");
+                Debug.LogError(log.ToString());
+                return log.ToString();
+            }
+
+            TMP_FontAsset body = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(BodyFontPath);
+            if (body == null)
+            {
+                log.AppendLine("✘ 缺 TMP 字体，无法建文字节点：" + BodyFontPath);
+                Debug.LogError(log.ToString());
+                return log.ToString();
+            }
+
+            // ① Prefab
+            if (!System.IO.File.Exists(AbsolutePath(PrefabPath)))
+            {
+                log.AppendLine("✘ 没有 " + PrefabPath + " —— 先跑「P6 · 构建 WitchWorkshop 场景」");
+            }
+            else
+            {
+                GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
+                try
+                {
+                    if (PatchCostOn(root.transform, body, log))
+                    {
+                        PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+                        log.AppendLine("  已存 " + PrefabPath);
+                    }
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(root);
+                }
+            }
+
+            // ② 当前打开的场景（那份不是 Prefab 实例，必须单独补）
+            UnityEngine.SceneManagement.Scene scene =
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            WitchView[] views = UnityEngine.Object.FindObjectsOfType<WitchView>(true);
+            int patched = 0;
+
+            for (int i = 0; i < views.Length; i++)
+            {
+                if (views[i] == null || views[i].gameObject.name != CanvasName)
+                {
+                    continue;
+                }
+
+                if (PatchCostOn(views[i].transform, body, log))
+                {
+                    patched++;
+                }
+            }
+
+            if (patched > 0)
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, scene.path);
+                log.AppendLine("  已存场景 " + scene.path + "（补了 " + patched + " 个 Canvas）");
+            }
+            else
+            {
+                log.AppendLine("  当前场景里没有 " + CanvasName
+                               + " —— 若这份场景也需要，先打开它再跑一次（场景那份不是 Prefab 实例）");
+            }
+
+            AssetDatabase.SaveAssets();
+            log.AppendLine("[Witch] ==== 完成 ====");
+            string text = log.ToString();
+            Debug.Log(text);
+            return text;
+        }
+
+        /// <summary>
+        /// 在一棵已经建好的界面里补价钱两行 + 金币行（Prefab 内容 与 场景对象**共用这一处**）。
+        ///
+        /// <para>返回 <c>false</c> = 这棵上找不到 <c>Layer/Panel/WitchLayerView</c>（版本对不上），
+        /// 已经往 <paramref name="log"/> 里写了原因。</para>
+        /// </summary>
+        private static bool PatchCostOn(Transform root, TMP_FontAsset body, StringBuilder log)
+        {
+            WitchView view = root.GetComponent<WitchView>();
+            Transform layerTransform = root.Find("Layer");
+            Transform panel = layerTransform == null ? null : layerTransform.Find("Panel");
+            WitchLayerView layer = layerTransform == null
+                ? null
+                : layerTransform.GetComponent<WitchLayerView>();
+
+            if (view == null || layer == null || panel == null)
+            {
+                log.AppendLine("✘ " + root.name + " 的 Layer / Panel / WitchLayerView 结构对不上 —— "
+                               + "这份界面与构建器的版本不一致，建议整场景重跑构建");
+                return false;
+            }
+
+            // ① 主浮层里的两行（幂等：先拆旧的）
+            Transform oldRow = panel.Find("CostRow");
+            if (oldRow != null)
+            {
+                UnityEngine.Object.DestroyImmediate(oldRow.gameObject);
+            }
+
+            Transform oldDetail = panel.Find("CostDetail");
+            if (oldDetail != null)
+            {
+                UnityEngine.Object.DestroyImmediate(oldDetail.gameObject);
+            }
+
+            TMP_Text costText;
+            TMP_Text goldLabel;
+            TMP_Text costDetail;
+            GameObject costRow = BuildCostRow(panel, body, out costText, out goldLabel, out costDetail);
+
+            // ⚠ 插到「确认 / 关闭」之前 —— 按钮必须留在最后（最上层）。
+            //   放在按钮之后的话，以后再加行时新的行会盖在按钮上，而且零报错。
+            Transform confirm = panel.Find("ConfirmButton");
+            int insertAt = confirm == null ? panel.childCount : confirm.GetSiblingIndex();
+            costRow.transform.SetSiblingIndex(insertAt);
+            costDetail.transform.SetSiblingIndex(insertAt + 1);
+
+            var layerData = new SerializedObject(layer);
+            SetRef(layerData, "_costRow", costRow);
+            SetRef(layerData, "_costText", costText);
+            SetRef(layerData, "_goldLabel", goldLabel);
+            SetRef(layerData, "_costDetail", costDetail);
+            layerData.ApplyModifiedPropertiesWithoutUndo();
+
+            // ② 右上角那行金币（已经在就不动 —— 位置可能是人调的）
+            TMP_Text goldText = Child<TMP_Text>(root.gameObject, "GoldLine");
+            if (goldText == null)
+            {
+                goldText = BuildGoldLine(root, body);
+                log.AppendLine("  补了右上角的 GoldLine");
+            }
+            else
+            {
+                log.AppendLine("  右上角的 GoldLine 已经在（不动它）");
+            }
+
+            var viewData = new SerializedObject(view);
+            SetRef(viewData, "_goldText", goldText);
+            viewData.ApplyModifiedPropertiesWithoutUndo();
+
+            // ③ 调试入口上的金币默认值：老场景里这个字段还不存在（读出来是 0），补成 50；
+            //    已经有人调过的值不动（那可能是用户手调的）。
+            WitchSceneEntry[] entries = UnityEngine.Object.FindObjectsOfType<WitchSceneEntry>(true);
+            int fixedGold = 0;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i] == null)
+                {
+                    continue;
+                }
+
+                var entryData = new SerializedObject(entries[i]);
+                SerializedProperty goldProp = entryData.FindProperty("_gold");
+                if (goldProp != null && goldProp.intValue <= 0)
+                {
+                    goldProp.intValue = MapRun.DefaultGold;
+                    entryData.ApplyModifiedPropertiesWithoutUndo();
+                    fixedGold++;
+                }
+            }
+
+            log.AppendLine("  " + root.name + " 已接上价钱两行 + 金币行"
+                           + (fixedGold > 0 ? "（另补了 " + fixedGold + " 个调试入口的金币默认值）" : ""));
+            return true;
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  只补「效果选择」那一块（2026-10-02）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// <b>给已存在的女巫界面补上「效果选择屏」，不重跑整场景。</b>
+        ///
+        /// <para><b>为什么要有这条补丁路</b>：<see cref="RunAll"/> 是「拆掉整棵 Canvas 重建」，
+        /// 而那份界面上可能有手工调过的值（用户手调过的东西一经重建就没了，本工程定过这条规矩）。
+        /// 这次要加的只是浏览层里的一块新节点，完全可以就地「加节点 + 接字段」。</para>
+        ///
+        /// <para><b>⚠⚠ 必须补两处：<c>Assets/Prefabs/Ui/WitchCanvas.prefab</c> <b>和</b>
+        /// 当前打开的场景</b>。构建器是「在场景里建 → 存一份 Prefab」，而
+        /// <c>SaveAsPrefabAsset</c> <b>不会</b>把场景里那份变成 Prefab 实例 ——
+        /// 场景里留的是它<b>自己的一份拷贝</b>（<c>PrefabInstanceStatus = NotAPrefab</c>）。
+        /// 只补 Prefab 的话，进 Play 跑的是场景那份 → 新节点一个都不存在，
+        /// 而界面看起来「就是原来那样」，<b>零报错</b>。</para>
+        ///
+        /// <para>幂等：已经有的 <c>EffectChoice</c> 会先被拆掉再重建，可以反复跑。</para>
+        /// </summary>
+        [MenuItem("魔法乱斗/P6 · 给浏览层补「效果选择」区", false, 43)]
+        private static void PatchPickerEffectAreaMenu()
+        {
+            Debug.Log(PatchPickerEffectArea());
+        }
+
+        public static string PatchPickerEffectArea()
+        {
+            var log = new StringBuilder();
+            log.AppendLine("[Witch] ==== 补「效果选择」区 ====");
+
+            if (EditorApplication.isPlaying)
+            {
+                log.AppendLine("✘ 请先退出 Play 再改界面");
+                Debug.LogError(log.ToString());
+                return log.ToString();
+            }
+
+            TMP_FontAsset body = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(BodyFontPath);
+            TMP_FontAsset title = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(TitleFontPath);
+            Sprite button = AssetDatabase.LoadAssetAtPath<Sprite>(UiLayout.HandPickConfirmSpritePath);
+            if (body == null || title == null)
+            {
+                log.AppendLine("✘ 缺 TMP 字体，无法建文字节点");
+                Debug.LogError(log.ToString());
+                return log.ToString();
+            }
+
+            // ① Prefab
+            if (!System.IO.File.Exists(AbsolutePath(PrefabPath)))
+            {
+                log.AppendLine("✘ 没有 " + PrefabPath + " —— 先跑「P6 · 构建 WitchWorkshop 场景」");
+            }
+            else
+            {
+                GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
+                try
+                {
+                    if (PatchPickerOn(root.transform, body, title, button, log))
+                    {
+                        PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+                        log.AppendLine("  已存 " + PrefabPath);
+                    }
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(root);
+                }
+            }
+
+            // ② 当前打开的场景（那份不是 Prefab 实例，必须单独补）
+            UnityEngine.SceneManagement.Scene scene =
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            WitchView[] views = UnityEngine.Object.FindObjectsOfType<WitchView>(true);
+            int patched = 0;
+
+            for (int i = 0; i < views.Length; i++)
+            {
+                if (views[i] == null || views[i].gameObject.name != CanvasName)
+                {
+                    continue;
+                }
+
+                if (PatchPickerOn(views[i].transform, body, title, button, log))
+                {
+                    patched++;
+                }
+            }
+
+            if (patched > 0)
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, scene.path);
+                log.AppendLine("  已存场景 " + scene.path + "（补了 " + patched + " 个 Canvas）");
+            }
+            else
+            {
+                log.AppendLine("  当前场景里没有 " + CanvasName
+                               + " —— 若这份场景也需要，先打开它再跑一次（场景那份不是 Prefab 实例）");
+            }
+
+            AssetDatabase.SaveAssets();
+            log.AppendLine("[Witch] ==== 完成 ====");
+            string text = log.ToString();
+            Debug.Log(text);
+            return text;
+        }
+
+        /// <summary>
+        /// 在一棵已经建好的界面里补「效果选择屏」（Prefab 内容 与 场景对象 共用这一处）。
+        ///
+        /// <para>返回 <c>false</c> = 这棵上找不到 <c>Picker/Panel/Cards</c>（版本对不上），
+        /// 已经往 <paramref name="log"/> 里写了原因。</para>
+        /// </summary>
+        private static bool PatchPickerOn(Transform root, TMP_FontAsset body, TMP_FontAsset title,
+            Sprite button, StringBuilder log)
+        {
+            Transform pickerTransform = root.Find("Picker");
+            if (pickerTransform == null)
+            {
+                log.AppendLine("✘ " + root.name + " 里找不到 Picker 节点");
+                return false;
+            }
+
+            WitchPickerView picker = pickerTransform.GetComponent<WitchPickerView>();
+            Transform panel = pickerTransform.Find("Panel");
+            Transform cards = panel == null ? null : panel.Find("Cards");
+            if (picker == null || panel == null || cards == null)
+            {
+                log.AppendLine("✘ " + root.name + " 的 Picker / Panel / Cards 结构对不上 —— "
+                               + "这份界面与构建器的版本不一致，建议整场景重跑构建");
+                return false;
+            }
+
+            Transform old = panel.Find("EffectChoice");
+            if (old != null)
+            {
+                UnityEngine.Object.DestroyImmediate(old.gameObject);
+                log.AppendLine("  拆掉 " + root.name + " 上旧的 EffectChoice");
+            }
+
+            GameObject effectRoot = BuildEffectChoice(panel, body, title, button, log);
+            effectRoot.transform.SetAsLastSibling();   // 盖在网格之上（与构建器一致的顺序）
+
+            var serialized = new SerializedObject(picker);
+            WireEffectChoice(serialized, cards.gameObject, effectRoot);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            log.AppendLine("  " + root.name + " 已补上 EffectChoice（背板 + 标题 + "
+                           + UiLayout.WitchEffectMaxOptions + " 行 + 说明 + 返回）");
+            return true;
         }
 
         /// <summary>

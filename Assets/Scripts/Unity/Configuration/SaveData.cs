@@ -6,13 +6,13 @@ namespace MagicBrawl.App
     /// <summary>
     /// <b>玩家数据体</b>（2026-10-01 · 玩家卡池统一）—— 一个存档里的那个玩家。
     ///
-    /// <para>它现在只装两样东西：这个玩家的角色 ID，和<b>他的卡池</b>。
+    /// <para>它装三样东西：这个玩家的角色 ID、<b>他的卡池</b>、以及<b>卡池里那些牌的强化配方</b>。
     /// 金币 / 生命 / 这一趟冒险已走到的节点等以后都往这里加（冒险模式的
-    /// <c>RunState</c>），但那是另一批，本批只落卡池。</para>
+    /// <c>RunState</c>），但那是另一批，本批只落卡池与强化。</para>
     ///
     /// <para><b>⚠ 存的是「基础 ID」，不是解析后的 ID</b>（<c>"a"</c> 而不是 <c>"a+"</c>）：
-    /// 强化版是否生效由「卡目录里有没有 <c>&lt;id&gt;+</c>」决定，见
-    /// <see cref="MagicBrawl.Core.CardUpgrade.PreferUpgraded"/>。
+    /// 强化版是<b>读的时候合成出来的</b>（见 <see cref="MagicBrawl.Core.UpgradeBook.BuildCatalog"/>
+    /// 与 <see cref="MagicBrawl.Core.CardUpgrade.PreferUpgraded"/>）。
     /// 存解析后的 ID 会让「基础牌」从卡池里消失 —— 以后要回退 / 再强化都找不回原牌。</para>
     /// </summary>
     [Serializable]
@@ -23,6 +23,20 @@ namespace MagicBrawl.App
 
         /// <summary>玩家的卡池：稳定卡 ID 清单（**基础 ID**，每种卡最多一张）。</summary>
         public List<string> cardIds = new List<string>();
+
+        /// <summary>
+        /// 玩家的强化配方（<b>2026-10-02 · 多轴强化</b>）：一张牌一条，按基础 ID 挂。
+        ///
+        /// <para><b>为什么强化要进存档</b>：上一版把强化落成一份
+        /// <c>Card_a_Up.asset</c> —— 那是<b>全局</b>事实，「这个玩家的暴风雪强化过」
+        /// 与「别人的暴风雪也强化过」分不开，怪物侧更是无处安放。
+        /// 现在一个存档 = 一个玩家 = 一份卡池 + 一份强化册，卡牌身份始终是那张基础牌。</para>
+        ///
+        /// <para>⚠ 字段名 / 结构一旦发布就不要再改（<c>JsonUtility</c> 按字段名落盘）；
+        /// 要改走 <see cref="SaveStore.CurrentVersion"/> 的迁移。</para>
+        /// </summary>
+        public List<MagicBrawl.Core.CardUpgradeRecord> upgrades
+            = new List<MagicBrawl.Core.CardUpgradeRecord>();
     }
 
     /// <summary>

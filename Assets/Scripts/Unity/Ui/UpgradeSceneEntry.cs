@@ -17,11 +17,13 @@ namespace MagicBrawl.App
     /// <list type="number">
     /// <item><b>E1 不依赖地图</b>：卡池从<see cref="SaveSlot.Main"/>读（或由序列化字段覆盖）；</item>
     /// <item><b>E2 不依赖前一节点</b>：直接以「主存档里那份卡池」开局；</item>
-    /// <item><b>E3 只读存档、不写存档</b>（2026-10-01 统一卡池时订正，原先是「完全不碰存档」）：
-    /// 玩家卡池从 <see cref="SaveSlot.Main"/> 读；强化<b>不改卡池的 ID</b>（那张牌原地变成
-    /// <c>"a+"</c>，由 <see cref="CardUpgrade.PreferUpgraded"/> 在读取时解析），
-    /// 所以这里没有「写回」这一步。⚠ 真正会落盘的只有强化后的
-    /// <c>CardDefinitionAsset</c> —— 那是「新卡」本身，不是进度；</item>
+    /// <item><b>E3 读主存档、并把强化写回主存档</b>（2026-10-02 多轴强化时订正，原先是「只读」）：
+    /// 玩家卡池从 <see cref="SaveSlot.Main"/> 读；<b>一笔强化 = 强化册里的一张牌 + 一笔</b>
+    /// （<c>PlayerData.upgrades</c>，见 <see cref="UpgradeBook"/>），确认时写回同一个文件。
+    /// 卡池本身<b>不写</b>（那张牌的 ID 不变，强化版由
+    /// <see cref="CardUpgrade.PreferUpgraded"/> 在读取时解析）。
+    /// ⚠ 上一版落盘的 <c>Card_*_Up.asset</c> 仍然读得进（向后兼容），但不再新写 ——
+    /// 那份是<b>全局</b>的，表达不了「同一个基础卡在不同存档是不同强化」；</item>
     /// <item><b>E4 Core 一行不改</b>：这里只<b>读</b>卡表与 <see cref="CardUpgrade"/> 的判定
     /// （那是唯一的规则实现），不存在「第二套强化逻辑」。</item>
     /// </list>
@@ -68,8 +70,14 @@ namespace MagicBrawl.App
         /// <summary>卡池里的卡 ID（与 <see cref="_cards"/> 一一对应，解析与替换都按 ID 走）。</summary>
         private readonly List<string> _ids = new List<string>();
 
-        /// <summary>本次运行用的卡目录（内置 42 张 + 已落盘的强化卡）。</summary>
+        /// <summary>本次运行用的卡目录（内置 + 自定义 + 动态卡 + <b>按强化册合成出来的强化版</b>）。</summary>
         private ICardCatalog _catalog;
+
+        /// <summary>玩家当前的强化册（主存档里的那份；调试覆盖时恒为空）。</summary>
+        private UpgradeBook _upgrades = UpgradeBook.Empty;
+
+        /// <summary>卡池是不是真的来自主存档（决定强化要不要写回存档，见 <see cref="OnUpgradeConfirmed"/>）。</summary>
+        private bool _loadedFromMainSave;
 
         /// <summary>节点已结束（强化完 / 点过离开）—— 台面不再响应。</summary>
         private bool _ended;
@@ -134,11 +142,14 @@ namespace MagicBrawl.App
             _view.ClosePicker();
 
             _catalog = ResolveCatalog();
+            _upgrades = UpgradeBook.Empty;
+            _loadedFromMainSave = false;
             ResolveIds();
             ResolveCards();
 
             Debug.Log("[UpgradeSceneEntry] 卡池 " + _cards.Count + " 张 · 可强化 " + CountUpgradable()
-                      + " 张" + (_pool != null ? "（来源 " + _pool.displayName + "）" : ""));
+                      + " 张 · 强化册 " + _upgrades.Count + " 张"
+                      + (_pool != null ? "（来源 " + _pool.displayName + "）" : ""));
         }
 
         // ══════════════════════════════════════════════════════
@@ -211,11 +222,19 @@ namespace MagicBrawl.App
                 return;
             }
 
+            // ⚠ 目录必须**先**叠上强化册，**再**解析卡池（2026-10-02）。
+            //   顺序反了的话目录里没有 "a+"，PreferUpgraded 的判据不成立 ——
+            //   症状是「强化过的牌下次进来又变回基础版」，零报错。
+            _upgrades = UpgradeBook.FromRecords(player.upgrades);
+            _catalog = SaveStore.WithUpgrades(_catalog, _upgrades);
+
             IReadOnlyList<string> ids = CardUpgrade.PreferUpgraded(player.cardIds, _catalog);
             for (int i = 0; i < ids.Count; i++)
             {
                 AddId(ids[i]);
             }
+
+            _loadedFromMainSave = true;
         }
 
         private void AddId(string id)
@@ -310,10 +329,23 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 玩家按了「确认」：生成新卡 →（编辑器里）落盘 → 换掉卡池里那一张 → 播动画。
+        /// 玩家按了「确认」：把这一笔强化<b>追加进强化册</b>（写回主存档）→ 重建目录 →
+        /// 换掉卡池里那一张 → 播动画。
         ///
         /// <para><b>⚠ 顺序不能换</b>：先落盘拿到「运行时该用的那一份定义」，再替换卡池，
         /// 最后才播动画（动画拿的就是新旧两份，播的是同一个事实）。</para>
+        ///
+        /// <para><b>⚠ 现在是「改配方」而不是「造一张新卡资产」</b>（2026-10-02 多轴强化）：
+        /// 强化记成 <c>PlayerData.upgrades</c> 里的一张牌 + 一笔
+        /// （<see cref="UpgradeBook.Append"/>），强化版由
+        /// <see cref="UpgradeBook.BuildCatalog"/> 读的时候合成。
+        /// 这样同一张牌能同时叠力量 / 冷却 / 词条三轴，也不会出现「A 存档强化过、
+        /// B 存档也看到」这种全局副作用。</para>
+        ///
+        /// <para><b>本节点给的方向 = 力量 +2</b>（用户 2026-09-30 口径，没变）。
+        /// 冷却轴 / 词条轴的能力已经在 Core 里（<see cref="CardUpgradeMod.Cooldown"/> /
+        /// <see cref="CardUpgradeMod.Effect"/>），**换方向只需要换构造的这一笔 mod** ——
+        /// 多方向强化的接入口就在这里。</para>
         /// </summary>
         private void OnUpgradeConfirmed(CardDef card)
         {
@@ -322,18 +354,47 @@ namespace MagicBrawl.App
                 return;
             }
 
+            string baseId = CardUpgrade.BaseIdOf(card.Id);
+            CardUpgradeMod mod = CardUpgradeMod.Power(CardUpgrade.PowerStep);
+
+            CardUpgradeRecord existing;
+            if (!_upgrades.TryGet(baseId, out existing))
+            {
+                existing = null;
+            }
+
             string reason;
-            if (!CardUpgrade.CanUpgrade(card, out reason))
+            if (!CardUpgrade.CanApply(card, mod, existing, out reason))
             {
                 // 双保险：弹窗里不可选的格子本来就点不动，这里再挡一次。
                 Debug.LogWarning("[UpgradeSceneEntry] 这张牌不能强化：" + card.Name + " —— " + reason);
                 return;
             }
 
-            CardDef upgraded = CardUpgrade.Apply(card, 20000 + _cards.Count);
-
+            CardDef upgraded;
             string note;
-            upgraded = CardUpgradeWriter.Persist(upgraded, card, out note);
+
+            if (_loadedFromMainSave)
+            {
+                string error;
+                if (!SaveStore.TryAppendUpgrade(SaveSlot.Main, baseId, mod, out error))
+                {
+                    Debug.LogWarning("[UpgradeSceneEntry] 强化没能写回主存档：" + error);
+                    return;
+                }
+
+                _upgrades = _upgrades.Append(baseId, mod);
+                _catalog = SaveStore.WithUpgrades(ResolveCatalog(), _upgrades);
+                upgraded = _catalog.Get(CardUpgrade.UpgradedIdOf(baseId));
+                note = "已写回 " + SaveStore.FilePathFor(SaveSlot.Main);
+            }
+            else
+            {
+                // 调试覆盖（Inspector 填了 _cardIds / _pool）：只在本局内存里生效，不碰存档
+                // —— 拿调试数据去覆盖真实存档是另一种事故（与商店 / 女巫同口径）。
+                upgraded = CardUpgrade.Apply(card, 20000 + _cards.Count);
+                note = "调试覆盖：强化只在本局内存里生效，没有写存档";
+            }
 
             int at = _cards.IndexOf(card);
             if (at < 0)
@@ -358,8 +419,10 @@ namespace MagicBrawl.App
             _busy = true;
             _view.PlayUpgradeFx(card, upgraded);
 
-            Debug.Log("[UpgradeSceneEntry] 强化《" + card.Name + "》力量 " + card.Power + " → "
-                      + upgraded.Power + "（" + note + "）");
+            Debug.Log("[UpgradeSceneEntry] 强化《" + card.Name + "》" + mod.Describe()
+                      + "（力量 " + card.Power + " → " + upgraded.Power
+                      + " · 冷却 " + card.Cooldown + " → " + upgraded.Cooldown
+                      + " · " + note + "）");
         }
 
         private void OnPickerClosed()
@@ -411,10 +474,22 @@ namespace MagicBrawl.App
         {
             _view.ClosePicker();
 
+            // 2026-10-02：从地图走进来的话，「离开」= 完成这个节点并回地图
+            //（地图那边 MapSceneEntry.Awake 会结算这一步）。
+            if (MapRoutes.LeaveToMap())
+            {
+                if (_logLeaveClick)
+                {
+                    Debug.Log("[UpgradeSceneEntry] 离开石台，回地图。");
+                }
+
+                return;
+            }
+
             if (_logLeaveClick)
             {
                 Debug.Log("[UpgradeSceneEntry] 点了「离开」—— 单场景调试下到此为止；"
-                          + "正式流程里这一下会提交「完成节点」并回地图层。");
+                          + "从地图走进来时这一下会回地图层。");
             }
         }
     }

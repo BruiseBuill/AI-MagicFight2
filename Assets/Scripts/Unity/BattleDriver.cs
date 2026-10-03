@@ -37,8 +37,8 @@ namespace MagicBrawl.App
         [Tooltip("固定随机种子 —— 同种子必然复现同一局（Core 用自实现的确定性 Rng）。只有关掉随机时才用。")]
         [SerializeField] private int _seed = 20260916;
 
-        [Tooltip("AI 座位是否消耗光环。规划 §6：最简 AI 默认不使用。")]
-        [SerializeField] private bool _aiUseAuras = false;
+        [Tooltip("AI 是否动用光环（免疫 / 防御补值）。HeuristicAgent 的防御口径依赖它，默认开。")]
+        [SerializeField] private bool _aiUseAuras = true;
 
         [Tooltip("勾上则玩家座位也交给 AI 决策（调试 / 截图用，不用手点）。")]
         [SerializeField] private bool _autoPlay = false;
@@ -47,6 +47,24 @@ namespace MagicBrawl.App
         [SerializeField] private BattleParticipantConfig[] _participants = new BattleParticipantConfig[0];
         [SerializeField] private CardCatalogAsset _cardCatalog;
         [SerializeField] private int _localSeat;
+
+        /// <summary>
+        /// <b>本场战斗的怪物资产</b>（2026-10-03，怪物框架）。
+        ///
+        /// <para>一只怪 = 一份 <see cref="CharacterConfig"/> 资产
+        /// （建议放 <c>Assets/Resources/Monsters/Monster_*.asset</c>），
+        /// 上面写着它的<b>血量 / 卡池 / AI 档案 / 强化 / 能力（含「第 N 回合自爆」这类行为）/
+        /// 发牌口径 / 可选美术</b> —— 改怪只需改这份资产，不用碰代码、不用碰 Prefab。</para>
+        ///
+        /// <para><b>与 <see cref="_participants"/> 的分工</b>：那份是「谁能上场的完整名单」
+        /// （含控制方式与队伍）。这一格是<b>更省事的单人入口</b> —— 留空名单、只填一只怪，
+        /// 它就当对手（<see cref="ControlKind.Ai"/>）。二者同时填时，
+        /// <b>名单里显式写的角色优先</b>（见 <c>ConfigFor</c>）。</para>
+        ///
+        /// <para>留空 = 老行为：兜底「怪物」4/4、全 45 张牌池、怪物发牌口径。</para>
+        /// </summary>
+        [Tooltip("本场战斗的怪物资产（留空 = 兜底怪物）。建议 Resources/Monsters/Monster_*.asset。")]
+        [SerializeField] private CharacterConfig _monsterConfig;
 
         [Header("存档（玩家卡池的来源）")]
         [Tooltip("本场战斗读哪个存档的卡池。\n"
@@ -75,6 +93,7 @@ namespace MagicBrawl.App
         private readonly Dictionary<int, IParticipantController> _controllers = new Dictionary<int, IParticipantController>();
         private IParticipantController _activeController;
         private BattleSetup _setup;
+        private BattleArtLibrary.CharacterSet _monsterArt;
         private bool _paused;
         public Func<IBattleMode> ModeFactory { get; set; }
         public Func<EffectRegistry> EffectRegistryFactory { get; set; }
@@ -93,8 +112,26 @@ namespace MagicBrawl.App
         /// <summary>当前档位的落盘路径（设置面板显示用）。</summary>
         public string CardPoolSavePath { get { return SaveStore.FilePathFor(_saveSlot); } }
         public void SetPaused(bool paused) { _paused = paused; }
+
+        /// <summary>
+        /// 设置面板里的<b>测试开关</b>（2026-10-03）：打开后「按住查看怪物手牌」不再按玩家的
+        /// 已知情报盖牌背，<b>一律正面显示</b>，便于校正 AI 逻辑。
+        ///
+        /// <para>⚠ <b>刻意不落盘</b> —— 它是调试口径、不是游戏设置；每次进 Play 默认关闭。</para>
+        /// <para>⚠ 只影响玩家查看的那块浮层（<c>MonsterHandView</c>），不改变引擎里任何情报判定
+        /// （<c>LookAndCool</c> 的翻牌、AI 的决策都不受影响）。</para>
+        /// </summary>
+        public bool ForceRevealMonsterHand { get; set; }
         public int OpponentSeat { get { return _engine == null ? (_localSeat == 0 ? 1 : 0) : _engine.State.Mode.SelectDefender(_engine.State, _localSeat); } }
         public BattleOutcome Outcome { get { return _engine == null ? null : _engine.State.Outcome; } }
+
+        /// <summary>
+        /// 本场战斗那只怪<b>自带的美术</b>（2026-10-03）；没配返回 null。
+        ///
+        /// <para><see cref="BattleUi"/> 拿到 null 时退回 <c>BattleArtLibrary.Monster</c>
+        /// —— 那是「所有怪共用一份」的旧口径，保留它才不会让没配美术的怪变成空白。</para>
+        /// </summary>
+        public BattleArtLibrary.CharacterSet MonsterArtSet { get { return _monsterArt; } }
 
         private Coroutine _routine;
 
@@ -215,12 +252,38 @@ namespace MagicBrawl.App
         /// 只返回一个 <see cref="CardElement"/>，调用方拿不到 <see cref="CardInstance"/>，
         /// 连想「顺手多显示一点」都做不到。</para>
         ///
-        /// <para>预判口径见 <see cref="AttackForecast"/>：与 <c>SimpleAiAgent</c>
-        /// 的进攻策略同源。手牌为空返回 <see cref="CardElement.None"/>。</para>
+        /// <para>预判口径见 <see cref="AttackForecast"/> 与 <see cref="HeuristicAgent"/>：
+        /// 优先用<b>真正在对局的那个 AI</b>现算（它身上有开局锁定的流派与怪物子类的复写），
+        /// 拿不到时退回静态预判。手牌为空返回 <see cref="CardElement.None"/>。</para>
         /// </summary>
         public CardElement ForecastAttackElement(int seat)
         {
-            return _engine == null ? CardElement.None : AttackForecast.ElementOfNextAttack(_engine.State, seat);
+            if (_engine == null)
+            {
+                return CardElement.None;
+            }
+
+            // 优先问真正在对局的那个 AI —— 只有它身上才有「已判定的流派」与怪物子类的复写
+            //（强制流派 / 禁用某卡）。拿不到（人类座位，或外部注入了别的 AI）才退回静态预判。
+            HeuristicAgent agent = HeuristicAgentAt(seat);
+            CardInstance card = agent != null
+                ? agent.PredictNextAttack(seat)
+                : AttackForecast.PredictNextAttack(_engine.State, seat);
+
+            return card == null ? CardElement.None : card.Def.Element;
+        }
+
+        /// <summary>取某个座位背后真正的 <see cref="HeuristicAgent"/>（不是它时返回 null）。</summary>
+        private HeuristicAgent HeuristicAgentAt(int seat)
+        {
+            IParticipantController controller;
+            if (!_controllers.TryGetValue(seat, out controller))
+            {
+                return null;
+            }
+
+            AiController ai = controller as AiController;
+            return ai == null ? null : ai.Agent as HeuristicAgent;
         }
 
         // ══════════════════════════════════════════════════════
@@ -284,9 +347,35 @@ namespace MagicBrawl.App
                 if (controller == null)
                     controller = participant.Control == ControlKind.Human && !_autoPlay
                         ? (IParticipantController)new HumanController()
-                        : new AiController(new SimpleAiAgent { UseAuras = _aiUseAuras, BlindPickSeed = unchecked(seed + seat) });
+                        // 2026-10-03：默认 AI 换成 HeuristicAgent（四流派 + 出牌优先级 + 防御口径），
+                        // 并按角色的 aiProfile 选择怪物专属子类（空 = 通用）。
+                        // ⚠ 必须把 engine.State 传进去 —— 流派判定要读手牌，减速流派还要读
+                        //   对方冷却区张数与手牌数；不传的话这两条功能会静默降级。
+                        : new AiController(MonsterAgentFactory.Create(
+                            participant.Character.AiProfile, engine.State,
+                            _aiUseAuras, unchecked(seed + seat)));
                 controllers.Add(seat, controller);
             }
+
+            // 没有真人参与（含 _autoPlay 把玩家座位也交给 AI 的情况）→ 套上回合上限。
+            // BattleEngine.Create 只按 setup 的 Control 判「全员 AI」，而这里 setup 仍写着
+            // Human（玩家座位是 Human + _autoPlay 时尤其如此），所以要在此补一刀。
+            // 见 BattleEngine.AiTurnLimit 的说明。
+            bool anyHuman = false;
+            foreach (IParticipantController controller in controllers.Values)
+            {
+                if (controller is HumanController)
+                {
+                    anyHuman = true;
+                    break;
+                }
+            }
+
+            if (!anyHuman)
+            {
+                engine.MaxTurns = BattleEngine.AiTurnLimit;
+            }
+
             StopBattle();
             LastSeed = seed;
             _setup = setup;
@@ -545,21 +634,79 @@ namespace MagicBrawl.App
         //  内部
         // ══════════════════════════════════════════════════════
 
+        /// <summary>
+        /// 某个座位用哪份角色资产。查找顺序（2026-10-03）：
+        /// ① <b>怪物资产</b>（对非本地座位）→ ② 名单里显式写的那一份 → ③ null（用兜底）。
+        ///
+        /// <para>⚠ <b>怪物资产优先，不是名单优先</b> —— 这是实测逼出来的：本工程的
+        /// <c>BattleCanvas.prefab</c> 里 <c>_participants</c> <b>早就填着</b>
+        /// 玩家 / 怪物的那份老名单（<c>DefaultPlayer</c> / <c>DefaultMonster</c>）。
+        /// 若名单优先，新加的 <c>_monsterConfig</c> 会<b>永远不生效</b>，而且症状是
+        /// 「进 Play 一切正常」—— 只有去读怪物血量才会发现还是老那份 4/4。</para>
+        ///
+        /// <para>要让名单生效（例如 3 人以上、或两个座位都自定义），把
+        /// <c>_monsterConfig</c> 留空即可。</para>
+        /// </summary>
+        private CharacterConfig ConfigFor(int seat)
+        {
+            if (_monsterConfig != null && seat != _localSeat)
+            {
+                return _monsterConfig;
+            }
+
+            bool hasList = _participants != null && _participants.Length > 0;
+            if (hasList && seat >= 0 && seat < _participants.Length
+                && _participants[seat] != null && _participants[seat].character != null)
+            {
+                return _participants[seat].character;
+            }
+
+            if (hasList && seat >= 0 && seat < _participants.Length && _monsterConfig == null)
+            {
+                throw new InvalidOperationException("参战角色配置不完整。");
+            }
+
+            return null;
+        }
+
         private CharacterDefinition BaseDefinition(int seat)
         {
             CardCatalogAsset catalogAsset = _cardCatalog == null ? Resources.Load<CardCatalogAsset>("CardCatalog") : _cardCatalog;
             ICardCatalog catalog = catalogAsset == null ? null : catalogAsset.CreateCatalog();
-            if (_participants == null || _participants.Length == 0)
-                return new CharacterDefinition(seat == 0 ? "player.default" : "monster.default", seat == 0 ? "你" : "怪物",
-                    seat == 0 ? CharacterKind.Player : CharacterKind.Monster, 4, 4, 8,
-                    CardPool.AllCards(catalog));
-            if (seat < 0 || seat >= _participants.Length || _participants[seat] == null || _participants[seat].character == null)
-                throw new InvalidOperationException("参战角色配置不完整。");
-            return _participants[seat].character.CreateDefinition(catalog);
+
+            CharacterConfig config = ConfigFor(seat);
+            if (config != null)
+            {
+                // 怪物自带的美术（可选）：没勾「用自己的美术」时交出 null，
+                // 让 BattleUi 退回 BattleArtLibrary.Monster。
+                // ⚠ 判据必须是那个 bool，不能判 `art != null` —— 它是 [Serializable] class，
+                //   反序列化之后**永远非 null**（只是一组空 Clip）。用 null 判会让每只怪
+                //   都被绑上一份空美术，表现为「怪物整个不见了」而且零报错。
+                if (seat != _localSeat && config.useCustomArt)
+                {
+                    _monsterArt = config.art;
+                }
+
+                return config.CreateDefinition(catalog);
+            }
+
+            // 兜底（没配任何角色资产）—— 本地座位是人类口径，其余是怪物口径。
+            // ⚠ 2026-10-03 起这里必须显式给 DealProfile：不给就会落回引擎默认（人类 6 张），
+            //   兜底怪物又会变成「开局 6 张、第 2–3 回合各补 1」。
+            bool local = seat == _localSeat;
+            return new CharacterDefinition(
+                local ? "player.default" : "monster.default",
+                local ? "你" : "怪物",
+                local ? CharacterKind.Player : CharacterKind.Monster,
+                4, 4, 8,
+                CardPool.AllCards(catalog),
+                null, null,
+                local ? DealProfile.Human() : DealProfile.Monster());
         }
 
         private BattleSetup BuildSetup(CardPool localOverride = null)
         {
+            _monsterArt = null;
             int count = _participants == null || _participants.Length == 0 ? 2 : _participants.Length;
             if (_localSeat < 0 || _localSeat >= count) throw new InvalidOperationException("本地玩家座位无效。");
             var participants = new List<ParticipantSetup>();
@@ -704,6 +851,12 @@ namespace MagicBrawl.App
             if (e is ReplaceEvent)
             {
                 return 0.22f;
+            }
+
+            if (e is SelfDestructEvent)
+            {
+                // 2026-10-03：自爆要有存在感 —— 与掉血同一档，别一闪而过。
+                return 0.6f;
             }
 
             if (e is GameOverEvent)

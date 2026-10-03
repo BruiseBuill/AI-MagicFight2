@@ -40,7 +40,15 @@ namespace MagicBrawl.App
             _lines.Clear();
 
             BattleEngine engine = BattleEngine.Create(seed);
-            var agent = new SimpleAiAgent { UseAuras = aiUseAuras };
+
+            // 这一局是 AI 互殴（两个座位都由同一个 agent 驱动）→ 套上回合上限。
+            // 双方都严格执行「能防就防 + 交光环补值」时对局可能不收敛（谁都不掉血），
+            // 见 BattleEngine.AiTurnLimit 的说明。
+            engine.MaxTurns = BattleEngine.AiTurnLimit;
+
+            // 2026-10-03：默认 AI 换成 HeuristicAgent（四流派 + 出牌优先级 + 防御口径）。
+            // ⚠ 它需要 BattleState —— 流派判定读手牌、减速流派读对方冷却区与手牌数。
+            var agent = new HeuristicAgent(engine.State) { UseAuras = aiUseAuras };
 
             if (logEvents)
             {

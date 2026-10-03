@@ -39,6 +39,16 @@ namespace MagicBrawl.Core
         public bool UsesLocalInput { get { return false; } }
         public bool Submit(DecisionResponse response) { return false; }
         public AiController(IAgent agent) { _agent = agent ?? throw new ArgumentNullException(nameof(agent)); }
+
+        /// <summary>
+        /// 这个控制器背后的 AI（只读）。
+        ///
+        /// <para><b>为什么暴露出来</b>：表现层要问「它下一张会打什么」时，必须问
+        /// <b>真正在对局的那个 agent</b> —— 只有它身上才有「已判定的流派」与怪物子类
+        /// 的复写。另起一个临时 agent 现算，会在怪物复写过（强制流派 / 禁用某卡）时给出
+        /// 与实际不符的预测（见 <see cref="AttackForecast"/> 的说明）。</para>
+        /// </summary>
+        public IAgent Agent { get { return _agent; } }
         public void BeginDecision(DecisionRequest request) { _response = _agent.Decide(request); }
         public bool TryTakeResponse(out DecisionResponse response)
         {

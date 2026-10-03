@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 268ea5fc5234a164392a2b4d6099f843, type: 3}
+  m_Name: Monster_Bomber
+  m_EditorClassIdentifier: 
+  characterId: monster.bomber
+  displayName: "\u81EA\u7206\u5080\u5121"
+  kind: 1
+  initialHp: 3
+  maxHp: 3
+  minimumCardCount: 8
+  useAllCards: 1
+  cardIds: []
+  aiProfile: 
+  cardPool: {fileID: 0}
+  upgrades: []
+  dealPreset: 2
+  dealInitialHandSize: 8
+  dealInitialReplaceLimit: 0
+  dealDrawFromTurn: 0
+  dealDrawToTurn: 0
+  dealDrawPerTurn: 0
+  dealReplacePerDraw: 0
+  art:
+    Name: 
+    Portrait: {fileID: 0}
+    Idle:
+      Frames: []
+      Fps: 8
+      Size: {x: 100, y: 100}
+      Pivot: {x: 0.5, y: 0}
+    Attack:
+      Frames: []
+      Fps: 8
+      Size: {x: 100, y: 100}
+      Pivot: {x: 0.5, y: 0}
+    Defend:
+      Frames: []
+      Fps: 8
+      Size: {x: 100, y: 100}
+      Pivot: {x: 0.5, y: 0}
+    BeHit:
+      Frames: []
+      Fps: 8
+      Size: {x: 100, y: 100}
+      Pivot: {x: 0.5, y: 0}
+    Death:
+      Frames: []
+      Fps: 8
+      Size: {x: 100, y: 100}
+      Pivot: {x: 0.5, y: 0}
+  abilities:
+  - id: bomber.damage
+    trigger: 1
+    operation: 5
+    amount: 0
+    maxUses: 0
+    triggerTurn: 3
+    amountSource: 1
+  - id: bomber.die
+    trigger: 1
+    operation: 6
+    amount: 0
+    maxUses: 0
+    triggerTurn: 3
+    amountSource: 0

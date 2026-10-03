@@ -40,8 +40,12 @@
     <Compile Include="MimicScenario.cs" />
     <Compile Include="WeakenScenario.cs" />
     <Compile Include="CardUpgradeScenario.cs" />
+    <Compile Include="UpgradeBookScenario.cs" />
     <Compile Include="WitchWorkshopScenario.cs" />
     <Compile Include="NewCardsScenario.cs" />
+    <Compile Include="MapScenario.cs" />
+    <Compile Include="HeuristicAgentScenario.cs" />
+    <Compile Include="MonsterScenario.cs" />
     <!-- Core 源码（链接，不复制） -->
     <Compile Include="../../Assets/Scripts/Core/**/*.cs" />
   </ItemGroup>

@@ -38,6 +38,18 @@ namespace MagicBrawl.App
 
         [SerializeField] private TMP_Text _hintText;
 
+        /// <summary>
+        /// 右上角那行金币（2026-10-03）。
+        ///
+        /// <para><b>为什么本场景要单独有一行金币</b>：特殊强化从 2026-10-03 起<b>要花钱</b>，
+        /// 而本场景不像商店那样带一条 <c>Hud_Bar</c> —— 不把余额摆出来的话，
+        /// 玩家只能从「确认键为什么是灰的」反推自己没钱。</para>
+        ///
+        /// <para>本类只负责把数写上去、按有无钱换色；<b>余额是多少是上层给的</b>
+        /// （与商店 <c>ShopView.BindResources</c> 同口径）。</para>
+        /// </summary>
+        [SerializeField] private TMP_Text _goldText;
+
         /// <summary>主浮层（两个空位 + 状态行 + 确认 / 关闭）。</summary>
         [SerializeField] private WitchLayerView _layer;
 
@@ -113,6 +125,21 @@ namespace MagicBrawl.App
             {
                 _leaveLabel.text = text;
             }
+        }
+
+        /// <summary>
+        /// 右上角那行金币（2026-10-03）。写法与商店顶栏一致：<c>50</c> 而不是「金币 50」——
+        /// 图标已经在提示语里出现过，数字单独一枚更醒目。
+        /// </summary>
+        public void SetGold(int gold)
+        {
+            if (_goldText == null)
+            {
+                return;
+            }
+
+            _goldText.text = "金币 " + gold;
+            _goldText.color = gold > 0 ? UiTheme.WitchGold : UiTheme.WitchGoldEmpty;
         }
 
         /// <summary>

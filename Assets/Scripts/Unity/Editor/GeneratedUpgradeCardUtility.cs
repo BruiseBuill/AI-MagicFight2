@@ -28,14 +28,21 @@ namespace MagicBrawl.App.EditorTools
     /// </summary>
     public static class GeneratedUpgradeCardUtility
     {
-        /// <summary>编辑器侧把落盘能力插进运行时插槽（每次域重载都会重新插一遍）。</summary>
-        [InitializeOnLoadMethod]
-        private static void Hook()
-        {
-            CardUpgradeWriter.Handler = Persist;
-        }
-
-        /// <summary>落盘实现（签名见 <see cref="CardUpgradeWriter.PersistHandler"/>）。</summary>
+        /// <summary>
+        /// ⚠ <b>2026-10-02 起不再自动挂钩子</b>（原先是 <c>[InitializeOnLoadMethod]</c> 里
+        /// <c>CardUpgradeWriter.Handler = Persist</c>）。
+        ///
+        /// <para>强化改成「存档里的配方 + 读的时候合成」之后，<b>强化不再写卡资产</b> ——
+        /// 资产是<b>全局</b>的，表达不了「同一个基础卡在 A 存档是 +2 力量、在 B 存档是 −1 冷却」，
+        /// 怪物侧的强化更是无处安放。这一整条路径（<see cref="Persist"/> 及其校验）
+        /// 因此保留为<b>手工调试出口</b>：真要导出一份可以在 Inspector 里看的强化卡，
+        /// 从这里调；正常流程不再经过它。</para>
+        ///
+        /// <para>旧资产（<c>Card_a_Up.asset</c> 等）<b>仍然读得进</b>：它们还在
+        /// <c>CardCatalog.generatedCards</c> 里，<c>CardUpgrade.PreferUpgraded</c> 照常认。
+        /// 只有当同一张牌又有了<b>新配方</b>时，配方才顶掉资产版
+        /// （<c>UpgradeBook.BuildCatalog</c> 的去重规则）。</para>
+        /// </summary>
         public static CardDef Persist(CardDef upgraded, CardDef source, out string note)
         {
             if (upgraded == null || source == null)

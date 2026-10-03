@@ -233,7 +233,19 @@ namespace MagicBrawl.App
                 return;
             }
 
-            _catalog = ResolveCatalog();
+            // ⚠ 目录要叠上主存档的强化册（2026-10-02）：否则强化过的牌（"a+"）不在目录里，
+            //   背包会把它们当「不在目录里的 ID」跳过 —— 症状是「强化过的牌凭空消失」且零报错。
+            _catalog = SaveStore.WithSavedUpgrades(SaveSlot.Main, ResolveCatalog());
+
+            // 2026-10-02：这一趟是从地图走进来的话，金币用<b>冒险那本账</b>的余额
+            //（地图顶栏显示的、上一家商店花剩下的），而不是本场景的调试默认值。
+            // ⚠ 单向：只在 HasActiveRun 时覆盖 —— 单独打开 Shop.unity 调试时 MapRun 是空的，
+            //   本场景照旧按 Inspector 上的 _gold 跑（独立场景契约 E1/E2）。
+            if (MapRun.HasActiveRun)
+            {
+                _gold = MapRun.Gold;
+                _playerName = "旅者";
+            }
 
             _view.SetTitle("商店");
             _view.SetLeaveLabel("离开");
@@ -443,6 +455,13 @@ namespace MagicBrawl.App
             _view.BindResources(_playerName, _hp, _maxHp, _gold);
             _view.BindBag(ResolveOwnedCards());
             _view.BindShelf(_shelf);
+
+            // 2026-10-02：把这笔花销记进冒险那本账 —— 地图顶栏读的就是它，
+            // 所以「买完离开 → 地图上的金币少了 20」是通的。
+            if (MapRun.HasActiveRun)
+            {
+                MapRun.SetGold(_gold);
+            }
         }
 
         /// <summary>
@@ -478,12 +497,24 @@ namespace MagicBrawl.App
 
         private void OnLeaveClicked()
         {
-            _view.CloseBag();          // 别把面板留在屏幕上（正式接入后「离开」会换场景，这一下是保险）
+            _view.CloseBag();          // 别把面板留在屏幕上
+
+            // 2026-10-02：从地图走进来的话，「离开」= 完成这个节点并回地图
+            //（地图那边 MapSceneEntry.Awake 会结算这一步）。
+            if (MapRoutes.LeaveToMap())
+            {
+                if (_logLeaveClick)
+                {
+                    Debug.Log("[ShopSceneEntry] 离开商店，回地图（余 " + _gold + " 金）。");
+                }
+
+                return;
+            }
 
             if (_logLeaveClick)
             {
                 Debug.Log("[ShopSceneEntry] 点了「离开」—— 单场景调试下到此为止；"
-                          + "正式流程里这一下会提交 LeaveShop 并回地图层。");
+                          + "从地图走进来时这一下会回地图层。");
             }
         }
     }

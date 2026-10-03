@@ -69,14 +69,25 @@ namespace MagicBrawl.Core
         private Phase _phase = Phase.NotStarted;
 
         // 发牌 / 替换
+        //
+        // ⚠ 2026-10-03 起「能换几张」不再是一个全局字段（_replaceLimit 已删除）——
+        //   它现在按座位从角色的 DealProfile 现算（见 ReplaceLimitOnTurnOf）。
+        //   同一个 Pass 里人类与怪物的替换上限可以不同，所以它绝不能是个共享字段。
         private int _replaceSeat;
-        private int _replaceLimit;
         private bool _replaceIsInitial;
         private Phase _replaceNextPhase = Phase.BeginTurn;
         private readonly List<CardInstance> _replaceTargets = new List<CardInstance>();
 
         // 半场上下文
         private AttackContext _atk;
+
+        /// <summary>
+        /// 本半场的进攻方被角色能力要求「不出牌」（<see cref="CharacterAbilityOp.SkipAttack"/>）。
+        ///
+        /// <para>与「手上无牌」是<b>两回事</b>：后者是规则 §3 的「无法攻击 → 掉 1 点」，
+        /// 前者是角色主动放弃这一拍（例如自爆怪在自己炸掉之前的那一回合），<b>不掉血</b>。</para>
+        /// </summary>
+        private bool _skipAttack;
 
         // Effect execution state lives in BattleEngine.Effects.cs.
 
@@ -99,6 +110,29 @@ namespace MagicBrawl.Core
             _deal = dealPolicy ?? new DefaultDealPolicy();
         }
 
+        /// <summary>
+        /// 「全员 AI」对局的默认回合上限（用户 2026-10-03 口径：<b>最多不超过 100 回合</b>）。
+        ///
+        /// <para><b>为什么需要它</b>：本作「防御成功 = 不掉血」，而双方都严格执行
+        /// 「能防就防 + 必须交防御光环才补值」时，光环由「打出的牌进冷却区」源源不断再生
+        /// —— 于是谁也不掉血，对局可能一直跑下去（实测能到 3000+ 回合，见
+        /// `Tools/RuleSelfTest/HeuristicAgentScenario.cs`）。用户明确：这种不收敛
+        /// <b>只出现在 AI 对 AI</b> 的对局里，给个上限即可，不必改规则。</para>
+        ///
+        /// <para>⚠ 只在「<b>全员 AI</b>」的 setup 上自动生效（见 <see cref="Create(int, BattleSetup, IDealPolicy)"/>）；
+        /// 只要有一个座位是人类就<b>不设</b>上限 —— 玩家对局不该被截断。</para>
+        /// </summary>
+        public const int AiTurnLimit = 100;
+
+        /// <summary>
+        /// 本局的回合上限；<b>0 = 不限</b>。到达时按<b>平局</b>收场（双方都没能取胜）。
+        ///
+        /// <para>构造时由 <see cref="Create(int, BattleSetup, IDealPolicy)"/> 按「是否全员 AI」
+        /// 自动给值；调用方可以覆盖它（自测里给「标着人类、实际由 AI 驱动」的座位显式设上限，
+        /// 或设 0 关掉以做长局对照）。</para>
+        /// </summary>
+        public int MaxTurns { get; set; }
+
         /// <summary>建一局 1v1（0 号座位 = 玩家先手，D3）。</summary>
         public static BattleEngine Create(int seed, IDealPolicy dealPolicy = null)
         {
@@ -120,7 +154,24 @@ namespace MagicBrawl.Core
             foreach (PlayerState player in state.Players)
                 foreach (CardDef card in player.Deck.Snapshot())
                     foreach (EffectDef effect in card.Effects) effects.Validate(effect);
-            return new BattleEngine(state, dealPolicy, effects);
+
+            var engine = new BattleEngine(state, dealPolicy, effects);
+
+            // 「全员 AI」→ 自动带上回合上限。判据是 setup 里的 Control（而不是「谁在驱动」）：
+            // BattleDriver 的 _autoPlay 会把玩家座位也交给 AI，但 setup 仍写着 Human ——
+            // 那种情况由调用方自己补一刀（见 BattleDriver.StartBattle）。
+            bool allAi = true;
+            for (int i = 0; i < setup.Participants.Count; i++)
+            {
+                if (setup.Participants[i].Control != ControlKind.Ai)
+                {
+                    allAi = false;
+                    break;
+                }
+            }
+
+            engine.MaxTurns = allAi ? AiTurnLimit : 0;
+            return engine;
         }
 
         /// <summary>开局：发初始手牌。之后由 <see cref="Advance"/> 推进。</summary>
@@ -282,18 +333,50 @@ namespace MagicBrawl.Core
 
         private void DoInitialDeal()
         {
+            // 按座位读各自的发牌口径（2026-10-03）：人类 6 张、怪物 8 张，一局之内共存。
             for (int seat = 0; seat < State.Players.Count; seat++)
             {
-                for (int i = 0; i < _deal.InitialHandSize; i++)
+                PlayerState player = State.Of(seat);
+                int count = InitialHandSizeOf(player);
+                for (int i = 0; i < count; i++)
                 {
-                    DrawCardToHand(State.Of(seat), "开局发牌");
+                    DrawCardToHand(player, "开局发牌");
                 }
             }
 
             _replaceIsInitial = true;
-            _replaceLimit = _deal.InitialReplaceLimit;
             _replaceNextPhase = Phase.BeginTurn;
             BeginReplacePass(null);
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  发牌口径（按座位）
+        // ══════════════════════════════════════════════════════
+        //
+        // 角色写了 DealProfile 就以它为准；没写才回落到构造时传进来的 IDealPolicy
+        //（老口径，也是「换一套发牌策略」的扩展位）。四个读数入口全在这里，
+        // 别在对局流程里各处自己判 —— 否则又会出现「一开始 6 张、补牌却按 8 张算」这种分叉。
+
+        private int InitialHandSizeOf(PlayerState player)
+        {
+            return player.Definition.Deal != null ? player.Definition.Deal.InitialHandSize : _deal.InitialHandSize;
+        }
+
+        private int InitialReplaceLimitOf(PlayerState player)
+        {
+            return player.Definition.Deal != null ? player.Definition.Deal.InitialReplaceLimit : _deal.InitialReplaceLimit;
+        }
+
+        private int DrawOnTurnOf(PlayerState player, int turnNumber)
+        {
+            return player.Definition.Deal != null ? player.Definition.Deal.DrawOnTurn(turnNumber) : _deal.DrawOnTurn(turnNumber);
+        }
+
+        private int ReplaceLimitOnTurnOf(PlayerState player, int turnNumber)
+        {
+            return player.Definition.Deal != null
+                ? player.Definition.Deal.ReplaceLimitOnTurn(turnNumber)
+                : _deal.ReplaceLimitOnTurn(turnNumber);
         }
 
         private void BeginReplacePass(List<CardInstance> targets)
@@ -320,7 +403,13 @@ namespace MagicBrawl.Core
             if (p.IsDead) { _replaceSeat++; return; }
             List<CardInstance> pool = _replaceIsInitial ? p.Hand : _replaceTargets;
 
-            if (_replaceLimit <= 0 || pool.Count == 0 || p.Deck.Remaining == 0)
+            // 本座的替换上限现算（开局那趟用角色的开局上限；补牌那趟用它本回合的上限）——
+            // 怪物写的是 0，所以「不补牌 + 不换牌」这条在这里就自然成立，不需要额外分支。
+            int limit = _replaceIsInitial
+                ? InitialReplaceLimitOf(p)
+                : ReplaceLimitOnTurnOf(p, State.TurnNumber);
+
+            if (limit <= 0 || pool.Count == 0 || p.Deck.Remaining == 0)
             {
                 _replaceSeat++;
                 return;
@@ -376,13 +465,13 @@ namespace MagicBrawl.Core
                 Seat = p.Seat,
                 Kind = RequestKind.ChooseReplace,
                 Prompt = _replaceIsInitial
-                    ? "选择要替换掉的手牌（至多 " + _replaceLimit + " 张）"
+                    ? "选择要替换掉的手牌（至多 " + limit + " 张）"
                     : "可替换刚补到的这张牌",
                 Options = options,
                 MinSelect = 0,
                 // 用过滤后的候选数，不是 pool.Count —— 补牌那趟 pool 含对面的牌，
                 // 拿它当上限会给出「能换 2 张其实只有 1 张可选」的错数。
-                MaxSelect = Math.Min(_replaceLimit, candidateCount),
+                MaxSelect = Math.Min(limit, candidateCount),
             };
         }
 
@@ -460,6 +549,18 @@ namespace MagicBrawl.Core
 
         private void DoBeginTurn()
         {
+            // 回合上限（只对「全员 AI」的对局生效，见 MaxTurns 的说明）：
+            // **上一回合已经用满**就收场 —— 判据放在自增之前，所以 TurnNumber 会**停在**
+            // MaxTurns（打完 100 回合 = TurnNumber 就是 100），而不是多算一个 101。
+            // 收场方式是**平局**：双方都没能取胜，而不是让引擎空转到天亮。
+            if (MaxTurns > 0 && State.TurnNumber >= MaxTurns)
+            {
+                State.Finish(new BattleOutcome(new int[0],
+                    "双方均未能在 " + MaxTurns + " 回合内取胜"));
+                _phase = Phase.Finished;
+                return;
+            }
+
             State.TurnNumber++;
             State.AttackerSeat = State.Mode.FirstActor(State);
             int skipped = 0;
@@ -472,19 +573,16 @@ namespace MagicBrawl.Core
             State.InCombo = false;
             State.ComboDepth = 0;
 
-            int draw = _deal.DrawOnTurn(State.TurnNumber);
-            if (draw <= 0)
-            {
-                _phase = Phase.BeginHalfTurn;
-                return;
-            }
-
+            // 按座位各自判断本回合补不补（2026-10-03）：人类第 2–3 回合各补 1 张，
+            // 怪物（开局就抽满 8 张）在这里一张都不补，于是也不会进入替换拍。
             var drawn = new List<CardInstance>();
             for (int seat = 0; seat < State.Players.Count; seat++)
             {
+                PlayerState p = State.Of(seat);
+                int draw = DrawOnTurnOf(p, State.TurnNumber);
                 for (int i = 0; i < draw; i++)
                 {
-                    CardInstance c = DrawCardToHand(State.Of(seat), "回合 " + State.TurnNumber + " 补牌");
+                    CardInstance c = DrawCardToHand(p, "回合 " + State.TurnNumber + " 补牌");
                     if (c != null)
                     {
                         drawn.Add(c);
@@ -493,7 +591,6 @@ namespace MagicBrawl.Core
             }
 
             _replaceIsInitial = false;
-            _replaceLimit = _deal.ReplaceLimitOnTurn(State.TurnNumber);
             _replaceNextPhase = Phase.BeginHalfTurn;
             BeginReplacePass(drawn);
         }
@@ -515,11 +612,32 @@ namespace MagicBrawl.Core
 
             if (!State.InCombo)
             {
-                ApplyAbilities(State.AttackerSeat, AbilityTrigger.TurnStarted);
+                // 角色能力（含「怪物回合行为」，2026-10-03）先跑：它可能回血 / 抽牌 /
+                // 强制伤害 / 自爆 / 要求本拍不出牌。原来的 `ApplyAbilities(TurnStarted)`
+                // 就是这条路的一个子集，合并进 ApplyTurnBehaviours 免得跑两遍。
+                _skipAttack = false;
+                ApplyTurnBehaviours(State.AttackerSeat);
+                if (State.IsOver)
+                {
+                    _phase = Phase.Finished;
+                    return;
+                }
+
                 // 进攻开始时：进攻方自己的冷却区全体 −1（每个半场只结算一次，P2）
+                // ⚠ 这一条在「不出牌」时照样结算 —— 那一拍仍是它的一次进攻半场，
+                //   冷却该走的表要走，只是它没交牌。
                 _cooldownBuffer.Clear();
                 CooldownOps.TickOnAttackStart(State.Of(State.AttackerSeat), _cooldownBuffer);
                 FlushCooldown();
+
+                if (_skipAttack)
+                {
+                    // 主动放弃这一拍：直接进收尾（NextActor），**不走** DoAnnounceHalfTurn ——
+                    // 那条路会把「没牌」当成规则 §3 的「无法攻击 → 掉 1 点」。
+                    _phase = Phase.EndHalfTurn;
+                    return;
+                }
+
                 GoToTriggerOr(Phase.AnnounceHalfTurn);
                 return;
             }
@@ -1382,6 +1500,81 @@ namespace MagicBrawl.Core
             int total = 0;
             foreach (int seat in EffectSeats(source, target)) total += State.Of(seat).HpLost;
             return total;
+        }
+
+        /// <summary>
+        /// <b>一个进攻半场开始时的角色能力结算</b>（2026-10-03）—— 原来这里只调
+        /// <see cref="ApplyAbilities"/>（回血 / 抽牌 / 力量），现在多收三样东西：
+        /// 强制伤害、自爆、以及「本拍不出牌」。
+        ///
+        /// <para><b>为什么单独一个方法而不是塞进 <see cref="ApplyAbilities"/></b>：
+        /// <see cref="ApplyAbilities"/> 是「算一个数并返回」的形状（力量加值要拿返回值），
+        /// 而这三个算子的效果是<b>对局级的副作用</b>（要发事件、要判终局、要改 Phase）。
+        /// 混在一起会让那个被力量查询高频调用的方法顺手带上终局判定。</para>
+        ///
+        /// <para><b>结算顺序（有讲究）</b>：</para>
+        /// <list type="number">
+        /// <item>回血 / 抽牌 —— 与旧口径一致，先发生，让「自爆前最后一口气」也能回血；</item>
+        /// <item><b>自爆</b>：把自身生命置 0，发 <see cref="SelfDestructEvent"/>。
+        /// ⚠ 这里<b>先不</b>判终局 —— 否则「同归于尽」会在伤害落地之前就结束对局，
+        /// 被炸的那一方反而毫发无伤；</item>
+        /// <item><b>强制伤害</b>：对每个敌方座位走一次常规 <see cref="ApplyDamage"/>
+        /// （它自己会判一次终局，所以「玩家被炸死」这一条照常成立）；</item>
+        /// <item>统一补一次 <see cref="CheckDeath"/>：自爆的那一方在这里才判负，
+        /// 于是「两边同时倒地」会被 <see cref="IBattleMode.TryFinish"/> 正确地
+        /// 判成「双方同时出局」。</item>
+        /// </list>
+        /// </summary>
+        private void ApplyTurnBehaviours(int seat)
+        {
+            PlayerState player = State.Of(seat);
+            var context = new AbilityContext
+            {
+                Seat = seat,
+                Trigger = AbilityTrigger.TurnStarted,
+                TurnNumber = State.TurnNumber,
+                Hp = player.Hp,
+                MaxHp = player.MaxHp,
+                InitialHp = player.InitialHp,
+            };
+
+            foreach (ICharacterAbility ability in player.Abilities)
+            {
+                ability.Apply(context);
+            }
+
+            if (context.HealRequested > 0)
+            {
+                Heal(seat, context.HealRequested);
+            }
+
+            for (int i = 0; i < context.DrawRequested && !State.IsOver; i++)
+            {
+                if (DrawCardToHand(player, "角色能力") == null)
+                {
+                    break;
+                }
+            }
+
+            if (context.SelfDestructRequested && !player.IsDead)
+            {
+                Emit(new SelfDestructEvent { Seat = seat, HpBefore = player.Hp });
+                player.Hp = 0;
+            }
+
+            if (context.DamageRequested > 0)
+            {
+                for (int i = 0; i < State.Players.Count; i++)
+                {
+                    PlayerState other = State.Players[i];
+                    if (other.Seat == seat || other.IsDead) continue;
+                    if (!State.Mode.AreEnemies(State, seat, other.Seat)) continue;
+                    ApplyDamage(other.Seat, context.DamageRequested, "自爆");
+                }
+            }
+
+            _skipAttack = context.AttackSkipped;
+            CheckDeath();
         }
 
         private int ApplyAbilities(int seat, AbilityTrigger trigger, int value = 0)

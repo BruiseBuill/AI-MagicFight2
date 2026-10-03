@@ -2698,6 +2698,75 @@ namespace MagicBrawl.App
 
         public const float FontSizeWitchStatus = 30f;
 
+        // ── 价钱（2026-10-03 · 特殊强化改成**要花金币**）──────────────
+        // 版式：状态行下面加「价格牌（木质六边形）+ 左右两块字」，再下面一行是价钱明细。
+        // 三个 y 是**一起算出来的**（面板高 880、按钮顶边 −344、状态行底边 −188）：
+        //   状态 −160 / 价格牌 −232 / 明细 −304 —— 三块互不重叠，也**不能再往下挪**
+        //   （明细底边 −340，离按钮顶边只剩 4px）。改任何一块都要把这三行一起挪。
+
+        /// <summary>价格牌的中心 Y。</summary>
+        public const float WitchCostPlateCenterY = -232f;
+
+        /// <summary>价格牌的缩放 —— 底图就是商店货位那张 <c>Shop_PricePlate</c>（金币已烘在图上）。</summary>
+        public const float WitchCostPlateScale = 0.8f;
+
+        public const float WitchCostPlateWidth = ShopPricePlateWidth * WitchCostPlateScale;
+
+        public const float WitchCostPlateHeight = ShopPricePlateHeight * WitchCostPlateScale;
+
+        /// <summary>
+        /// 价钱数字的框（压在金币右侧）。
+        ///
+        /// <para>⚠ <b>不能只按比例缩</b>：价格牌是 Sliced —— 四周的 border 缩了、
+        /// <b>中间那块（金币）几乎保持原大小</b>，所以金币的右边缘比「按比例」算出来的更靠右。
+        /// 直接用 <c>ShopPriceTextOffsetX × 0.8</c>（= 21.6）会让第一个数字被金币压住一角
+        /// （2026-10-03 截屏放大核对过）。往右推 14px 之后正好贴着金币右边。</para>
+        /// </summary>
+        public const float WitchCostTextOffsetX = ShopPriceTextOffsetX * WitchCostPlateScale + 14f;
+
+        /// <summary>数字框的宽（同一条理由：往右挪了 14，右边也要跟着放宽）。</summary>
+        public const float WitchCostTextWidth = ShopPriceTextWidth * WitchCostPlateScale + 14f;
+
+        public const float WitchCostTextHeight = ShopPriceTextHeight * WitchCostPlateScale;
+
+        public const float WitchCostTextOffsetY = ShopPriceTextOffsetY * WitchCostPlateScale;
+
+        public const float FontSizeWitchCost = FontSizeShopPrice * WitchCostPlateScale;
+
+        /// <summary>价格牌左右那两块说明字的横向中心（距面板中线）。</summary>
+        public const float WitchCostLabelSideX = 320f;
+
+        public const float WitchCostLabelWidth = 400f;
+
+        public const float WitchCostLabelHeight = 56f;
+
+        public const float FontSizeWitchCostLabel = 28f;
+
+        /// <summary>价钱明细那一行（公式等式 / 「为什么变了」）的中心 Y、尺寸与字号。</summary>
+        public const float WitchCostDetailCenterY = -304f;
+
+        public const float WitchCostDetailWidth = 1400f;
+
+        public const float WitchCostDetailHeight = 72f;
+
+        public const float FontSizeWitchCostDetail = 22f;
+
+        // ── 场景右上角的金币（2026-10-03）────────────────────────────
+        // 女巫工坊没有商店那条 Hud_Bar，所以只补一枚「金币 50」在右上角 ——
+        // 与左下角的「离开」键镜像对称，不占用水晶球与标题那一带。
+
+        /// <summary>金币行离右边缘的间距（与「离开」键同值）。</summary>
+        public const float WitchGoldRight = 64f;
+
+        /// <summary>金币行离上边缘的间距（与「离开」键的下边距镜像）。</summary>
+        public const float WitchGoldTop = 44f;
+
+        public const float WitchGoldWidth = 460f;
+
+        public const float WitchGoldHeight = 64f;
+
+        public const float FontSizeWitchGold = 34f;
+
         /// <summary>底部两个按钮的中心 Y（与商店背包的「关闭」同一条线）。</summary>
         public const float WitchButtonCenterY = ShopBagCloseCenterY;
 
@@ -2722,5 +2791,275 @@ namespace MagicBrawl.App
         public const float WitchPanelTitleHeight = ShopBagTitleHeight;
 
         public const float FontSizeWitchPanelTitle = FontSizeShopBagTitle;
+
+        // ── 浏览层里的「效果选择」区（2026-10-02）────────────────────
+        // 献祭牌有 >1 条效果时，浏览层换成这一屏：一行一条效果，点一条 = 选它并返回。
+        // 位置整块与 `Cards` 滚动区重合（同一块矩形，切换显示），所以只有内部排布需要定义。
+
+        /// <summary>这一屏的标题（「选一条要转移的效果」）中心 Y。</summary>
+        public const float WitchEffectTitleCenterY = 232f;
+
+        public const float WitchEffectTitleWidth = 1400f;
+
+        public const float WitchEffectTitleHeight = 56f;
+
+        public const float FontSizeWitchEffectTitle = 34f;
+
+        /// <summary>第一行效果按钮的中心 Y（往下排，见 <see cref="WitchEffectRowStep"/>）。</summary>
+        public const float WitchEffectFirstRowY = 120f;
+
+        /// <summary>行高（按钮本体高度）。</summary>
+        public const float WitchEffectRowHeight = 96f;
+
+        /// <summary>相邻两行的中心距（= 行高 + 缝）。四行刚好排到 −222，不与底部那行说明打架。</summary>
+        public const float WitchEffectRowStep = WitchEffectRowHeight + 18f;
+
+        public const float WitchEffectRowWidth = 1320f;
+
+        public const float FontSizeWitchEffectRow = 28f;
+
+        /// <summary>
+        /// 效果按钮的实例上限（构建器按它预建模板池；超出就换行参数自己不够用了）。
+        ///
+        /// <para>⚠ 目前卡表里<b>最多 2 条效果</b>（全表扫描确认过），4 是留的余量。
+        /// 自测里有一条断言盯着「卡表最大效果条数 ≤ 这个数」——
+        /// 以后加一张 5 效果牌会立刻变红，而不是在界面上少半行、零报错。</para>
+        /// </summary>
+        public const int WitchEffectMaxOptions = 4;
+
+        /// <summary>这一屏底部那行说明（「这条效果会加到右边那张牌上」）。</summary>
+        public const float WitchEffectHintCenterY = -300f;
+
+        public const float WitchEffectHintWidth = 1400f;
+
+        public const float WitchEffectHintHeight = 44f;
+
+        public const float FontSizeWitchEffectHint = 26f;
+
+        /// <summary>「返回」键的中心 Y（与底部的「关闭」同一条线）。</summary>
+        public const float WitchEffectBackCenterY = WitchButtonCenterY;
+
+        // ══════════════════════════════════════════════════════
+        //  地图场景（2026-10-02 · P7 冒险地图）
+        // ══════════════════════════════════════════════════════
+        //
+        //  版式来自用户 2026-10-02 给的 `Art/Map/` 那一批图：
+        //  一张 1920×1080 的底面（`background_empty.png`，正好是参考分辨率，铺满即可）
+        //  + 7 张节点图（营地 / 战斗 / 商店 / 女巫 / 石台 / 未知 / Boss）
+        //  + 2 张桥（横的 / 斜的）+ 一张主角立绘。
+        //
+        //  ⚠ 本段所有坐标都是「画布绝对坐标」，锚点用**左下角 (0,0)**（同商店 / Char* 那批）。
+        //    整个地图只用一套坐标：节点 (层, 行) → (x, y)，桥按两端节点算，
+        //    主角棋子按当前节点 + 偏移算。
+        //
+        //  ── 版式账（1920×1080）──────────────────────────────────
+        //  9 列（层）× 190 = 1520，左边距 200 → 最右列 1720，右边距 200；
+        //  4 行 × 144 = 432，再叠「每层上漂 48」（8 层 = 384）→ 纵向共 816；
+        //  底边 104 → 最高的节点中心 920，顶部还留着给标题 / 提示 / 顶栏。
+        //  节点直径 128 < 行距 144 → 同一列上下两个节点不会挨上；
+        //  128 < 列距 190 → 相邻两列的节点也不会挨上。
+        //  ⚠ 这三个数字**不能单独改**：桥的角度是按 (列距, 行距, 每层上漂) 算出来的，
+        //    只改一个会让「正好落在节点中心」的缩放公式失效（症状是桥短一截或长出节点）。
+
+        /// <summary>地图层数（含起点层与 Boss 层）。与 <c>MapGenerator.DefaultLayerCount</c> 同值。</summary>
+        public const int MapLayerCount = 9;
+
+        /// <summary>地图每层最多几行。与 <c>MapGenerator.DefaultRowCount</c> 同值。</summary>
+        public const int MapRowCount = 4;
+
+        /// <summary>节点外框边长（正方形，图按原比例居中放进去）。</summary>
+        public const float MapNodeSize = 128f;
+
+        /// <summary>相邻两层（列）的中心距 X。</summary>
+        public const float MapColumnStep = 190f;
+
+        /// <summary>同一层内相邻两行（行）的中心距 Y。</summary>
+        public const float MapRowStep = 144f;
+
+        /// <summary>
+        /// 每往右走一层，整个节点带往上漂多少 —— 这一项就是用户要的
+        /// 「从左下角出发，一直到右上角迎接 Boss 战」。
+        /// </summary>
+        public const float MapLayerRise = 48f;
+
+        /// <summary>第 0 层（起点层）节点的中心 X（画布绝对坐标）。</summary>
+        public const float MapOriginX = 200f;
+
+        /// <summary>第 0 行节点的中心 Y（画布绝对坐标）。</summary>
+        public const float MapBottomY = 104f;
+
+        /// <summary>节点下方那行小字（只在「可前往 / 当前」时显示）的中心偏移与尺寸。</summary>
+        public const float MapLabelOffsetY = -68f;
+
+        public const float MapLabelWidth = 160f;
+
+        public const float MapLabelHeight = 22f;
+
+        public const float FontSizeMapLabel = 20f;
+
+        // ── 主角棋子 ──────────────────────────────────────────────
+        //
+        //  ⚠ 它**不盖在节点正中**，而是站在平台的右前方（偏移 +44, −6）：
+        //    立绘高 116、宽约 60，正中摆放时头部会探进「上一行」那个节点 20 多像素，
+        //    把那一格的图标压掉一角（而那一格很可能正是玩家下一步要点的）。
+        //    往右前方挪之后，它与右邻列（列距 190）之间还留着 45 px 净空。
+
+        public const float MapPlayerHeight = 116f;
+
+        /// <summary>主角立绘的宽高比（素材 739×1435）。换立绘要一起改。</summary>
+        public const float MapPlayerAspect = 739f / 1435f;
+
+        public const float MapPlayerOffsetX = 44f;
+
+        public const float MapPlayerOffsetY = -6f;
+
+        /// <summary>走过去用多久（无缩放时间）。</summary>
+        public const float MapMoveSeconds = 0.42f;
+
+        /// <summary>
+        /// 走到之后<b>停多久</b>再切场景（无缩放时间）。
+        /// 不留这一下的话，位移还没看清画面就换了 —— 玩家读不到「我走到了哪一格」。
+        /// </summary>
+        public const float MapMoveHoldSeconds = 0.24f;
+
+        /// <summary>高亮圈相对节点的放大倍数（圈图自带一圈内边距，1.28 刚好贴在节点外缘）。</summary>
+        public const float MapRingScale = 1.3f;
+
+        /// <summary>
+        /// 可前往节点的高亮圈呼吸幅度（缩放 ±值）与周期（秒）。
+        /// 位置固定、只动缩放：圈是**提示**不是状态，动位置会与节点错位。
+        /// </summary>
+        public const float MapRingPulse = 0.035f;
+
+        public const float MapRingPulseSeconds = 1.35f;
+
+        // ── 桥（数值量自素材本身，不是估的）────────────────────────
+        //
+        //  08_bridge_straight.png 315×70：两个端帽（深灰多边形）的中心在
+        //      (49.4, 34.3) 与 (264.5, 35.0)（图像坐标，y 向下）→ 相对中心 (±107.6, ∓0.3)。
+        //      端帽偏移**在本地 x 轴上**，所以直桥可以「只缩 x」：
+        //      方向精确不变、木板厚度恒定。
+        //  09_bridge_diagonal.png 243×179：端帽中心 (39.1,139.1) 与 (200.6,40.4)
+        //      → 相对中心 (±80.75, ±49.35)（Unity 坐标 y 向上）。
+        //      端帽偏移**不在任一轴上**，所以「只缩 x」会把桥的角度压斜
+        //      （缩 1.5 倍时角度从 31.4° 掉到 21.5°）—— 必须反解：
+        //      s = √(len² − B²) / A，再把旋转补上 α = atan2(B, A·s) 这一段。
+
+        /// <summary>直桥两端帽中心距（素材像素；1 px = 1 UI 单位，因为 RectTransform 就是按素材尺寸建的）。</summary>
+        public const float MapBridgeStraightCapSpan = 215.2f;
+
+        /// <summary>斜桥端帽偏移的 x 分量（×2 = 端帽中心距的 x 部分）。</summary>
+        public const float MapBridgeDiagonalCapX = 161.5f;
+
+        /// <summary>斜桥端帽偏移的 y 分量（×2 = 端帽中心距的 y 部分）。</summary>
+        public const float MapBridgeDiagonalCapY = 98.7f;
+
+        /// <summary>
+        /// 边与水平线的夹角超过这个值就用<b>斜桥</b>，否则用直桥（度）。
+        ///
+        /// <para>8° 的来源：本版式只有三种边角 —— 14.2°（同行）/ 45.3°（上一行）/ −26.8°（下一行）。
+        /// 14.2° 与 45.3° 交给斜桥（素材本身 31.4°，最多偏转 ±24°），
+        /// −26.8° 那条交给直桥（直桥在任何角度都不变形，而且斜桥反着转 −58° 时
+        /// 它烘好的明暗面会翻过来、看着像被掀了顶）。</para>
+        /// </summary>
+        public const float MapBridgeDiagonalMinAngle = 8f;
+
+        // ── 标题 / 提示 / 结束浮层 ─────────────────────────────────
+
+        public const float MapTitleCenterY = 1014f;
+
+        public const float MapTitleWidth = 900f;
+
+        public const float MapTitleHeight = 74f;
+
+        public const float FontSizeMapTitle = 52f;
+
+        /// <summary>标题下面那行操作提示（「点高亮的节点前进」）。</summary>
+        public const float MapHintCenterY = 952f;
+
+        public const float MapHintWidth = 1300f;
+
+        public const float MapHintHeight = 34f;
+
+        public const float FontSizeMapHint = 26f;
+
+        /// <summary>结束浮层里那块面板的尺寸（沿用背包面板的底图与九宫格设置）。</summary>
+        public const float MapEndPanelWidth = 880f;
+
+        public const float MapEndPanelHeight = 460f;
+
+        public const float MapEndTitleCenterY = 118f;
+
+        public const float MapEndTitleWidth = 760f;
+
+        public const float MapEndTitleHeight = 88f;
+
+        public const float FontSizeMapEndTitle = 64f;
+
+        public const float MapEndBodyCenterY = 18f;
+
+        public const float MapEndBodyWidth = 760f;
+
+        public const float MapEndBodyHeight = 120f;
+
+        public const float FontSizeMapEndBody = 26f;
+
+        public const float MapEndButtonCenterY = -148f;
+
+        public const float MapEndButtonWidth = 260f;
+
+        public const float MapEndButtonHeight = 72f;
+
+        public const float FontSizeMapEndButton = 30f;
+
+        /// <summary>地图背景的铺法：素材正好 1920×1080 → 直接铺满（不用 cover 那套换算）。</summary>
+        public const float MapBackgroundWidth = 1920f;
+
+        public const float MapBackgroundHeight = 1080f;
+
+        // ── 图集路径（构建器从这里取，运行时不读）────────────────────
+
+        public const string MapBackgroundSpritePath = "Assets/Art/Map/background_empty.png";
+
+        public const string MapPlayerSpritePath = "Assets/Art/Chars/Map/Player_Map.png";
+
+        /// <summary>
+        /// 节点高亮框（「可以去」金 / 「你在这儿」蓝）用的那张图。
+        ///
+        /// <para><b>⚠ 2026-10-02 换过一次</b>：最初拿的是 <c>Buff_02_RingEmpty.png</c>
+        /// （光环槽那块等距深色石环）。切进九宫格、染成金色之后是<b>橄榄色</b>的方框
+        /// —— 因为那张图本身是深蓝灰，乘金色只能得到脏黄，读不出「亮着」。
+        /// <c>CardBox_Line</c> 是<b>白色描边</b>的圆角框，染什么色就是什么色，
+        /// 而且它本来就是工程里「可点 / 空位」的统一语言（商店的空槽位用的就是它）。</para>
+        /// </summary>
+        public const string MapRingSpritePath = "Assets/Art/Ui/CardBox_Line.png";
+
+        public const string MapBridgeStraightSpritePath = "Assets/Art/Map/08_bridge_straight.png";
+
+        public const string MapBridgeDiagonalSpritePath = "Assets/Art/Map/09_bridge_diagonal.png";
+
+        /// <summary>7 张节点图，<b>下标 = <c>MapNodeType</c> 的值</b>（构建器按这个顺序填进 MapView 的数组）。</summary>
+        public static readonly string[] MapNodeSpritePaths =
+        {
+            "Assets/Art/Map/06_camp.png",       // Camp
+            "Assets/Art/Map/04_battle.png",     // Battle
+            "Assets/Art/Map/01_shop.png",       // Shop
+            "Assets/Art/Map/02_witch.png",      // Witch
+            "Assets/Art/Map/03_altar.png",      // Altar
+            "Assets/Art/Map/07_unknown.png",    // Unknown
+            "Assets/Art/Map/05_Boss.png",       // Boss
+        };
+
+        /// <summary>
+        /// 由 (层, 行) 算节点中心（画布绝对坐标）。
+        ///
+        /// <para><b>唯一的一处坐标换算</b>：桥的两端、主角的落点、节点的位置全部调它 ——
+        /// 谁都不许自己再算一遍，否则「桥歪了半格」这种问题会同时有三个可疑来源。</para>
+        /// </summary>
+        public static Vector2 MapNodePosition(int layer, int row)
+        {
+            return new Vector2(MapOriginX + layer * MapColumnStep,
+                MapBottomY + row * MapRowStep + layer * MapLayerRise);
+        }
     }
 }

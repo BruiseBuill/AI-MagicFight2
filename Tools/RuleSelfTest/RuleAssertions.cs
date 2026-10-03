@@ -171,6 +171,8 @@ namespace MagicBrawl.SelfTest
             var one = new MassResult { Games = 1 };
 
             BattleEngine engine = BattleEngine.Create(seed);
+            // 万局统计同样是 AI 对 AI → 套上回合上限（用户 2026-10-03 口径：最多 100 回合）。
+            engine.MaxTurns = BattleEngine.AiTurnLimit;
             var watcher = new EventWatcher(engine);
             var brain = new SimpleAiAgent();
             var agent = new CheckingAgent(brain, engine, watcher);
@@ -411,6 +413,10 @@ namespace MagicBrawl.SelfTest
 
         private static void Drain(BattleEngine engine, IAgent agent)
         {
+            // 自测里的对局都是 AI 对 AI → 套上回合上限（用户 2026-10-03 口径：最多 100 回合）。
+            // 双方都严格执行「能防就防 + 交光环补值」时会不收敛（谁都不掉血），
+            // 加限之前实测出现过 3000+ 回合的局 —— 见 BattleEngine.AiTurnLimit。
+            engine.MaxTurns = BattleEngine.AiTurnLimit;
             engine.Start();
             int steps = 0;
             while (!engine.IsOver)
@@ -1024,8 +1030,11 @@ namespace MagicBrawl.SelfTest
             }
 
             /// <summary>
-            /// 手牌守恒：某一方「手牌 + 冷却区 + 已永久移出」必须等于该方应有的总牌数
-            /// （规则 §1：初始 6 + 第 2、3 回合各 1）。
+            /// 手牌守恒：某一方「手牌 + 冷却区 + 已永久移出」必须等于该方应有的总牌数。
+            ///
+            /// <para><b>2026-10-03 起按座位现算</b>：发牌口径不再全局一份（<see cref="DealProfile"/>）——
+            /// 人类「初始 6 + 第 2、3 回合各 1」，怪物「初始 8、之后不补」。
+            /// 原来这里写死 <c>expected = 6</c> 再按回合 +1，遇到 8 张的怪物必然误报。</para>
             ///
             /// <para>调用点必须是<b>没有牌处于攻防中</b>的时刻（半场开始），
             /// 否则会误报 —— 攻防中的牌既不在手牌也不在冷却区。</para>
@@ -1037,15 +1046,29 @@ namespace MagicBrawl.SelfTest
                 for (int seat = 0; seat < s.Players.Count; seat++)
                 {
                     PlayerState p = s.Players[seat];
-                    int expected = 6;
-                    if (s.TurnNumber >= 2)
+                    DealProfile deal = p.Definition.Deal;
+                    int expected;
+                    if (deal != null)
                     {
-                        expected++;
+                        expected = deal.InitialHandSize;
+                        for (int turn = 2; turn <= s.TurnNumber; turn++)
+                        {
+                            expected += deal.DrawOnTurn(turn);
+                        }
                     }
-
-                    if (s.TurnNumber >= 3)
+                    else
                     {
-                        expected++;
+                        // 没写口径 = 引擎那份 IDealPolicy（老口径：6 + 第 2、3 回合各 1）
+                        expected = BattleState.InitialHandSize;
+                        if (s.TurnNumber >= 2)
+                        {
+                            expected++;
+                        }
+
+                        if (s.TurnNumber >= 3)
+                        {
+                            expected++;
+                        }
                     }
 
                     int removed = seat < _removedBySeat.Length ? _removedBySeat[seat] : 0;

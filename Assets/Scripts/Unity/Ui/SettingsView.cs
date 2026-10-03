@@ -25,6 +25,9 @@ namespace MagicBrawl.App
         [SerializeField] private ScrollRect _scroll;
         [SerializeField] private RectTransform _content;
         [SerializeField] private CardPoolEntryView _entryTemplate;
+
+        [Tooltip("测试开关：强制把怪物手牌全部按「已知」显示（不落盘）。")]
+        [SerializeField] private Toggle _revealMonsterHand;
         private readonly List<CardPoolEntryView> _entries = new List<CardPoolEntryView>();
         private CharacterDefinition _character;
         private CardPool _draft;
@@ -40,6 +43,11 @@ namespace MagicBrawl.App
             _save.onClick.AddListener(Save);
             _selectAll.onClick.AddListener(SelectAll);
             _selectNone.onClick.AddListener(SelectNone);
+            // ⚠ 加 null 检查：M43 之前建的 Prefab / 场景实例里还没有这个节点。
+            if (_revealMonsterHand != null)
+            {
+                _revealMonsterHand.onValueChanged.AddListener(OnForceRevealChanged);
+            }
         }
 
         private void OnEnable() { if (_driver != null) _driver.OnStarted += Close; }
@@ -60,6 +68,8 @@ namespace MagicBrawl.App
             gameObject.SetActive(true);
             _menu.SetActive(true);
             _poolPanel.SetActive(false);
+            // 打开时同步成当前值（开关不落盘，跨局保留在 driver 上）
+            if (_revealMonsterHand != null) _revealMonsterHand.isOn = _driver.ForceRevealMonsterHand;
             _resume.Select();
         }
 
@@ -74,6 +84,15 @@ namespace MagicBrawl.App
         }
 
         private void Restart() { _driver.StartBattle(); }
+
+        /// <summary>
+        /// 「强制显示怪物手牌」测试开关：值直接写到 driver（不落盘），
+        /// 下一次按住怪物手牌标签时生效。
+        /// </summary>
+        private void OnForceRevealChanged(bool value)
+        {
+            if (_driver != null) _driver.ForceRevealMonsterHand = value;
+        }
 
         public void OpenCardPool()
         {

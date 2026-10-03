@@ -596,6 +596,86 @@ namespace MagicBrawl.App
         /// <summary>「关闭」按钮文字色。</summary>
         public static readonly Color WitchCloseText = ShopLeaveText;
 
+        // ── 浏览层里的「效果选择」区（2026-10-02）────────────────────
+
+        /// <summary>那一屏的标题色（与「已选空位」的暖金描边同一个色，读作「这一步是暖的」）。</summary>
+        public static readonly Color WitchEffectTitle = Hex("FFD166");
+
+        /// <summary>一条效果按钮的底衬（半透明暗底，压在卡池背板那一层上）。</summary>
+        public static readonly Color WitchEffectRowBack = new Color(0f, 0f, 0f, 0.46f);
+
+        /// <summary>一条效果按钮的文字色。</summary>
+        public static readonly Color WitchEffectRowText = Hex("FFF3DE");
+
+        /// <summary>底部那行说明的色。</summary>
+        public static readonly Color WitchEffectHint = ShopBagCountText;
+
+        // ── 价钱与金币（2026-10-03 · 特殊强化改成要花金币）──────────────
+
+        /// <summary>价格牌左边那块「本次强化」的色（与状态行同色 —— 它是面板正文的一部分）。</summary>
+        public static readonly Color WitchCostLabel = WitchStatusText;
+
+        /// <summary>
+        /// 价钱明细那两行（公式 / 「为什么和刚才不一样」）。
+        ///
+        /// <para>刻意比状态行暗一档：那是**注解**（解释价钱怎么来的），
+        /// 状态行才是**结论**（能不能确认）。同色会让人分不清该看哪一行。</para>
+        /// </summary>
+        public static readonly Color WitchCostDetail = Hex("C6D0E2");
+
+        /// <summary>价格牌右边那块「现有 N 金」的色。</summary>
+        public static readonly Color WitchGoldLabel = ShopPriceText;
+
+        /// <summary>右上角那行金币的色（有钱 = 暖金，与商店顶栏同口径）。</summary>
+        public static readonly Color WitchGold = AuraReady;
+
+        /// <summary>金币为 0 时的色（暗灰，读作「花光了」）。</summary>
+        public static readonly Color WitchGoldEmpty = TextSecondary;
+
+        // ══════════════════════════════════════════════════════
+        //  地图场景（2026-10-02 · P7 冒险地图）
+        // ══════════════════════════════════════════════════════
+        //
+        //  底色一律跟着「用户给的节点图」走：节点图本身是暖灰石台 + 彩色图标，
+        //  所以文字沿用商店那套暖米白（ShopTitleText / FFF3DE），
+        //  状态色只用两种 —— 金色 = 可以去，暗纱 = 去不了 / 已走过。
+
+        /// <summary>地图标题色（与商店标题同色，两屏是同一套「暖金标题」口径）。</summary>
+        public static readonly Color MapTitleText = ShopTitleText;
+
+        /// <summary>标题下面那行操作提示。</summary>
+        public static readonly Color MapHintText = Hex("FFF3DE");
+
+        /// <summary>
+        /// 「去不了 / 已经走过」的节点上的暗纱。
+        ///
+        /// <para>⚠ 它<b>只写在 prefab 的 <c>Image.color</c> 上</b>（用户 2026-09-19 定的红线）：
+        /// 运行期只切 <c>activeSelf</c>，不给 <c>Image.color</c> 赋值 ——
+        /// 否则用户在 Inspector 里调好的颜色会在进 Play 的瞬间被冲回代码里的值。</para>
+        /// </summary>
+        public static readonly Color MapNodeDim = new Color(0f, 0f, 0f, 0.62f);
+
+        /// <summary>可前往节点外面那圈高亮（暖金，与「已选 / 可点」同一套语言）。</summary>
+        public static readonly Color MapNodeRing = Hex("FFD166");
+
+        /// <summary>节点下方那一行小字（可前往 / 当前所在时才显示）。</summary>
+        public static readonly Color MapNodeLabel = Hex("FFF3DE");
+
+        /// <summary>起点 / Boss 的文字色（比普通节点亮一档，让两端看得出来）。</summary>
+        public static readonly Color MapNodeLabelSpecial = Hex("FFE9A8");
+
+        /// <summary>结束浮层的遮罩（沿用背包那一块）。</summary>
+        public static readonly Color MapEndVeil = ShopBagVeil;
+
+        /// <summary>通关标题色。</summary>
+        public static readonly Color MapEndWin = WinAccent;
+
+        /// <summary>旅程结束标题色。</summary>
+        public static readonly Color MapEndLose = LoseAccent;
+
+        /// <summary>结束浮层的正文与按钮文字色。</summary>
+        public static readonly Color MapEndText = ShopLeaveText;
+
         /// <summary>把 "RRGGBB" 转成 Color（不解析 # 前缀之外的花样，够用即可）。</summary>
         public static Color Hex(string hex)
         {
