@@ -21,6 +21,14 @@ namespace MagicBrawl.App
     /// </summary>
     public static class MapRoutes
     {
+        /// <summary>
+        /// 游戏开始场景（2026-10-05）—— 选存档的地方。
+        ///
+        /// <para>它是<b>正式构建的启动场景</b>（<see cref="BuildOrder"/> 排第一），
+        /// 也是战斗失败界面上「退出」的去处（<c>BattleUi.HandleQuitBattle</c>）。</para>
+        /// </summary>
+        public const string HomeScene = "Home";
+
         /// <summary>地图场景本身（从事件场景「离开」时回到这里）。</summary>
         public const string MapScene = "Map";
 
@@ -35,6 +43,12 @@ namespace MagicBrawl.App
 
         /// <summary>石台强化场景（P5 已落地）。</summary>
         public const string AltarScene = "Upgrade";
+
+        /// <summary>宝箱事件场景（2026-10-09 落地）。</summary>
+        public const string TreasureScene = "Treasure";
+
+        /// <summary>休息事件场景（2026-10-09 落地 —— 当前是「黑屏 + 按钮」的占位）。</summary>
+        public const string RestScene = "Rest";
 
         /// <summary>
         /// 这个节点类型对应的场景名；<c>null</c> = <b>没有场景</b>
@@ -58,6 +72,10 @@ namespace MagicBrawl.App
                     return WitchScene;
                 case MapNodeType.Altar:
                     return AltarScene;
+                case MapNodeType.Treasure:
+                    return TreasureScene;
+                case MapNodeType.Rest:
+                    return RestScene;
                 default:
                     return null;
             }
@@ -80,6 +98,10 @@ namespace MagicBrawl.App
                     return "石台";
                 case MapNodeType.Unknown:
                     return "未知";
+                case MapNodeType.Treasure:
+                    return "宝箱";
+                case MapNodeType.Rest:
+                    return "休息";
                 case MapNodeType.Boss:
                     return "Boss";
                 default:
@@ -88,12 +110,17 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 需要登记进 <c>EditorBuildSettings</c> 的场景（按顺序，地图排第一 ——
-        /// 正式构建时第一个场景就是启动场景，冒险从地图开始）。
+        /// 需要登记进 <c>EditorBuildSettings</c> 的场景（按顺序，<b>开始场景排第一</b> ——
+        /// 正式构建时第一个场景就是启动场景，所以打开游戏从「选存档」进）。
+        ///
+        /// <para><b>⚠ 2026-10-05 起 Home 顶到了最前面</b>：从前是 <c>Map</c> 排第一，
+        /// 打开游戏直接进地图（等于「没有存档概念」）。现在链路是
+        /// <c>Home →（选档）→ Map → 事件场景 / 战斗 → 失败退出 → Home</c>。</para>
         /// </summary>
         public static readonly string[] BuildOrder =
         {
-            MapScene, BattleScene, ShopScene, WitchScene, AltarScene,
+            HomeScene, MapScene, BattleScene, ShopScene, WitchScene, AltarScene, TreasureScene,
+            RestScene,
         };
 
         /// <summary>把 <see cref="BuildOrder"/> 拼成 <c>Assets/Scenes/&lt;名&gt;.unity</c> 列表。</summary>
@@ -109,7 +136,7 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 事件场景（商店 / 石台 / 女巫工坊）点「离开」时调它 → 回地图。
+        /// 事件场景（商店 / 石台 / 女巫工坊 / 宝箱）点「离开」时调它 → 回地图。
         ///
         /// <para><b>返回 false = 没有冒险在跑</b>，调用方按原来的「单场景调试」行为走
         /// （只打日志、不切场景）。这样三个事件场景仍然满足独立场景契约 E1/E2

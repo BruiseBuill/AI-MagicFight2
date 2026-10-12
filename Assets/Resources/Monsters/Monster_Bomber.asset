@@ -15,13 +15,13 @@ MonoBehaviour:
   characterId: monster.bomber
   displayName: "\u81EA\u7206\u5080\u5121"
   kind: 1
-  initialHp: 3
-  maxHp: 3
+  initialHp: 1
+  maxHp: 1
   minimumCardCount: 8
-  useAllCards: 1
+  useAllCards: 0
   cardIds: []
   aiProfile: 
-  cardPool: {fileID: 0}
+  cardPool: {fileID: 11400000, guid: 0ec1dc878ded4224d9d718394bc49b54, type: 2}
   upgrades: []
   dealPreset: 2
   dealInitialHandSize: 8
@@ -30,6 +30,7 @@ MonoBehaviour:
   dealDrawToTurn: 0
   dealDrawPerTurn: 0
   dealReplacePerDraw: 0
+  useCustomArt: 0
   art:
     Name: 
     Portrait: {fileID: 0}

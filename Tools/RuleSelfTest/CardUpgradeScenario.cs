@@ -26,6 +26,7 @@ namespace MagicBrawl.SelfTest
             CheckWholeTable(bad);
             CheckRepeated(bad);
             CheckImmutability(bad);
+            CheckAlreadyUpgraded(bad);
 
             report.Add((bad.Count == 0 ? "  [PASS] " : "  [FAIL] ")
                        + "卡牌强化（基础力量 +2 / 封顶 9 / X 与沉重打击不可强化）");
@@ -112,11 +113,12 @@ namespace MagicBrawl.SelfTest
                 }
             }
 
-            // 45 张里不可强化的是 4 张：模仿 X / 力量 9 的两张 / 沉重打击（NoAtkBuff）。
+            // 47 张里不可强化的是 4 张：模仿 X / 力量 9 的两张 / 沉重打击（NoAtkBuff）。
             // 这条数字断言的作用与 CardLibrary.ValidatePowerDistribution 同级 ——
             // 卡表加一张「力量 9」或「不能增加力量」的牌时，这里会立刻变红。
-            // （2026-10-01 新增的三张 水之形 1 / 闪电球 7 / 冷冻核心 6 都可强化：38 → 41。）
-            const int expectedUpgradable = 41;
+            // （2026-10-01 新增的三张 水之形 1 / 闪电球 7 / 冷冻核心 6 都可强化：38 → 41；
+            //   2026-10-07 新增的火炬 4 / 海啸 2 也都可强化：41 → 43。）
+            const int expectedUpgradable = 43;
             const int expectedRejected = 4;
             if (upgradable != expectedUpgradable || rejected != expectedRejected)
             {
@@ -220,6 +222,89 @@ namespace MagicBrawl.SelfTest
                     bad.Add(tag + " 效果文案被改动：" + def.EffectTextWithSymbols
                             + " → " + up.EffectTextWithSymbols);
                 }
+            }
+        }
+
+        // ── ⑤ 已经强化过的牌不能再强化（2026-10-08）─────────────────
+
+        /// <summary>
+        /// 用户 2026-10-08 口径：<b>「进行任何一种强化后的牌，都不能再次进行强化」</b>。
+        ///
+        /// <para><b>为什么要钉</b>：四根轴（力量 / 冷却 / 词条 / 转移）各有<b>一处</b>判定，
+        /// 漏掉任何一处都只表现为「某一类强化能偷偷加成两次」—— 卡面看不出来
+        /// （后缀不叠加，强化十次也还是 <c>a+</c>），引擎一个字也不报。</para>
+        ///
+        /// <para>用的样本是<b>没封顶</b>的强化版（暴风雪 4 → 6，离上限 9 还远）：
+        /// 这样「被拒」只可能来自新规则，而不是既有那条「力量已达上限」——
+        /// 否则这条断言在回归里会退化成「什么都没测」。</para>
+        /// </summary>
+        private static void CheckAlreadyUpgraded(List<string> bad)
+        {
+            CardDef blaze = CardLibrary.Get("a");                  // 暴风雪 4（未封顶）
+            CardDef upgraded = CardUpgrade.Apply(blaze, 20000);    // 暴风雪+ 力量 6
+            string reason;
+
+            if (!CardUpgrade.IsUpgraded(upgraded) || upgraded.Power >= CardUpgrade.PowerCap)
+            {
+                bad.Add("样本不合格：应是一张「已经强化过、但没封顶」的牌");
+                return;
+            }
+
+            // 基础版照旧能强化（防止新规则把所有人都挡了）
+            if (!CardUpgrade.CanUpgrade(blaze, out reason))
+            {
+                bad.Add("基础版被新规则误挡：" + reason);
+            }
+
+            // 四个轴逐一：都必须拒绝，而且原因要是新规则那句话（界面直接显示它）
+            if (CardUpgrade.CanUpgrade(upgraded, out reason))
+            {
+                bad.Add("强化版仍能再强化力量（新规则没生效）");
+            }
+            else if (reason != CardUpgrade.AlreadyUpgradedReason)
+            {
+                bad.Add("力量轴拒绝的原因不是「已经是强化过的牌」：" + reason);
+            }
+
+            if (CardUpgrade.CanUpgradeCooldown(upgraded, out reason))
+            {
+                bad.Add("强化版仍能再强化冷却");
+            }
+
+            if (CardUpgrade.CanApplyEffect(upgraded, UpgradeTraits.Haste, null, out reason))
+            {
+                bad.Add("强化版仍能再加词条");
+            }
+
+            EffectSpec spec = WitchWorkshop.BuildSpec(CardLibrary.Get("c"), 0);
+            if (spec == null)
+            {
+                bad.Add("样本不合格：凝固（c）第 1 条效果取不到，转移轴这条测不了");
+            }
+            else if (CardUpgrade.CanTransfer(upgraded, spec, out reason))
+            {
+                bad.Add("强化版仍能再接收一条转移效果");
+            }
+
+            // 决策入口那一道门（CanApply 是四处判定的分发点，界面 / AI 都走它）
+            if (CardUpgrade.CanApply(upgraded, CardUpgradeMod.Power(CardUpgrade.PowerStep), null, out reason)
+                || CardUpgrade.CanApply(upgraded, CardUpgradeMod.Cooldown(-1), null, out reason)
+                || CardUpgrade.CanApply(upgraded, CardUpgradeMod.Effect(UpgradeTraits.Haste), null, out reason))
+            {
+                bad.Add("CanApply 仍放行强化版的某一根轴");
+            }
+
+            if (spec != null
+                && CardUpgrade.CanApply(upgraded, CardUpgradeMod.Transfer(spec), null, out reason))
+            {
+                bad.Add("CanApply 仍放行强化版的转移轴");
+            }
+
+            // 反向：**祭品**资格不受影响（「已经强化过的牌照样能献祭」是既有口径）——
+            // 别把「不能当目标」误写成「不能用这张牌」。
+            if (!AltarRite.CanBeSacrifice(upgraded, null, out reason))
+            {
+                bad.Add("强化版不能当祭品了（新规则波及过宽）：" + reason);
             }
         }
 

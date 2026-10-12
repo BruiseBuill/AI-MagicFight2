@@ -429,6 +429,279 @@ namespace MagicBrawl.App
         public const float ResultButtonWidth = 240f;
         public const float ResultButtonHeight = 64f;
 
+        // ══════════════════════════════════════════════════════
+        //  战斗胜利结算界面（2026-10-04 · 参考 Assets/Art/Reference-5.png）
+        // ══════════════════════════════════════════════════════
+        //
+        //  与上面那块「ResultRoot 小浮层」是**两件事**：
+        //  · 旧 ResultRoot = 失败 / 平局 / 单场景调试时的极简浮层（标题 + 副标题 + 一个键），
+        //    没换过，继续用；
+        //  · 这块（ResultWinRoot）= 冒险里打赢之后的**全屏结算界面**，
+        //    顶徽记 + 「战斗胜利」横幅 · 「获得奖励」分隔线 · 三张可选卡 · 金币 · 「继续」。
+        //
+        //  ── 为什么是全屏接管 ────────────────────────────────
+        //  它自带底图（战斗背景 cover 铺满 + 暗纱），所以**不必避让**手牌区 / 冷却区 / 角色
+        //  —— 那些都在这块下面被盖住了。版式因此可以完全按参考图的比例来排。
+        //
+        //  ── 版式账 ─────────────────────────────────────
+        //  本组常量**全部是「相对屏幕中心」的偏移，y 向上为正**
+        //  （与 ThinkBubbleX/Y 同一口径；anchor/pivot 都是 (0.5,0.5)）。
+        //
+        //  参考图 1672×940 量出来的位置（从顶部往下量）→ ×1.148 换算到 1920×1080
+        //  → 再按「画布中心在 y=540」折成相对中心（正数向上）：
+        //
+        //  | 元素        | 参考图 y | 画布 y(顶起) | 相对中心 | 尺寸(画布) |
+        //  |------------|---------|-------------|---------|-----------|
+        //  | 徽记        | 0– 45   | 25          | +515→抬齐 | 88×88     |
+        //  | 战斗胜利横幅 | 37–165  | 116         | +385     | 680×150   |
+        //  | 获得奖励分隔线 | 180–197 | 250        | +285     | 700×44    |
+        //  | 三张奖励卡   | 200–400 | 430         | +100     | 210×292 ×3|
+        //  | 金币 + 20   | 645–730 | 720         | -180     | 300×76    |
+        //  | 继续        | 790–855 | 895         | -355     | 380×92    |
+        //
+        //  ⚠ 徽记那一格按参考图量是 +515，但 515 + 88/2 = 559 > 540（半高）—— 会切顶。
+        //    所以整块往下压 45 px 到 +470，横幅跟着到 +385，其余不变。这是**刻意的**偏差。
+
+        /// <summary>顶部徽记（菱形星徽）的边长。</summary>
+        public const float ResultWinCrestSize = 88f;
+
+        /// <summary>徽记中心相对屏幕中心的纵向偏移（正数向上）。</summary>
+        public const float ResultWinCrestY = 470f;
+
+        /// <summary>「战斗胜利」横幅牌匾的尺寸。</summary>
+        public const float ResultWinBannerWidth = 680f;
+        public const float ResultWinBannerHeight = 150f;
+
+        /// <summary>横幅中心相对屏幕中心的纵向偏移。</summary>
+        public const float ResultWinBannerY = 385f;
+
+        /// <summary>「获得奖励」分隔线的尺寸（左右各一条细线 + 中央文字）。</summary>
+        public const float ResultWinDividerWidth = 700f;
+        public const float ResultWinDividerHeight = 44f;
+        public const float ResultWinDividerY = 285f;
+
+        /// <summary>一张奖励卡的宽高（比例 = 手牌卡面 760×1056 = 0.7197）。</summary>
+        public const float ResultWinCardWidth = 210f;
+        public const float ResultWinCardHeight = 292f;
+
+        /// <summary>奖励卡之间的水平间距。</summary>
+        public const float ResultWinCardGap = 64f;
+
+        /// <summary>奖励卡中心的纵向偏移（三张卡同一行）。</summary>
+        public const float ResultWinCardY = 100f;
+
+        /// <summary>奖励卡数（参考图是 3 张）。</summary>
+        public const int ResultWinCardCount = 3;
+
+        /// <summary>「+ 20」那一行的尺寸（金币图标 + 数字）。</summary>
+        public const float ResultWinGoldWidth = 300f;
+        public const float ResultWinGoldHeight = 76f;
+
+        /// <summary>金币图标的边长。</summary>
+        public const float ResultWinGoldIcon = 60f;
+
+        /// <summary>金币行中心的纵向偏移。</summary>
+        public const float ResultWinGoldY = -180f;
+
+        /// <summary>「继续」键的尺寸。</summary>
+        public const float ResultWinButtonWidth = 380f;
+        public const float ResultWinButtonHeight = 92f;
+
+        /// <summary>「继续」键中心的纵向偏移。</summary>
+        public const float ResultWinButtonY = -355f;
+
+        /// <summary>胜利结算的金币奖励（用户 2026-10-04 口径）。</summary>
+        public const int ResultWinGoldReward = 20;
+
+        /// <summary>「战斗胜利」标题字号。</summary>
+        public const float FontSizeResultWinTitle = 68f;
+
+        /// <summary>「获得奖励」分隔线文字字号。</summary>
+        public const float FontSizeResultWinDivider = 26f;
+
+        /// <summary>「+ 20」字号。</summary>
+        public const float FontSizeResultWinGold = 38f;
+
+        /// <summary>「继续」字号。</summary>
+        public const float FontSizeResultWinButton = 34f;
+
+        /// <summary>奖励卡浮起（选中）时相对基准位置抬高多少 px。</summary>
+        public const float ResultWinCardLift = 24f;
+
+        // ── 奖励卡的动画（2026-10-05）─────────────────────────
+        //
+        //  三张候选是「一张一张弹出来」的：每张从 EnterScale 放大到 1（OutBack 回弹），
+        //  相邻两张错开 Stagger 秒。选中时再打一记「落定」的脉冲（PickPunchScale → 1）。
+        //  动画节点吃的是**卡位**（Slot）上的 TweenScale / TweenCanvasAlpha，
+        //  由 M8 构建器挂上去 —— 视图只按名字取，取不到就退化成「没有动画」。
+
+        /// <summary>奖励卡进场时的起始缩放（相对成品大小）。</summary>
+        public const float ResultWinCardEnterScale = 0.72f;
+
+        /// <summary>一张奖励卡进场（放大 + 淡入）的时长。</summary>
+        public const float ResultWinCardEnterSeconds = 0.34f;
+
+        /// <summary>相邻两张奖励卡进场的间隔。</summary>
+        public const float ResultWinCardStagger = 0.10f;
+
+        /// <summary>选中一张奖励卡时那一记脉冲的起始缩放（立刻收到 1）。</summary>
+        public const float ResultWinPickPunchScale = 1.08f;
+
+        /// <summary>选中脉冲的时长。</summary>
+        public const float ResultWinPickPunchSeconds = 0.20f;
+
+        /// <summary>点「继续」之后「选中的亮起、其余退场」的时长（走完才真的走人）。</summary>
+        public const float ResultWinCloseSeconds = 0.24f;
+
+        // ══════════════════════════════════════════════════════
+        //  战斗失败结算界面（2026-10-05）
+        // ══════════════════════════════════════════════════════
+        //
+        //  与上面那块胜利界面**同一套版式语言**（顶徽记 + 横幅 + 暗纱底图），
+        //  但只有两个键：左「重试」· 右「退出」。没有奖励区 —— 失败不给牌也不给钱。
+        //
+        //  | 元素          | 相对屏幕中心（y 向上为正） |
+        //  |-------------|----------------------|
+        //  | 徽记          | +470（与胜利界面同一个位置） |
+        //  | 「战斗失败」横幅 | +385 |
+        //  | 提示行（回合 / 原因）| +250 |
+        //  | 两个键        | −180 |
+
+        /// <summary>失败界面提示行（回合数 / 原因）的尺寸。</summary>
+        public const float ResultLoseHintWidth = 900f;
+        public const float ResultLoseHintHeight = 60f;
+
+        /// <summary>失败界面提示行的纵向偏移。</summary>
+        public const float ResultLoseHintY = 250f;
+
+        /// <summary>失败界面两个键的尺寸。</summary>
+        public const float ResultLoseButtonWidth = 300f;
+        public const float ResultLoseButtonHeight = 92f;
+
+        /// <summary>失败界面两个键之间的水平间距。</summary>
+        public const float ResultLoseButtonGap = 120f;
+
+        /// <summary>失败界面两个键的纵向偏移。</summary>
+        public const float ResultLoseButtonY = -180f;
+
+        /// <summary>失败界面提示行的字号。</summary>
+        public const float FontSizeResultLoseHint = 30f;
+
+        /// <summary>失败界面按钮的字号。</summary>
+        public const float FontSizeResultLoseButton = 32f;
+
+        // ══════════════════════════════════════════════════════
+        //  P0 · 游戏开始场景（Home，2026-10-05）
+        // ══════════════════════════════════════════════════════
+        //
+        //  口径：**极简** —— 一个标题、若干行存档、两枚操作键（新建 / 删除）、
+        //  一个「进入游戏」、一行提示。
+        //  坐标一律相对**画面中心**（y 往上为正），与 ResultWin / ResultLose 同一套口径。
+        //
+        //  2026-10-05 从「固定两行」改成「最多 5 个玩家存档位」：行数 = SaveSlots.PlayerSlots
+        //  的长度（见 HomeSlotRows），只把**已经有存档的那几行**显示出来（运行时 SetRowCount），
+        //  所以这里是「全部摆满」的版式预算。
+        //
+        //  竖向预算（参考高 1080，半高 540）：
+        //    标题 420（字号 96 → 顶 ≈ 495）
+        //    副标题 344（高 60 → 顶 374、底 314）
+        //    存档行 0..4：y = 230 − i×100，高 92 → 第 5 行底 −216
+        //    「新建 / 删除」 y = −286，高 78 → 底 −325
+        //    「进入游戏」 y = −412，高 96 → 底 −460
+        //    提示行 y = −500，高 36 → 底 −518 ✔（离下沿还有 22）
+        //
+        //  ⚠ 这几个数字是**一起算出来的**：行高 + 行距 × 5 + 两行操作 + 提示行正好塞进 1080。
+        //    只改其中一个（比如把行距调大）会顶穿上下的按钮 —— 调之前先把上面这段预算重算一遍。
+
+        /// <summary>大标题的纵向偏移。</summary>
+        public const float HomeTitleY = 420f;
+
+        /// <summary>大标题字号。</summary>
+        public const float FontSizeHomeTitle = 96f;
+
+        /// <summary>副标题（「选择存档 · 进入冒险」）的纵向偏移。</summary>
+        public const float HomeSubtitleY = 344f;
+
+        /// <summary>副标题字号。</summary>
+        public const float FontSizeHomeSubtitle = 30f;
+
+        /// <summary>
+        /// 界面上摆几行存档。<b>与 <c>SaveSlots.PlayerSlots</c> 的长度必须一致</b>
+        /// （构建器按它建行、运行时按「有存档的档位数」显示前 N 行）。
+        /// </summary>
+        public const int HomeSlotRows = 5;
+
+        /// <summary>存档行宽度。</summary>
+        public const float HomeRowWidth = 880f;
+
+        /// <summary>存档行高度。</summary>
+        public const float HomeRowHeight = 92f;
+
+        /// <summary>第一行存档的纵向偏移（往下按 <see cref="HomeRowPitch"/> 排）。</summary>
+        public const float HomeRowTopY = 230f;
+
+        /// <summary>相邻两行存档的纵向步进。</summary>
+        public const float HomeRowPitch = 100f;
+
+        /// <summary>存档行内文字与行左右边的间距。</summary>
+        public const float HomeRowPaddingX = 40f;
+
+        /// <summary>档名字号。</summary>
+        public const float FontSizeHomeRowName = 36f;
+
+        /// <summary>状态（「8 张牌」）字号。</summary>
+        public const float FontSizeHomeRowStatus = 26f;
+
+        /// <summary>「新建存档 / 删除存档」这一行：单枚尺寸与中心 y。</summary>
+        public const float HomeActionWidth = 320f;
+        public const float HomeActionHeight = 78f;
+        public const float HomeActionY = -286f;
+
+        /// <summary>两枚操作键的中心间距（左 = 新建、右 = 删除）。</summary>
+        public const float HomeActionPitch = 360f;
+
+        /// <summary>操作键与里面文字的字号。</summary>
+        public const float FontSizeHomeAction = 30f;
+
+        /// <summary>「进入游戏」按钮的尺寸。</summary>
+        public const float HomeEnterWidth = 420f;
+        public const float HomeEnterHeight = 96f;
+
+        /// <summary>「进入游戏」按钮的纵向偏移。</summary>
+        public const float HomeEnterY = -412f;
+
+        /// <summary>「进入游戏」按钮的字号。</summary>
+        public const float FontSizeHomeEnter = 38f;
+
+        /// <summary>底部提示行的尺寸与位置。</summary>
+        public const float HomeHintWidth = 1400f;
+        public const float HomeHintHeight = 36f;
+        public const float HomeHintY = -500f;
+
+        /// <summary>底部提示行的字号。</summary>
+        public const float FontSizeHomeHint = 24f;
+
+        /// <summary>「新建存档」键的文案。</summary>
+        public const string HomeNewLabel = "新建存档";
+
+        /// <summary>「删除存档」键的文案（第一次点 = 进入确认态）。</summary>
+        public const string HomeDeleteLabel = "删除存档";
+
+        /// <summary>
+        /// 删除键在<b>确认态</b>下的文案 —— 点它才真的删。
+        ///
+        /// <para><b>为什么做成两步</b>：删存档是不可逆的（直接把 <c>save-*.json</c> 删掉），
+        /// 而它旁边就是「进入游戏」—— 误点一次就没了。所以第一下只是把文案换成
+        /// 「确认删除」并在提示行说清楚「再点一次就删掉」，点别处会自动退回普通态。</para>
+        /// </summary>
+        public const string HomeDeleteArmedLabel = "确认删除";
+
+        /// <summary>第 <paramref name="index"/> 行存档的纵向偏移（0 = 最上面那行）。</summary>
+        public static float HomeRowY(int index)
+        {
+            return HomeRowTopY - index * HomeRowPitch;
+        }
+
         // ── 战斗日志（设置里开关，默认关；M10 接管）─────────────
         public const float LogWidth = 520f;
         public const float LogHeight = 420f;
@@ -707,7 +980,16 @@ namespace MagicBrawl.App
         //    · 参考图里「冷却区1」那格右侧多出来的六边形属于参考图自己的排版，不照搬
 
         // ── 背景 ──────────────────────────────────────────────
-        /// <summary>背景图原始尺寸（算 cover 尺寸用）。</summary>
+        /// <summary>
+        /// 战斗背景的原始尺寸 —— <b>2026-10-04 起只是兜底值</b>。
+        ///
+        /// <para>真正的尺寸由 <c>BattleArtLayerBuilder.BuildBackground</c> /
+        /// <c>BattleUiBuilder.BuildResultWin</c> <b>从 <c>Sprite.rect</c> 现读</b>，
+        /// 这样换背景图（原尺寸 1536×990 → 水城 1536×1024）不用回来改这两个数。
+        /// 只有在 Sprite 被销毁（打成构建包、资源被卸载）时才退回这里。</para>
+        ///
+        /// <para>⚠ 历史值 1536×990 是那张 `Bg_Dungeon`；水城是 1536×1024。</para>
+        /// </summary>
         public const float BgNativeWidth = 1536f;
         public const float BgNativeHeight = 990f;
 
@@ -872,18 +1154,28 @@ namespace MagicBrawl.App
 
         // ── 舞台角色 ──────────────────────────────────────────
         /// <summary>
-        /// 角色显示缩放（切图后的画布像素 → 界面像素）。
+        /// <b>怪物</b>显示缩放（切图后的画布像素 → 界面像素）。
         ///
-        /// <para><b>2026-09-18 由 1.3 调到 1.55</b>：新一批主角素材每帧画布更大、
-        /// 角色本身画得更小 —— 旧待机「本体高」205 px（画布 208×220，几乎占满），
-        /// 新待机只有 172 px（画布 233×213，占八成）。继续用 1.3 会让主角凭空小一圈。</para>
-        ///
-        /// <para>标定口径 = <b>角色在屏幕上的高度不变</b>：
-        /// 205 × 1.3 = 172 × 1.55 ≈ 266 px。**换素材必须回来重算这一条** ——
-        /// 本体高不是包围盒高（包围盒含光效），量法见 `Tools/art-audit/slice_hero_anim.py`
-        /// 的 <c>body_height()</c>，核对图在 `Tools/art-audit/_work/hero2_*.png`。</para>
+        /// <para><b>2026-09-18 由 1.3 调到 1.55</b>：新一批素材每帧画布更大、
+        /// 角色本身画得更小 —— 旧待机「本体高」205 px，新待机只有 172 px。
+        /// 2026-10-05 起主角改用 <see cref="CharHeroScale"/>（新法师素材分辨率翻倍，
+        /// 与怪物共用一个系数会把怪物也带歪），本值只管怪物；怪物素材没换过，
+        /// 标定账不变：172（怪物本体高）× 1.55 ≈ 266 px。</para>
         /// </summary>
         public const float CharScale = 1.55f;
+
+        /// <summary>
+        /// <b>主角</b>显示缩放（切图后的画布像素 → 界面像素）。
+        ///
+        /// <para><b>2026-10-05 新法师（NewMage AlphaProof）批次</b>：主角五套动作
+        /// 全部换成新法师切图，待机本体高 316 px（旧素材 172），分辨率翻了一倍 ——
+        /// 按既有口径「<b>角色在屏幕上的高度不变</b>」重算：
+        /// 266 / 316 ≈ 0.84。本体高不是包围盒高（包围盒含光效），
+        /// 量法见 <c>Tools/art-audit/slice_hero_anim.py</c> 的 <c>body_height()</c>，
+        /// 核对图在 <c>Artifacts/work/art/hero2_*.png</c>。
+        /// 换素材必须回来重算这一条。</para>
+        /// </summary>
+        public const float CharHeroScale = 0.84f;
 
         /// <summary>角色「脚底」距屏幕底边的距离（两名角色共用一条地平线）。</summary>
         public const float CharGroundY = 402f;
@@ -1467,6 +1759,57 @@ namespace MagicBrawl.App
         /// 玩家看得见却点不动。末尾 0.1 s 是「淡出最后一帧到 <c>SetActive(false)</c>」的余量。</para>
         /// </summary>
         public const float PeekBeatHoldSeconds = PeekResultHoldSeconds + PeekFadeSeconds + 0.1f;
+
+        // ── M25b AI 偷看手牌的眼睛提示（2026-10-08）────────────
+        //
+        //  与 PeekLayer 同一张卡（雷云 ad / 狂躁蘑菇 w），但方向相反：那一拍是 **AI**
+        //  替玩家点了牌，根本没有浮层 —— 玩家只看到提示条一句「怪物 查看了对方的手牌」，
+        //  不知道看的是哪一张、少的又是哪一张。于是在「被看的那张手牌」正上方亮一只眼睛。
+        //
+        //  节点由 M8 构建器预建（PeekEyeLayer/Eye0…Eye5），表现全在 PeekEyeView。
+        //  ⚠ 整段动画**不阻塞 driver**（不写 BattleUi._pendingHold）：它只是回话，
+        //    阻塞的话 AI 每偷看一次玩家就要多等一秒多。
+
+        /// <summary>同时最多亮几只眼睛（= 预建槽位数）。一手最多 8 张，留 6 只够用。</summary>
+        public const int PeekEyeSlotCount = 6;
+
+        /// <summary>眼睛显示宽（图是 256×160 → 高 <see cref="PeekEyeHeight"/>，保持比例）。</summary>
+        public const float PeekEyeWidth = 96f;
+
+        public const float PeekEyeHeight = 60f;
+
+        /// <summary>眼睛底边离被看那张牌顶边的距离。</summary>
+        public const float PeekEyeGapAboveCard = 14f;
+
+        /// <summary>淡入时长（同时从 <see cref="PeekEyePopFrom"/> 弹到 1）。</summary>
+        public const float PeekEyeFadeInSeconds = 0.12f;
+
+        /// <summary>出现时的起始缩放。</summary>
+        public const float PeekEyePopFrom = 0.55f;
+
+        /// <summary>「正在看」亮着的停留 —— 先让玩家看清是哪一张，再落结果色。</summary>
+        public const float PeekEyeLookHoldSeconds = 0.34f;
+
+        /// <summary>眨眼总时长（闭 / 开各一半）。</summary>
+        public const float PeekEyeBlinkSeconds = 0.14f;
+
+        /// <summary>眨到最闭时的 y 向缩放。</summary>
+        public const float PeekEyeBlinkCloseScale = 0.12f;
+
+        /// <summary>结果色停留：无事发生（变暗）。</summary>
+        public const float PeekEyeDimHoldSeconds = 0.26f;
+
+        /// <summary>结果色停留：送进冷却（变红 + 抖）。</summary>
+        public const float PeekEyeRedHoldSeconds = 0.42f;
+
+        /// <summary>淡出时长。</summary>
+        public const float PeekEyeFadeOutSeconds = 0.22f;
+
+        /// <summary>红态横向抖动的振幅（UI 单位）。</summary>
+        public const float PeekEyeShakeAmplitude = 9f;
+
+        /// <summary>红态横向抖动的角频率（rad/s）。</summary>
+        public const float PeekEyeShakeFrequency = 34f;
 
         // ── 字号 ─────────────────────────────────────────────
         public const float FontSizePeekTitle = 30f;
@@ -2438,19 +2781,18 @@ namespace MagicBrawl.App
 
         // ── 主角（左下角，与 Reference-4 同一站位）──────────────────
         //
-        //  ⚠ Reference-4 里那位巫师是一张**高分辨率插画**（占画面高约七成），
-        //    我们的主角素材只有 188×185（`BattleArtLibrary.Hero.Idle`）——
-        //    照参考图那个尺寸铺要放大到 ≈4.3 倍，平涂低多边形会明显发糊。
-        //    所以这里取与商店场景**同一个 2.3 倍**（实测是该素材的画质上限），
-        //    位置也照商店那套（左下、脚底留一点余量）：读起来仍是
-        //    「主角站在台子左前方」，只是比参考图小一号。
-        //    想要参考图那个体量，得先有一张更大的主角立绘。
+        //  ⚠ Reference-4 里那位巫师是一张**高分辨率插画**（占画面高约七成）。
+        //    2026-10-05 换新法师素材后主角本身已经是高清立绘（待机画布 272×331），
+        //    缩放随 <see cref="ShopHeroScale"/> 同口径重算：2.3 → 1.25
+        //    （屏幕本体高保持 395 px；画布 × 1.25 ≈ 340×414）。
+        //    位置照商店那套（左下、脚底留一点余量）：读起来仍是
+        //    「主角站在台子左前方」。
 
         public const float UpgradeHeroX = 205f;
 
         public const float UpgradeHeroGroundY = 44f;
 
-        public const float UpgradeHeroScale = 2.3f;
+        public const float UpgradeHeroScale = 1.25f;
 
         // ── 标题 / 提示行 / 离开键 ────────────────────────────────
 
@@ -2530,8 +2872,14 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
         //
         //  与 P5 强化场景（Upgrade.unity）是**两套并存的强化口径**：
-        //    · P5 石台  = 免费给一张牌基础力量 +2（**不消耗任何牌**）；
-        //    · 本场景    = **献祭一张牌**，换另一张牌的特殊强化（消耗 + 目标两个空位）。
+        //    · P5 石台  = **献祭一张牌**换另一张牌基础力量 +2（首版是「免费、不消耗牌」，
+        //      2026-10-06 用户改口要祭品；**不花金币**。规则见 `Core/Cards/AltarRite.cs`）；
+        //    · 本场景    = **献祭一张牌**换另一张牌的**特殊强化**（搬一条效果过去），
+        //      **而且要花金币**（见 `Core/Cards/WitchWorkshop.cs` 的价钱一节）。
+        //
+        //  两边都是「祭品 + 目标」两个位置，区别在**怎么摆**：石台用两段选牌弹窗
+        //  （`UpgradeSceneEntry` 的「先选目标、再选祭品」），本场景把两个空位摆出来
+        //  （`WitchLayerView`）。规则各自只有 Core 一处。
         //
         //  版式同样「照商店背包那套」——面板底图、滚动网格、底部按钮直接取 `ShopBag*` 常量，
         //  不另抄一份同值常量（抄一份的下场是改了一处、另一处留在旧版，且零报错）。
@@ -2852,14 +3200,41 @@ namespace MagicBrawl.App
         //    整个地图只用一套坐标：节点 (层, 行) → (x, y)，桥按两端节点算，
         //    主角棋子按当前节点 + 偏移算。
         //
-        //  ── 版式账（1920×1080）──────────────────────────────────
-        //  9 列（层）× 190 = 1520，左边距 200 → 最右列 1720，右边距 200；
-        //  4 行 × 144 = 432，再叠「每层上漂 48」（8 层 = 384）→ 纵向共 816；
-        //  底边 104 → 最高的节点中心 920，顶部还留着给标题 / 提示 / 顶栏。
-        //  节点直径 128 < 行距 144 → 同一列上下两个节点不会挨上；
-        //  128 < 列距 190 → 相邻两列的节点也不会挨上。
-        //  ⚠ 这三个数字**不能单独改**：桥的角度是按 (列距, 行距, 每层上漂) 算出来的，
-        //    只改一个会让「正好落在节点中心」的缩放公式失效（症状是桥短一截或长出节点）。
+        //  ── 版式账（1920×1080 · 2026-10-06 改成**标准六向格**）──────
+        //
+        //  用户口径（2026-10-06）：「相邻节点之间的距离应该相同，最终的地图应该是
+        //  一个标准的六向地图」。做法 = 把节点摆在**六向格**（蜂窝）的格点上，
+        //  并且**每往上一层，整行往左错半格**（S/2）—— 这是六向格唯一需要的花招。
+        //  摆好之后（边长记作 S），一个节点的 6 个格子邻居是：
+        //      正右一层     (L+1, r)      Δ = (+S,    0)        0°
+        //      右上一层     (L+1, r+1)    Δ = (+S/2, +S·√3/2)  60°
+        //      同层上一行   (L,   r+1)    Δ = (−S/2, +S·√3/2) 120°
+        //      正左一层     (L−1, r)      Δ = (−S,    0)       180°
+        //      左下一层     (L−1, r−1)    Δ = (−S/2, −S·√3/2) 240°
+        //      同层下一行   (L,   r−1)    Δ = (+S/2, −S·√3/2) 300°
+        //  六条**全部等于 S** —— 这就是「六向」。
+        //
+        //  ⚠ 其中两个（120° / 300°）是**同一层**里的移动，本作的图是「层 → 层」的
+        //    DAG，画不出这种边；而右下一层的 (L+1, r−1) 在六向格里是
+        //    (−30°, 1.73×S) 的**次近邻**、不是格子邻居 ⇒
+        //    三条「前向」边里只有两条在格子上（0° 与 60°）。
+        //    所以 MapGenerator 的行走规则里没有「往下一行」（那里有完整证明）：
+        //    同时留着「平 / 上 / 下」，图里就必然出现两种边长的桥 —— 而桥只能逐边缩，
+        //    一定一粗一细（旧版式实测 190 与 283.2，差 1.49 倍）。
+        //    于是「走法」定成「平 + 上」，行号只增不减，地图照样只朝右上角走。
+        //
+        //  放得下的账（9 层 × 4 行，S = 240 → 行距 207.85、错位 −120）：
+        //      x：起点 (0,0) = 180；最右是 Boss (8,3) = 180 + 8×240 − 1.5×240 = 1740。
+        //         ⚠ 横向只用到这两端（不是整条 8.5 格的斜带）—— 因为行号只增不减，
+        //         NeedRow 也保证越靠右的行号越高，所以左边界就是起点、右边界就是 Boss。
+        //         ⇒ 连节点直径 128 一起算，横向占 116 … 1804，左右各剩 116。
+        //      y：4 行 × 207.85 = 623.5，底边 180 → 最高的节点中心 803.5
+        //         （连直径到 867.5；提示在 952、标题在 1014，都还在它上面）。
+        //  节点直径 128 < 边长 240 ⇒ 任意两个相邻节点净距 112，不会挨上。
+        //
+        //  ⚠ 行距与错位**都是 S 的函数**（下面三行），改 S 会整体等比缩放 ——
+        //    单独改行距或错位就不再是六向格了。
+        //  ⚠ 桥的缩放仍然只算**一个**系数（任意一条边都等长），见 MapView.PlaceBridge。
 
         /// <summary>地图层数（含起点层与 Boss 层）。与 <c>MapGenerator.DefaultLayerCount</c> 同值。</summary>
         public const int MapLayerCount = 9;
@@ -2870,23 +3245,51 @@ namespace MagicBrawl.App
         /// <summary>节点外框边长（正方形，图按原比例居中放进去）。</summary>
         public const float MapNodeSize = 128f;
 
-        /// <summary>相邻两层（列）的中心距 X。</summary>
-        public const float MapColumnStep = 190f;
-
-        /// <summary>同一层内相邻两行（行）的中心距 Y。</summary>
-        public const float MapRowStep = 144f;
+        /// <summary>
+        /// <b>六向格的边长</b>——相邻两个节点的中心距，<b>六条边全部等于它</b>（2026-10-06）。
+        ///
+        /// <para>它是本段唯一的<strong>自由量</strong>：行距与错位都由它派生
+        /// （<see cref="MapHexRowRatio"/> / <see cref="MapHexShearRatio"/>），
+        /// 所以「改地图松紧」只改这一个数，六向的等腰关系自动保持。</para>
+        ///
+        /// <para><b>上限由横向跨度定</b>：图里只用到 <c>6.5 × 边长</c>（起点 → Boss），
+        /// 再加节点直径 128 与两侧留白 —— 边长 240 时左右各剩 116。
+        /// 纵向更宽松（4 行只占 <c>2.6 × 边长</c>）。</para>
+        /// </summary>
+        public const float MapHexEdge = 240f;
 
         /// <summary>
-        /// 每往右走一层，整个节点带往上漂多少 —— 这一项就是用户要的
-        /// 「从左下角出发，一直到右上角迎接 Boss 战」。
+        /// <c>√3 / 2</c> —— 六向格里「行距 ÷ 边长」。
+        ///
+        /// <para>推法：「右上一层」那条边的向量是 <c>(边长/2, 行距)</c>（错位半格 + 一行），
+        /// 它要等于边长 ⇒ <c>边长²/4 + 行距² = 边长²</c> ⇒ <c>行距 = 边长 × √3/2</c>。
+        /// 这个 173.2 同时也是**同层相邻两行**的距离（六向格里六个方向等长）。</para>
         /// </summary>
-        public const float MapLayerRise = 48f;
+        public const float MapHexRowRatio = 0.8660254f;
+
+        /// <summary>
+        /// 「同层内每往上一行，x 偏移多少」÷ 边长 = <b>−1/2</b>（往左半格）。
+        ///
+        /// <para><b>这就是六向格与方格的全部区别</b>：格子错开半格，六边形才拼得上。
+        /// 有了它，「正右一层」的横向分量是整个边长（0°），而「右上一层」只有半个
+        /// （+60°，<c>cos60° = 0.5</c>）—— 两条边才可能等长（都是 S）。</para>
+        /// </summary>
+        public const float MapHexShearRatio = -0.5f;
+
+        /// <summary>同一层内相邻两行的中心距 Y（= 边长 × √3/2 ≈ 173.2）。</summary>
+        public const float MapRowStep = MapHexEdge * MapHexRowRatio;
+
+        /// <summary>
+        /// 同层内每往上走一行，x <b>左移</b>多少（= 边长 × −1/2 = −100）。
+        /// <b>这一项就是「六向」的全部秘密</b>，别删 —— 见上面版式账。
+        /// </summary>
+        public const float MapRowShear = MapHexEdge * MapHexShearRatio;
 
         /// <summary>第 0 层（起点层）节点的中心 X（画布绝对坐标）。</summary>
-        public const float MapOriginX = 200f;
+        public const float MapOriginX = 180f;
 
         /// <summary>第 0 行节点的中心 Y（画布绝对坐标）。</summary>
-        public const float MapBottomY = 104f;
+        public const float MapBottomY = 180f;
 
         /// <summary>节点下方那行小字（只在「可前往 / 当前」时显示）的中心偏移与尺寸。</summary>
         public const float MapLabelOffsetY = -68f;
@@ -2902,7 +3305,7 @@ namespace MagicBrawl.App
         //  ⚠ 它**不盖在节点正中**，而是站在平台的右前方（偏移 +44, −6）：
         //    立绘高 116、宽约 60，正中摆放时头部会探进「上一行」那个节点 20 多像素，
         //    把那一格的图标压掉一角（而那一格很可能正是玩家下一步要点的）。
-        //    往右前方挪之后，它与右邻列（列距 190）之间还留着 45 px 净空。
+        //    往右前方挪之后，它与右边那个节点（边长 200）之间还留着 55 px 净空。
 
         public const float MapPlayerHeight = 116f;
 
@@ -2935,18 +3338,28 @@ namespace MagicBrawl.App
 
         // ── 桥（数值量自素材本身，不是估的）────────────────────────
         //
-        //  08_bridge_straight.png 315×70：两个端帽（深灰多边形）的中心在
-        //      (49.4, 34.3) 与 (264.5, 35.0)（图像坐标，y 向下）→ 相对中心 (±107.6, ∓0.3)。
-        //      端帽偏移**在本地 x 轴上**，所以直桥可以「只缩 x」：
+        //  08_bridge_straight.png 315×70，实测可见内容包围盒 x 5…309（宽 305）、y 5…64：
+        //      两端各一块「深色桥墩」，占 x 5…50 与 x 265…310；中间木板区 x 50…265（宽 215）。
+        //      ⚠ 每块桥墩**不是纯深色**：它上面还有一段浅色顶面（同一块桥墩的另一面），
+        //        只按亮度阈值切会把桥墩切小一半。判据是「是否在木板区之外」。
+        //      桥墩偏移**在本地 x 轴上**，所以直桥可以「只缩 x」：
         //      方向精确不变、木板厚度恒定。
-        //  09_bridge_diagonal.png 243×179：端帽中心 (39.1,139.1) 与 (200.6,40.4)
-        //      → 相对中心 (±80.75, ±49.35)（Unity 坐标 y 向上）。
-        //      端帽偏移**不在任一轴上**，所以「只缩 x」会把桥的角度压斜
-        //      （缩 1.5 倍时角度从 31.4° 掉到 21.5°）—— 必须反解：
-        //      s = √(len² − B²) / A，再把旋转补上 α = atan2(B, A·s) 这一段。
+        //      ⚠ 2026-10-08 订正：本段原先把「木板区两端」（215）当成了「桥墩中心距」，
+        //        缩放系数因此偏大 1.42 倍，两块桥墩被整块缩小、压进节点平台里
+        //        （症状：屏幕上只看得见木板，「桥的两端」看不见）。
+        //        现在一律以**桥墩外缘**（305）为准，见 MapBridgeVisibleWidth。
+        //  09_bridge_diagonal.png 243×179 已不再被引用（理由见 MapBridgeDiagonalMinAngle）。
 
-        /// <summary>直桥两端帽中心距（素材像素；1 px = 1 UI 单位，因为 RectTransform 就是按素材尺寸建的）。</summary>
-        public const float MapBridgeStraightCapSpan = 215.2f;
+        /// <summary>
+        /// 直桥素材里<b>两端桥墩外缘</b>之间的像素距（= 可见内容宽度 305）。
+        ///
+        /// <para><b>它就是缩放的<b>分母</b></b>：<c>scale = 空隙 / 本值</c>。
+        /// 于是桥墩外缘正好落在两个节点平台的边缘上 —— <b>两块桥墩整块露在平台之外</b>，
+        /// 中间的木板把剩下的空隙填满（不重叠、不留缝）。</para>
+        ///
+        /// <para>1 px = 1 UI 单位（RectTransform 是按素材尺寸建的，只做等比缩放）。</para>
+        /// </summary>
+        public const float MapBridgeVisibleWidth = 305f;
 
         /// <summary>斜桥端帽偏移的 x 分量（×2 = 端帽中心距的 x 部分）。</summary>
         public const float MapBridgeDiagonalCapX = 161.5f;
@@ -2961,8 +3374,40 @@ namespace MagicBrawl.App
         /// 14.2° 与 45.3° 交给斜桥（素材本身 31.4°，最多偏转 ±24°），
         /// −26.8° 那条交给直桥（直桥在任何角度都不变形，而且斜桥反着转 −58° 时
         /// 它烘好的明暗面会翻过来、看着像被掀了顶）。</para>
+        ///
+        /// <para><b>⚠ 2026-10-05 起这个常量不再被 <c>MapView</c> 使用</b>：新版的三种边
+        /// 是 0° / ±47.9°，两种桥素材的「单位长端帽距」差 1.76 倍（直桥 215.2、斜桥 378.6），
+        /// 同一个空隙下只能缩出两种粗细完全不同的桥（实测一端 49 px 粗、一端 77 px 粗）。
+        /// 所以<b>所有边一律用直桥素材、转到目标角度</b> —— 这样全图只有<b>一个</b>缩放系数。
+        /// 斜桥素材（09_bridge_diagonal.png）暂时不再被引用。</para>
         /// </summary>
         public const float MapBridgeDiagonalMinAngle = 8f;
+
+        /// <summary>
+        /// 节点平台在<b>桥的方向上</b>的可见半径（UI 单位）—— 2026-10-08 改成实测值。
+        ///
+        /// <para><b>量法</b>：节点图 274×251、内容包围盒 264×241，用 <c>preserveAspect</c>
+        /// 塞进 <see cref="MapNodeSize"/>=128 的方框 → 缩放 128/274 = 0.4672；
+        /// 再从图心沿各方向量「最远的不透明像素」：<b>0° 得 131 px → 61.2</b>、
+        /// <b>±60° 得 120.5 px → 56.3</b>（平台是八边形，斜着量到的是棱边不是角）。</para>
+        ///
+        /// <para><b>为什么取 56 而不是 61</b>：本图的边只有 0° 与 ±60° 两种，
+        /// 只有取<b>最小值</b>才能保证任意一条边上桥墩外缘都不悬空（留缝）。
+        /// 代价是水平边（0°）上桥墩多压进平台约 5 px —— 平台画在桥之上
+        /// （<c>BridgeRoot</c> 建在 <c>NodeRoot</c> 之前），压进去的那点是看不见的，
+        /// 看上去反而更像「桥搭在平台上」。</para>
+        ///
+        /// <para><b>它用来干什么</b>：空隙 = <see cref="MapEdgeLength"/> − 2 × 本值，
+        /// 桥按「桥墩外缘距 = 空隙」缩放（分母 <see cref="MapBridgeVisibleWidth"/>），
+        /// 再居中摆在两节点中点。桥的摆放见 <c>MapView.PlaceBridge</c>。</para>
+        /// </summary>
+        public const float MapBridgePlatformRadius = 56f;
+
+        /// <summary>
+        /// 上面那个「空隙」的下限：算出来比它小就按它算。
+        /// 免得极端布局（节点挨得极近）把桥缩成一个针尖，甚至算出 0 或负数。
+        /// </summary>
+        public const float MapBridgeMinLength = 44f;
 
         // ── 标题 / 提示 / 结束浮层 ─────────────────────────────────
 
@@ -3038,7 +3483,12 @@ namespace MagicBrawl.App
 
         public const string MapBridgeDiagonalSpritePath = "Assets/Art/Map/09_bridge_diagonal.png";
 
-        /// <summary>7 张节点图，<b>下标 = <c>MapNodeType</c> 的值</b>（构建器按这个顺序填进 MapView 的数组）。</summary>
+        /// <summary>
+        /// 9 张节点图，<b>下标 = <c>MapNodeType</c> 的值</b>（构建器按这个顺序填进 MapView 的数组）。
+        ///
+        /// <para>⚠ 加一项就要把 <c>MapNodeType</c> 也加一项、并重跑一次 P7 地图构建器
+        /// —— 数组下标与枚举值是同一件事，错开一格是<b>零报错</b>的（图标会整片串位）。</para>
+        /// </summary>
         public static readonly string[] MapNodeSpritePaths =
         {
             "Assets/Art/Map/06_camp.png",       // Camp
@@ -3048,18 +3498,379 @@ namespace MagicBrawl.App
             "Assets/Art/Map/03_altar.png",      // Altar
             "Assets/Art/Map/07_unknown.png",    // Unknown
             "Assets/Art/Map/05_Boss.png",       // Boss
+            "Assets/Art/Map/10_treasure.png",   // Treasure（2026-10-09 追加）
+            "Assets/Art/Map/11_rest.png",       // Rest（2026-10-09 追加 · 帐篷 + 篝火）
         };
 
         /// <summary>
-        /// 由 (层, 行) 算节点中心（画布绝对坐标）。
+        /// 由 (层, 行) 算节点中心（画布绝对坐标）—— <b>六向格</b>。
         ///
         /// <para><b>唯一的一处坐标换算</b>：桥的两端、主角的落点、节点的位置全部调它 ——
         /// 谁都不许自己再算一遍，否则「桥歪了半格」这种问题会同时有三个可疑来源。</para>
+        ///
+        /// <para><b>⚠ x 上有两项</b>：<c>层 × 边长</c> 是「往右走一层」，
+        /// <c>行 × 错位</c> 是「往上一层左移半格」—— 少了第二项，行差 ±1 的边
+        /// 就不是 60°、也不等长了（见版式账）。这是 2026-10-06 六向格与旧版式
+        /// <b>唯一的</b>算法差别。</para>
         /// </summary>
         public static Vector2 MapNodePosition(int layer, int row)
         {
-            return new Vector2(MapOriginX + layer * MapColumnStep,
-                MapBottomY + row * MapRowStep + layer * MapLayerRise);
+            return new Vector2(MapOriginX + layer * MapHexEdge + row * MapRowShear,
+                MapBottomY + row * MapRowStep);
         }
+
+        /// <summary>
+        /// <b>任意一条边的长度</b> —— 六向格里它<b>恒等于</b> <see cref="MapHexEdge"/>
+        /// （2026-10-05 起「等长」，2026-10-06 起连 60° 也一致）。
+        ///
+        /// <para>行差 0 的边是 <c>(边长, 0)</c>，行差 ±1 的边是
+        /// <c>(边长/2, ±行距)</c> 而 <c>行距 = 边长 × √3/2</c> ⇒
+        /// 两条的长度都是 <c>边长 × √((1/2)² + (√3/2)²) = 边长</c>。
+        /// 桥因此可以只算<b>一个</b>缩放系数（见 <c>MapView.PlaceBridge</c>），
+        /// 不会出现「这根粗、那根细」。</para>
+        /// </summary>
+        public static float MapEdgeLength
+        {
+            get { return MapHexEdge; }
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  M44 全局覆盖层（设置键 / 查看卡池键 / 设置面板）
+        // ══════════════════════════════════════════════════════
+        //
+        //  这一套要在**每个场景**长得一模一样，所以坐标一律按「相对画布四角」的锚点写：
+        //    · 设置键 = 右上角（anchor / pivot 都是 (1,1)，往左、往下各量一个边距）
+        //    · 卡池键 = 右下角（anchor / pivot 都是 (1,0)，与商店那个背包键**同一套数字**）
+        //
+        //  ⚠ 别写成「画布绝对坐标」：战斗画布与事件场景画布虽然都是 1920×1080，
+        //    但两套锚点一旦混用，节点会整体跑出屏幕（本工程在商店主角与怪物点击区上
+        //    各踩过一次，零报错）。
+        //
+        //  ⚠ 面板尺寸**故意与 M39 那块设置面板不同**：那块是「继续 / 重新开始 / 测试卡池」
+        //    三行，这一块只有「继续 / 退出到主菜单」两行 —— 高度按行数重算，
+        //    别照抄 570，否则面板底下会空出一大截。
+
+        /// <summary>
+        /// 设置键：右上角的一枚<b>齿轮</b>图标（2026-10-05 改）。
+        ///
+        /// <para><b>为什么是齿轮</b>：用户口径「其他场景的设置键应当是那个齿轮按钮，
+        /// 请将这个齿轮按钮移动到右上角，而不是用一个奇怪的图标，再加上文字」。
+        /// 那颗齿轮原本<b>烘死在 <c>Hud_Bar.png</c> 的右端</b>（战斗里靠一枚隐形热点才点得动，
+        /// 地图 / 商店里根本点不动），现在抠成独立图 <see cref="OverlaySettingsGearSpritePath"/>
+        /// 挂到这里，原图上的那颗已经擦掉 —— 全局只有这一处设置入口，且是齿轮。</para>
+        /// </summary>
+        public const float OverlaySettingsButtonSize = 84f;
+
+        /// <summary>设置键的右边距（离画布右边缘）。</summary>
+        public const float OverlaySettingsButtonRight = 26f;
+
+        /// <summary>设置键的上边距（离画布上边缘）。</summary>
+        public const float OverlaySettingsButtonTop = 26f;
+
+        /// <summary>设置键上的字号。</summary>
+        public const float FontSizeOverlaySettingsButton = 30f;
+
+        /// <summary>
+        /// 设置键用的<b>齿轮图</b>（2026-10-05 从 <c>Assets/Art/Ui/Hud_Bar.png</c> 右端那颗
+        /// 烘死的齿轮上抠出来的，55×54、带透明通道）。
+        ///
+        /// <para><b>⚠ 换图/换尺寸要连 <see cref="OverlaySettingsButtonSize"/> 一起看</b>：
+        /// 那枚 Image 开了 <c>preserveAspect</c>，所以只会等比缩放到方框里（不会拉扁）。
+        /// 原图 <c>Hud_Bar.png</c> 上的齿轮已经<b>擦掉</b>了 —— 别再往条上摆第二颗。</para>
+        /// </summary>
+        public const string OverlaySettingsGearSpritePath = "Assets/Art/Ui/Setting_Gear.png";
+
+        /// <summary>
+        /// 卡池键（右下角）：尺寸与边距<b>直接取商店背包键那一套</b> ——
+        /// 图标就是同一张 <see cref="ShopBagIconSpritePath"/>，「打开当前卡池」在三个场景里
+        /// 读起来要是同一个东西。
+        ///
+        /// <para>⚠ 商店场景**不加**这一枚：它的右下角本来就是背包键（打开的就是当前卡池），
+        /// 再叠一枚会正好压在同一个位置上。</para>
+        /// </summary>
+        public const float OverlayPoolButtonWidth = ShopBagButtonWidth;
+
+        /// <inheritdoc cref="OverlayPoolButtonWidth"/>
+        public const float OverlayPoolButtonHeight = ShopBagButtonHeight;
+
+        /// <inheritdoc cref="OverlayPoolButtonWidth"/>
+        public const float OverlayPoolButtonRight = ShopBagButtonRight;
+
+        /// <inheritdoc cref="OverlayPoolButtonWidth"/>
+        public const float OverlayPoolButtonBottom = ShopBagButtonBottom;
+
+        /// <summary>卡池键下面那行小字（图标本身没有文字，靠它说清「这是看卡池」）。</summary>
+        public const float OverlayPoolLabelCenterY = -58f;
+
+        /// <summary>卡池键小字的字号。</summary>
+        public const float FontSizeOverlayPoolLabel = 24f;
+
+        /// <summary>设置面板（标题 + 继续游戏 + 退出到主菜单）。</summary>
+        public const float OverlayPanelWidth = 660f;
+
+        /// <inheritdoc cref="OverlayPanelWidth"/>
+        public const float OverlayPanelHeight = 470f;
+
+        /// <summary>「设置」标题的中心 y（面板坐标，向上为正）。</summary>
+        public const float OverlayPanelTitleCenterY = 158f;
+
+        /// <summary>
+        /// 设置面板里的<b>隐藏热点</b>（2026-10-05）：一块铺在标题上的完全透明按钮。
+        ///
+        /// <para>点它 = 打开那份完整设置层（强制显示对手手牌 / 改玩家卡池）。
+        /// 尺寸取「标题条再宽一点」—— 覆盖整行标题，玩家在「设置」两个字上随手一点就能命中，
+        /// 但它自己没有任何像素，所以看不见。</para>
+        /// </summary>
+        public const float OverlaySecretHotspotWidth = 520f;
+
+        /// <inheritdoc cref="OverlaySecretHotspotWidth"/>
+        public const float OverlaySecretHotspotHeight = 84f;
+
+        /// <summary>标题下面那行小字（「游戏已暂停」/「返回主菜单将放弃本局」）。</summary>
+        public const float OverlayPanelSubtitleCenterY = 98f;
+
+        /// <summary>「继续游戏」键的中心 y。</summary>
+        public const float OverlayPanelResumeCenterY = -16f;
+
+        /// <summary>「退出到主菜单」键的中心 y。</summary>
+        public const float OverlayPanelQuitCenterY = -134f;
+
+        /// <summary>面板里两枚按钮的尺寸（同一口径）。</summary>
+        public const float OverlayPanelButtonWidth = 404f;
+
+        /// <inheritdoc cref="OverlayPanelButtonWidth"/>
+        public const float OverlayPanelButtonHeight = 84f;
+
+        /// <summary>面板标题字号。</summary>
+        public const float FontSizeOverlayPanelTitle = 44f;
+
+        /// <summary>面板小字（副标题）字号。</summary>
+        public const float FontSizeOverlayPanelSubtitle = 24f;
+
+        /// <summary>面板按钮文字字号。</summary>
+        public const float FontSizeOverlayPanelButton = 30f;
+
+        /// <summary>
+        /// 卡池面板上那句「灰色 = 本局已经抽到过」的说明 —— <b>只在战斗场景出现</b>：
+        /// 只有战斗有「本局」这个概念，其余场景没有牌会被压暗，写了反而让人以为坏了。
+        /// </summary>
+        public const string OverlayPoolDimHint = "灰色的牌本局已经抽到过";
+
+        // ══════════════════════════════════════════════════════
+        //  宝箱事件场景（2026-10-09）
+        // ══════════════════════════════════════════════════════
+        //
+        //  与商店 / 石台 / 女巫工坊同一个「每个事件一个独立场景」的契约
+        //  （`Docs/design/冒险事件架构.md` §3 E1–E4），版式也沿用它们：
+        //  背景 cover 铺 + 标题带（centerY 1002）+ 引导行（centerY 158）+ 右下角「离开」。
+        //
+        //  场景里**唯一可点的东西是那只箱子** —— 与女巫工坊「只有一个水晶球」同一种读法：
+        //  ① 关着的箱子（`Treasure_ChestClosed`）；
+        //  ② 点它 → 换成开着、金光外溢的那一张（`Treasure_ChestOpen`），并弹出 +50。
+        //
+        //  ⚠ 两张箱子图都是**从整张渲染图里抠出来的透明底成品**，并且已经紧贴内容裁过边
+        //    （411×333 / 835×830）—— 所以画布上按「<see cref="TreasureChestWidth"/> +
+        //    图自身宽高比」算尺寸就够了，**别再拿原始渲染图的画幅**（1024×576 / 1671×941）
+        //    当分母：那样算出来的箱子只有实际宽度的四成，而且是零报错。
+        //
+        //  ⚠ 坐标口径与商店 / 强化 / 女巫一致：**画布绝对坐标 + 左下角原点**（铁律 10），
+        //    别跟战斗里 `(0f,1f)` 那批左上角口径混用。
+
+        /// <summary>
+        /// 宝箱场景背景（1024×577，<b>藏宝洞窟</b>：岩壁 + 木箱 / 木桶 + 提灯 + 药水瓶，
+        /// 右侧挂着一面旗，<b>无任何烘焙 UI</b>）。
+        ///
+        /// <para><b>2026-10-09 换过一次</b>：首版用的是 <c>Bg_Dungeon</c>（1536×990 的石砌
+        /// 地牢大厅）。同日用户把这张洞窟图丢在 <c>Art/</c> 根目录（文件名是光秃秃的
+        /// <c>bg.jpg</c>）并指定「这张 bg 应该是开启宝箱的背景」→ 归类成
+        /// <c>Backgrounds/Bg_Treasure.png</c>（jpg 转 png，像素逐一对应）并换上。
+        /// 它与地图上那张「石坑里的宝箱」是同一个场景语汇：箱子本来就是从这种洞窟里搬出来的。</para>
+        ///
+        /// <para>⚠ <c>Bg_Dungeon</c> <b>没有删</b> —— 它是唯一一张「地牢大厅」底图，
+        /// 地图主题（水城 / 地牢…）还没做，留着随时能换回去（与
+        /// <c>ArtImportBuilder.BattleBgFile</c> 那条注释同口径）。</para>
+        /// </summary>
+        public const string TreasureBgSpritePath = "Assets/Art/Backgrounds/Bg_Treasure.png";
+
+        /// <summary>背景原图尺寸（cover 铺法要按它算）。</summary>
+        public const float TreasureBgNativeWidth = 1024f;
+
+        /// <inheritdoc cref="TreasureBgNativeWidth"/>
+        public const float TreasureBgNativeHeight = 577f;
+
+        /// <summary>关着的箱子（点它之前）。</summary>
+        public const string TreasureChestClosedSpritePath = "Assets/Art/Ui/Treasure_ChestClosed.png";
+
+        /// <summary>开着的箱子（点它之后）。</summary>
+        public const string TreasureChestOpenSpritePath = "Assets/Art/Ui/Treasure_ChestOpen.png";
+
+        /// <summary>箱子在画布上的显示宽度。两张图共用它 —— 只换 sprite 不改宽度，箱体才对得上。</summary>
+        public const float TreasureChestWidth = 460f;
+
+        /// <summary>
+        /// 箱子<b>底边</b>所在的画布 y。两张图都以底边对齐它（Image 的 pivot 取 (0.5, 0)），
+        /// 所以「打开」那一下只有箱盖往上长，箱体不会跳一下。
+        /// </summary>
+        public const float TreasureChestGroundY = 210f;
+
+        /// <summary>
+        /// 开箱后那行「+50」金色读数（在箱子正上方）。
+        ///
+        /// <para>⚠ 它必须**高过开着的那只箱子**：箱子底边在 <see cref="TreasureChestGroundY"/>、
+        /// 开启后高 ≈ 457（<see cref="TreasureChestWidth"/> × 1.006），顶边到 y≈667 ——
+        /// 读数压 790 时下面那行「金币」正落在 686，与箱盖只差 19。往上挪到 830 之后
+        /// 留出约 60 的空档（首次落版就是这么挤过一回）。</para>
+        /// </summary>
+        public const float TreasureGainCenterY = 830f;
+
+        /// <inheritdoc cref="TreasureGainCenterY"/>
+        public const float TreasureGainWidth = 900f;
+
+        /// <inheritdoc cref="TreasureGainCenterY"/>
+        public const float TreasureGainHeight = 150f;
+
+        /// <inheritdoc cref="TreasureGainCenterY"/>
+        public const float FontSizeTreasureGain = 96f;
+
+        /// <summary>
+        /// 开一次箱子给多少金币（用户 2026-10-09 口径：「给玩家 50 块」）。
+        ///
+        /// <para>放在版式层只是权宜 —— 它与「箱子长什么样」无关，是<b>内容 / 经济</b>。
+        /// 正式接入冒险经济时应当搬进 Core 的冒险配置（与商店价格同族），
+        /// 到那时这一行删掉、由事件场景从配置读。</para>
+        /// </summary>
+        public const int TreasureGoldGain = 50;
+
+        /// <summary>场景标题「宝箱」（与商店 / 强化 / 女巫同一条水平带）。</summary>
+        public const float TreasureTitleCenterY = 1002f;
+
+        /// <inheritdoc cref="TreasureTitleCenterY"/>
+        public const float TreasureTitleWidth = 520f;
+
+        /// <inheritdoc cref="TreasureTitleCenterY"/>
+        public const float TreasureTitleHeight = 76f;
+
+        /// <inheritdoc cref="TreasureTitleCenterY"/>
+        public const float FontSizeTreasureTitle = 52f;
+
+        /// <summary>箱子下方那行引导文字（「点击宝箱」→ 开箱后换成「已收入囊中」）。</summary>
+        public const float TreasureHintCenterY = 158f;
+
+        /// <inheritdoc cref="TreasureHintCenterY"/>
+        public const float TreasureHintWidth = 1300f;
+
+        /// <inheritdoc cref="TreasureHintCenterY"/>
+        public const float TreasureHintHeight = 56f;
+
+        /// <inheritdoc cref="TreasureHintCenterY"/>
+        public const float FontSizeTreasureHint = 34f;
+
+        /// <summary>
+        /// 「离开」按钮（右下角）。
+        ///
+        /// <para>⚠ 本场景<b>没有背包键</b>，所以右边距用 <c>ShopBagButtonRight</c> 的原值 64
+        /// （不是「给背包键让位」之后的 176）—— 与石台 / 女巫工坊同一口径。</para>
+        /// </summary>
+        public const float TreasureLeaveRight = 64f;
+
+        /// <inheritdoc cref="TreasureLeaveRight"/>
+        public const float TreasureLeaveBottom = 44f;
+
+        /// <summary>cover 铺法下背景放大后的显示尺寸（≥ 画布，多出来的被裁掉）。</summary>
+        public static Vector2 TreasureBgCoverSize()
+        {
+            float ratio = TreasureBgNativeWidth / TreasureBgNativeHeight;
+            float need = ReferenceWidth / ReferenceHeight;
+            return ratio > need
+                ? new Vector2(ReferenceHeight * ratio, ReferenceHeight)
+                : new Vector2(ReferenceWidth, ReferenceWidth / ratio);
+        }
+
+        /// <summary>背景图左上角相对画布左上角的偏移（居中铺 → 恒为负）。</summary>
+        public static Vector2 TreasureBgCoverOffset()
+        {
+            Vector2 size = TreasureBgCoverSize();
+            return new Vector2((ReferenceWidth - size.x) * 0.5f, (ReferenceHeight - size.y) * 0.5f);
+        }
+
+        /// <summary>
+        /// 背景图像素 → 画布坐标（左下角为原点，y 向上）。
+        ///
+        /// <para><b>⚠ 必须乘缩放</b>：cover 放大倍率 —— 哪一边「更宽」决定用它，
+        /// 见 <see cref="TreasureBgCoverSize"/>。当前这张（1024×577，比例 1.7747）
+        /// <b>比画布（1920×1080，1.7778）略窄</b>，所以由<b>宽</b>兜底：
+        /// 放大倍率 = 1920 / 1024 = <b>1.875</b>（图铺满宽、上下多出约 2 px 被裁）。
+        /// 忘了乘这一下，「对着背景量的坐标」会系统性地缩在画面左上角，且不报任何错
+        /// —— 商店首次落版就是这么错的。</para>
+        /// </summary>
+        public static Vector2 TreasureBgPointToCanvas(float bgPixelX, float bgPixelY)
+        {
+            float scale = TreasureBgCoverSize().y / TreasureBgNativeHeight;
+            Vector2 offset = TreasureBgCoverOffset();
+            return new Vector2(offset.x + bgPixelX * scale, ReferenceHeight - (bgPixelY * scale));
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  休息事件场景（2026-10-09 · P9）
+        // ══════════════════════════════════════════════════════
+        //
+        //  ⚠ **本场景是占位**：用户口径原话「该事件对应的场景暂时还没有做好，你先姑且用个
+        //  黑屏 + 按钮的方式替代一下」。所以这里**没有任何背景美术** ——
+        //  整屏一块近黑底（`UiTheme.RestPlaceholderBackdrop`）+ 一个「休息」大键
+        //  + 标题 + 引导行 + 右下角「离开」。
+        //
+        //  正式场景做好之后：把背景图归位进 `Backgrounds/`，在 `RestUiBuilder` 里加一层
+        //  背景（照 `TreasureUiBuilder.BuildBackground` 的 cover 写法），
+        //  底下的版式常量（标题带 / 引导行 / 离开键）与其它事件场景同源 —— 一行都不用改。
+
+        /// <summary>场景标题「休息」（与商店 / 强化 / 女巫 / 宝箱同一条水平带）。</summary>
+        public const float RestTitleCenterY = 1002f;
+
+        /// <inheritdoc cref="RestTitleCenterY"/>
+        public const float RestTitleWidth = 520f;
+
+        /// <inheritdoc cref="RestTitleCenterY"/>
+        public const float RestTitleHeight = 76f;
+
+        /// <inheritdoc cref="RestTitleCenterY"/>
+        public const float FontSizeRestTitle = 52f;
+
+        /// <summary>
+        /// 「休息」大键的中心 y。压在全屏正中略偏上 —— 它是本场景唯一的交互，
+        /// 不该跟标题带（1002）或底部引导行（372）抢位置。
+        /// </summary>
+        public const float RestButtonCenterY = 620f;
+
+        /// <inheritdoc cref="RestButtonCenterY"/>
+        public const float RestButtonWidth = 460f;
+
+        /// <inheritdoc cref="RestButtonCenterY"/>
+        public const float RestButtonHeight = 150f;
+
+        /// <inheritdoc cref="RestButtonCenterY"/>
+        public const float FontSizeRestButton = 52f;
+
+        /// <summary>「休息」键下面那行引导文字。</summary>
+        public const float RestHintCenterY = 372f;
+
+        /// <inheritdoc cref="RestHintCenterY"/>
+        public const float RestHintWidth = 1300f;
+
+        /// <inheritdoc cref="RestHintCenterY"/>
+        public const float RestHintHeight = 56f;
+
+        /// <inheritdoc cref="RestHintCenterY"/>
+        public const float FontSizeRestHint = 34f;
+
+        /// <summary>
+        /// 「离开」按钮（右下角）。
+        ///
+        /// <para>与宝箱场景同口径：本场景<b>没有背包键</b>，所以右边距用原值 64
+        /// （不是「给背包键让位」之后的 176）。</para>
+        /// </summary>
+        public const float RestLeaveRight = 64f;
+
+        /// <inheritdoc cref="RestLeaveRight"/>
+        public const float RestLeaveBottom = 44f;
     }
 }

@@ -1,0 +1,64 @@
+=== Assets : 1708 files, 468.9 MB
+    .meta        901    1528.9 KB
+    .png         438  217085.8 KB
+    .cs          172    3142.9 KB
+    .asset        49   87033.2 KB
+    .jpg          32    6387.5 KB
+    .ttf          18  147157.0 KB
+    .txt          16      13.7 KB
+    .mat          13      24.6 KB
+    .shader       13      78.6 KB
+    .unity        10    1269.4 KB
+    .prefab        8    2340.3 KB
+    .dll           6     479.0 KB
+    .mdb           6     150.1 KB
+    .xml           6     377.4 KB
+
+=== Captures : 192 files, 692.7 MB
+    .png         189  709272.8 KB
+    .md            2       1.1 KB
+    .txt           1       0.0 KB
+
+=== _TrashArt  <不存在>
+=== Tools : 125 files, 2.9 MB
+    .py           39     220.7 KB
+    .cs           27     540.8 KB
+    .json         11      11.5 KB
+    .cache        10       1.2 KB
+    .dll           8    1022.0 KB
+    .txt           6      11.8 KB
+    .md            4       4.0 KB
+    .exe           4     610.0 KB
+    .pdb           4     459.3 KB
+    .csproj        2       2.8 KB
+    .props         2       2.4 KB
+    .targets       2       0.3 KB
+    .editorconfig     2       1.4 KB
+    .pyc           2      29.1 KB
+
+=== Docs : 94 files, 1.2 MB
+    .md           94    1265.7 KB
+
+=== Assets 二级目录 ===
+  [D] Art                 678 files    340.03 MB
+  [F] Art.meta
+  [D] Plugins             352 files      1.69 MB
+  [F] Plugins.meta
+  [D] Prefabs              15 files      2.24 MB
+  [F] Prefabs.meta
+  [D] Resources            64 files      0.46 MB
+  [F] Resources.meta
+  [D] Scenes               12 files      1.01 MB
+  [F] Scenes.meta
+  [D] Screenshots          48 files    112.22 MB
+  [F] Screenshots.meta
+  [D] Scripts             327 files      2.82 MB
+  [F] Scripts.meta
+  [D] Settings             11 files      3.78 MB
+  [F] Settings.meta
+  [D] Tests                 7 files      0.02 MB
+  [F] Tests.meta
+  [D] TextMesh Pro         72 files      3.92 MB
+  [F] TextMesh Pro.meta
+  [D] ThirdParty          111 files      0.68 MB
+  [F] ThirdParty.meta

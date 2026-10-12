@@ -9,3 +9,20 @@
 新文件推荐 `YYYY-MM-DD-主题-序号-状态.png`；同一组可使用日期目录和简短文件名。
 截图应由验证报告相对引用，并标明生成方式。临时裁切图进入 `Artifacts/work/`。
 已有 `_prefab_baseline.txt` 是历史核对快照，不是 Prefab 真源。
+
+## 2026-10-08 瘦身：无引用截图已移出工程
+
+拿每一张的**文件名**去反查全部文本（`Docs/**`、`Tools/**`、`Captures/**`、`Artifacts/**`、
+工程 `.workbuddy/**`、工作区 memory；并排除本次审计自己的输出），把**一处都没被点名**的
+**73 张（267.97 MB）**整批移出到：
+
+```
+E:\UnityProject\_Archive_Unity_AI_CardFight2\captures-unreferenced-2026-10-08\
+```
+
+清单见那个目录下的 `_moved-list.txt`（保留相对路径，搬回来即可复原）。
+**116 张仍被文档或上一轮审计的保留清单点名，一律留在原位。**
+判据与报告：`Tools/archive/stale-audit-2026-10-08/`。
+
+⚠ 反查时若把**自测日志的 dump**（如 `_out_*.txt`）算进引用源，每一张都会「被引用」——
+它们把全部截图文件名都列了一遍。审计产物必须先排除自己。

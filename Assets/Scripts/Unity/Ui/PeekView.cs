@@ -312,9 +312,16 @@ namespace MagicBrawl.App
 
                 if (slot.Face != null)
                 {
+                    slot.Face.enabled = true;
                     slot.Face.sprite = back;
                     // 图还是没有时退化成一块深色方块 —— 至少位置和数量是对的
                     slot.Face.color = back != null ? Color.white : UiTheme.MiniCardFace;
+                }
+
+                // 牌背朝上时把「组成式卡面」收起来（翻面那一刻才亮，见 TryFlipIn）
+                if (slot.CardFace != null && slot.CardFace.gameObject.activeSelf)
+                {
+                    slot.CardFace.gameObject.SetActive(false);
                 }
 
                 if (slot.Badge != null)
@@ -426,8 +433,29 @@ namespace MagicBrawl.App
 
             PeekCardSlot slot = _picked;
 
-            if (slot.Face != null)
+            // 翻面 = 「牌背那张 Image 让位给组成式卡面」。卡面走唯一那份
+            // CardView_Hand.prefab（插画 + 卡名 + 力量 + 冷却 + 效果文字），
+            // 不再直接把插画塞进 Image —— 那样只有一张光图（2026-10-05 修）。
+            if (slot.CardFace != null)
             {
+                slot.CardFace.Bind(_front, CardView.ViewMode.Hand, 0);
+                // ⚠ 尺寸一律运行时重申（铁律 15）：构建器写进 Prefab 的缩放不随嵌套 Prefab 落盘。
+                slot.CardFace.SetFaceWidth(UiLayout.PeekCardWidth);
+                slot.CardFace.SetReadOnly();     // 不吃点击（点击由牌位自己接）、不压暗
+                if (!slot.CardFace.gameObject.activeSelf)
+                {
+                    slot.CardFace.gameObject.SetActive(true);
+                }
+
+                if (slot.Face != null)
+                {
+                    slot.Face.enabled = false;   // 牌背退场
+                }
+            }
+            else if (slot.Face != null)
+            {
+                // 兜底：老的 Prefab 里没有卡面子节点（没跑过补丁）→ 退回「插画塞 Image」，
+                // 至少翻面这件事仍然成立，不会点下去什么都没有。
                 Sprite face = FaceSpriteFor(_front.CardId);
                 if (face != null)
                 {

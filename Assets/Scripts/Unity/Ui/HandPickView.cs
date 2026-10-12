@@ -547,9 +547,32 @@ namespace MagicBrawl.App
                 slot.CardUid = o.Card != null ? o.Card.Uid : -1;
                 slot.Interactable = true;
 
-                if (slot.Face != null)
+                // 卡面走唯一那份 CardView_Hand.prefab（插画 + 卡名 + 力量 + 冷却 + 效果文字）。
+                // 直接把插画塞进 Image 只会显示一张光图 —— 用户 2026-10-05 报的正是这个
+                //（「选择冷却牌的界面当中，也只显示一个卡面插画」）。
+                if (slot.CardFace != null && o.Card != null && o.Card.Def != null)
                 {
+                    CardSnapshot snap = CardSnapshot.FromDef(o.Card.Def, 0, o.Card.Def.Cooldown);
+                    slot.CardFace.Bind(snap, CardView.ViewMode.Hand, i);
+                    // ⚠ 尺寸一律运行时重申（铁律 15）。
+                    slot.CardFace.SetFaceWidth(UiLayout.HandPickSlotWidth);
+                    slot.CardFace.SetReadOnly();   // 点击由牌位自己接（点框里的牌 = 取消选择）
+
+                    if (!slot.CardFace.gameObject.activeSelf)
+                    {
+                        slot.CardFace.gameObject.SetActive(true);
+                    }
+
+                    if (slot.Face != null)
+                    {
+                        slot.Face.enabled = false;   // 牌面那张 Image 让位给卡面
+                    }
+                }
+                else if (slot.Face != null)
+                {
+                    // 兜底：老 Prefab 没有卡面子节点 → 退回插画
                     Sprite face = FaceSpriteFor(o.Card);
+                    slot.Face.enabled = true;
                     slot.Face.sprite = face;
                     // 图还是没有时退化成一块深色方块 —— 至少位置和顺序是对的
                     slot.Face.color = face != null ? Color.white : UiTheme.MiniCardFace;

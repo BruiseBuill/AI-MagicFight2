@@ -135,8 +135,10 @@ namespace MagicBrawl.App.EditorTools
             // 背景图本身也必须垫在 ArtLayer 最底层（绘制顺序 = 建立的先后）
             BuildBackground(layer, art);
 
-            BuildCharacter(layer, "Char_Hero", art.Hero, UiLayout.CharHeroX, log);
-            CharacterView monster = BuildCharacter(layer, "Char_Monster", art.Monster, UiLayout.CharMonsterX, log);
+            BuildCharacter(layer, "Char_Hero", art.Hero, UiLayout.CharHeroX,
+                UiLayout.CharHeroScale, log);
+            CharacterView monster = BuildCharacter(layer, "Char_Monster", art.Monster,
+                UiLayout.CharMonsterX, UiLayout.CharScale, log);
             BuildMonsterClickFace(layer, log);
             TMP_Text orbNumber = BuildOrb(layer, art, body, log);
             RectTransform[] playerRows = BuildSlotColumn(layer, art, true, log);
@@ -152,9 +154,9 @@ namespace MagicBrawl.App.EditorTools
             // M20：手牌数标签必须建在冷却列之后（绘制顺序 = 建的先后，它可能与敌方迷你卡位置相叠）
             BuildHandCount(layer, UiLayout.CharMonsterX, monster);
 
-            // 最后把 Bg_Dungeon 钉回 ArtLayer 最底层 —— 上面任何一个构建器若往 layer 里
+            // 最后把 Bg_Stage 钉回 ArtLayer 最底层 —— 上面任何一个构建器若往 layer 里
             // 插入节点，背景都可能被挤到上层去，这里做一次兜底收口。
-            Transform bg = layer.Find("Bg_Dungeon");
+            Transform bg = layer.Find("Bg_Stage");
             if (bg != null && bg.GetSiblingIndex() != 0)
             {
                 bg.SetAsFirstSibling();
@@ -201,22 +203,38 @@ namespace MagicBrawl.App.EditorTools
 
         /// <summary>
         /// 背景按 <b>cover</b> 铺：等比放大到「宽和高都不小于画布」，多出来的裁掉。
-        /// 直接 Stretch 会把 1536×990（1.552）拉成 16:9（1.778），横向拉长 15%，肉眼能看出来。
+        /// 直接 Stretch 会把原图比例（水城 1536×1024 = 1.5）拉成 16:9（1.778），
+        /// 横向拉长 18%，肉眼能看出来。
+        ///
+        /// <para><b>⚠ 2026-10-04 换水城背景时，原始尺寸改成从 Sprite 现读</b>
+        /// （原来硬用 <c>UiLayout.BgNativeWidth/Height</c> = 1536×990 那对旧常数）。
+        /// 换图只改 <c>ArtImportBuilder.BattleBgFile</c> 一行，这里自动跟上 ——
+        /// 忘了改常数的话，cover 会按错的宽高比算，表现是背景被裁掉一条边或露底。</para>
+        ///
+        /// <para><b>节点名是 <c>Bg_Stage</c></b>（2026-10-04 从 <c>Bg_Dungeon</c> 改过来）：
+        /// 它铺的已经是水城，名字里再挂 "Dungeon" 会误导。改名三处一起动 ——
+        /// 本方法、<see cref="RunAll"/> 的兜底收口、<see cref="VerifyLayerOrder"/> 的自检。</para>
         /// </summary>
         private static void BuildBackground(RectTransform layer, BattleArtLibrary art)
         {
-            if (art.Background == null)
+            Sprite sprite = art.Background;
+            if (sprite == null)
             {
                 return;
             }
 
-            GameObject go = NewUi("Bg_Dungeon", layer);
+            GameObject go = NewUi("Bg_Stage", layer);
             var img = go.AddComponent<Image>();
-            img.sprite = art.Background;
+            img.sprite = sprite;
             img.raycastTarget = false;
             img.preserveAspect = true;
 
-            float ratio = UiLayout.BgNativeWidth / UiLayout.BgNativeHeight;
+            // ⚠ 用 Sprite 自己的 rect 而不是常量：常量只在 Sprite 被销毁（打成构建包）时兜底。
+            Vector2 native = sprite.rect.size;
+            float nativeW = native.x > 1f ? native.x : UiLayout.BgNativeWidth;
+            float nativeH = native.y > 1f ? native.y : UiLayout.BgNativeHeight;
+
+            float ratio = nativeW / nativeH;
             float need = UiLayout.ReferenceWidth / UiLayout.ReferenceHeight;
             Vector2 size = ratio > need
                 ? new Vector2(UiLayout.ReferenceHeight * ratio, UiLayout.ReferenceHeight)
@@ -228,14 +246,14 @@ namespace MagicBrawl.App.EditorTools
         // ── 角色 ─────────────────────────────────────────────────────
 
         private static CharacterView BuildCharacter(RectTransform layer, string name,
-            BattleArtLibrary.CharacterSet set, float groundX, StringBuilder log)
+            BattleArtLibrary.CharacterSet set, float groundX, float scale, StringBuilder log)
         {
             GameObject go = NewUi(name, layer);
             RectTransform root = Rt(go);
 
             BattleArtLibrary.Clip idle = set != null ? set.Idle : null;
             Vector2 size = idle != null && idle.IsValid
-                ? idle.Size * UiLayout.CharScale
+                ? idle.Size * scale
                 : new Vector2(200f, 280f);
             Vector2 pivot = idle != null && idle.IsValid ? idle.Pivot : new Vector2(0.5f, 0f);
 
@@ -305,7 +323,7 @@ namespace MagicBrawl.App.EditorTools
             var view = go.AddComponent<CharacterView>();
             view.Configure(img, anim, Rt(badge), badgeText, iconImg);
             view.ConfigureWeaken(weaken, weakenText);
-            view.SetScale(UiLayout.CharScale);
+            view.SetScale(scale);
             view.SetFps(UiLayout.CharIdleFps, UiLayout.CharAttackFps);
             view.Bind(set);
 
@@ -1166,7 +1184,7 @@ namespace MagicBrawl.App.EditorTools
 
         /// <summary>
         /// 收口校验：<c>Backdrop</c> 必须在 ArtLayer <b>之前</b>（兄弟序更小 = 画得更早 = 在下面），
-        /// <c>Bg_Dungeon</c> 必须在 ArtLayer 的最底层。
+        /// <c>Bg_Stage</c> 必须在 ArtLayer 的最底层。
         ///
         /// <para>这两条一破，表现就是「开局全黑 + 角色不显示」—— 而且**零报错**，
         /// 纯靠肉眼看截图才发现。所以每次构建完都体检一遍，坏了就往 Console 砸一条 error。</para>
@@ -1183,11 +1201,11 @@ namespace MagicBrawl.App.EditorTools
 
             bool ok = backdrop.GetSiblingIndex() < layer.GetSiblingIndex();
 
-            Transform bg = layer.Find("Bg_Dungeon");
+            Transform bg = layer.Find("Bg_Stage");
             if (bg != null && bg.GetSiblingIndex() != 0)
             {
                 ok = false;
-                log.AppendLine("  ✘ Bg_Dungeon 不在 ArtLayer 最底层（index=" + bg.GetSiblingIndex() + "），会盖住角色");
+                log.AppendLine("  ✘ Bg_Stage 不在 ArtLayer 最底层（index=" + bg.GetSiblingIndex() + "），会盖住角色");
             }
 
             if (!ok)

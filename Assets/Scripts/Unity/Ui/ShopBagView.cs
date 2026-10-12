@@ -136,7 +136,7 @@ namespace MagicBrawl.App
                 // 卡面唯一来源 = 卡表定义；冷却值取基础冷却（与手牌 / 货位同一口径）。
                 CardSnapshot snap = CardSnapshot.FromDef(def, 0, def.Cooldown);
                 _cards[i].Bind(snap, CardView.ViewMode.Hand, i);
-                _cards[i].SetInteractable(false);       // 背包里的卡不参与出牌，也不接点击
+                _cards[i].SetReadOnly();                // 背包里的卡不参与出牌，也不接点击（且不压暗）
                 _cards[i].SetSelected(false);
                 _cards[i].SetDimmed(false);
             }

@@ -4,8 +4,8 @@
 Monster/idle 257 216 126 209 6
 Monster/attack 558 205 296 198 5
 Monster/defend 367 242 207 235 5
-Hero/idle 188 185 94 178 16
-Hero/attack 554 256 206 249 12
-Hero/defend 388 256 186 249 12
-Hero/behit 289 272 144 265 12
-Hero/death 325 254 162 247 12
+Hero/idle 272 331 136 324 16
+Hero/attack 392 322 139 315 12
+Hero/defend 350 319 163 312 12
+Hero/behit 272 331 136 324 16
+Hero/death 272 331 136 324 16

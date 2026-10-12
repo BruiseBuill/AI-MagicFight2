@@ -71,6 +71,15 @@ namespace MagicBrawl.Core
         /// <summary>能不能跳过（无目标效果自动执行）。</summary>
         public bool mandatory;
 
+        /// <summary>
+        /// 刻印的重复触发时机（<see cref="SigilTiming.None"/> = 不是刻印）。
+        ///
+        /// <para>存它是因为「女巫工坊」的效果转移会把源牌<b>消耗掉</b>、效果拍平进目标牌的配方 ——
+        /// 不带上这一格，一条刻印搬过去就退化成普通效果（打出去当拍白拿一次、以后不再触发），
+        /// 零报错。旧存档没有这一格时反序列化成 <see cref="SigilTiming.None"/>，正是老口径。</para>
+        /// </summary>
+        public SigilTiming sigil;
+
         /// <summary>作用范围（<c>Participants</c> / <c>Self</c> / <c>Opponent</c>）。</summary>
         public EffectTargetScope targets;
 
@@ -127,6 +136,7 @@ namespace MagicBrawl.Core
                 cooldownAdjustment = effect.C,
                 aura = effect.Aura,
                 mandatory = effect.Mandatory,
+                sigil = effect.Sigil,
                 targets = effect.Targets,
                 specialEvent = effect.SpecialEvent ?? string.Empty,
                 distinctTargetGroup = effect.DistinctTargetGroup ?? string.Empty,
@@ -180,7 +190,7 @@ namespace MagicBrawl.Core
             }
 
             return new EffectDef(useTrigger, handlerId, arguments, aura, text, specialEvent,
-                targets, distinctTargetGroup, list, mandatory);
+                targets, distinctTargetGroup, list, mandatory, sigil);
         }
 
         /// <summary>还原成一条效果（非光环语义下用它；光环请走 <see cref="ToEffectDef"/> 显式给符号）。</summary>
@@ -234,6 +244,7 @@ namespace MagicBrawl.Core
                    && other.cooldownAdjustment == cooldownAdjustment
                    && other.aura == aura
                    && other.mandatory == mandatory
+                   && other.sigil == sigil
                    && other.targets == targets
                    && string.Equals(other.specialEvent, specialEvent, StringComparison.Ordinal)
                    && string.Equals(other.distinctTargetGroup, distinctTargetGroup, StringComparison.Ordinal)

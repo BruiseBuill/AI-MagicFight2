@@ -18,15 +18,21 @@ namespace MagicBrawl.App
     /// 不判断哪一步能走（那是 <see cref="MapRun.IsReachable"/>）、
     /// 不切场景（那是 <see cref="MapSceneEntry"/>）。这里只有「把事实画出来」。</para>
     ///
-    /// <para><b>⚠ 桥的两套摆法（这一段是全场唯一需要注意几何的地方）</b></para>
-    /// <para>素材量出来的事实（<see cref="UiLayout"/> 里记了原始数据）：
-    /// 直桥的两个端帽在<b>本地 x 轴上</b>（±107.6, 0），所以「只缩 x」既精确对齐方向、
-    /// 又保持木板厚度不变 —— 任何角度都能用；斜桥的两个端帽在 (±80.75, ±49.35)，
-    /// <b>不在任何一个轴上</b>，只缩 x 会把角度压斜（缩 1.5 倍时 31.4° 掉到 21.5°），
-    /// 所以必须反解：先按「端帽距离 = 两节点距离」解出 s，再把旋转补回 α 那一段。</para>
-    /// <para>结果是一样的：<b>两个端帽正好落在两个节点的中心</b>。
-    /// 端帽本来就被 128 px 的节点图盖住，所以素材被拉伸的痕迹看不见 ——
-    /// 这也是为什么可以放心用「缩放」而不是「按素材原样拼」。</para>
+    /// <para><b>⚠ 桥的摆法（2026-10-06 随六向格定稿，这一段是全场唯一需要注意几何的地方）</b></para>
+    /// <para><b>版式先保证「任意一条边等长」</b>：节点摆在<b>六向格</b>上
+    /// （列距 = 边长、行距 = 边长 × √3/2、每上一行左移半格），桥的两端只可能是
+    /// 正右 0° 或右上 60°（反向 180° / 240°），三种情况<b>长度都是
+    /// <see cref="UiLayout.MapEdgeLength"/></b>。于是「两块平台之间的空隙」
+    /// <c>边长 − 2 × 平台半径</c> 对每条边都是同一个数。</para>
+    /// <para><b>再只用一个缩放系数</b>：直桥素材两端深色桥墩的<b>外缘</b>距是
+    /// <see cref="UiLayout.MapBridgeVisibleWidth"/>，把它缩成上面那个空隙，
+    /// 桥墩外缘就正好落在平台边缘上 —— 两块桥墩<b>整块露在平台之外</b>，
+    /// 中间的木板把空隙填满；全图所有桥<b>同宽同长</b>
+    /// （用户 2026-10-05：「桥的缩放应该都是一致大小的」「两端应当较为紧贴节点」；
+    /// 2026-10-08 订正分母 —— 以前误用木板区宽当分母，桥墩被整块缩进平台里）。</para>
+    /// <para><b>斜桥素材不再使用</b>：两种素材的「单位长端帽距」差 1.76 倍
+    /// （直桥 215.2、斜桥 378.6），同一个空隙下必然缩成两种粗细；而直桥转到任意角度
+    /// 都不变形（端帽偏移就在本地 x 轴上），所以<b>所有边一律用直桥素材转角度</b>。</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class MapView : MonoBehaviour
@@ -53,7 +59,13 @@ namespace MagicBrawl.App
 
         [SerializeField] private TMP_Text _hint;
 
-        [SerializeField] private TMP_Text _progressText;
+        /// <summary>
+        /// 顶栏那格数字 —— <b>生命</b>（2026-10-05 起，之前显示的是层数进度）。
+        ///
+        /// <para>用户口径：地图上的生命 = 战斗里的生命；<b>不要用爱心图标</b>、
+        /// 也<b>不需要显示进度</b>，所以这里只有一个纯文本的「生命 3 / 4」。</para>
+        /// </summary>
+        [SerializeField] private TMP_Text _hpText;
 
         [SerializeField] private TMP_Text _goldText;
 
@@ -69,7 +81,7 @@ namespace MagicBrawl.App
         [SerializeField] private TMP_Text _endButtonLabel;
 
         [Header("素材（构建器填；运行时也可以覆盖）")]
-        [Tooltip("下标 = MapNodeType 的值：Camp / Battle / Shop / Witch / Altar / Unknown / Boss")]
+        [Tooltip("下标 = MapNodeType 的值：Camp / Battle / Shop / Witch / Altar / Unknown / Boss / Treasure / Rest")]
         [SerializeField] private Sprite[] _nodeIcons = new Sprite[7];
 
         /// <summary>点了某个<b>可达</b>节点（已经过可达性复核）。</summary>
@@ -324,7 +336,13 @@ namespace MagicBrawl.App
 
         private void BuildBridges(MapGraph graph)
         {
-            if (_bridgeRoot == null || _bridgeStraightTemplate == null || _bridgeDiagonalTemplate == null)
+            // ⚠ 所有边一律用直桥素材（见类注释）。斜桥模板只当直桥缺图时的兜底 ——
+            //   这样它也不至于变成一个「谁都不读」的序列化字段。
+            RectTransform template = _bridgeStraightTemplate != null
+                ? _bridgeStraightTemplate
+                : _bridgeDiagonalTemplate;
+
+            if (_bridgeRoot == null || template == null)
             {
                 return;
             }
@@ -340,61 +358,49 @@ namespace MagicBrawl.App
                         MapNode to = graph.Nodes[outs[k]];
                         Vector2 a = UiLayout.MapNodePosition(layer[i].Layer, layer[i].Row);
                         Vector2 b = UiLayout.MapNodePosition(to.Layer, to.Row);
-                        float phi = Mathf.Atan2(b.y - a.y, b.x - a.x) * Mathf.Rad2Deg;
-
-                        bool diagonal = phi > UiLayout.MapBridgeDiagonalMinAngle;
-                        RectTransform template = diagonal ? _bridgeDiagonalTemplate : _bridgeStraightTemplate;
 
                         RectTransform bridge = Instantiate(template, _bridgeRoot);
                         bridge.name = "Bridge_" + L + "_" + layer[i].Row + "_" + to.Row;
                         bridge.gameObject.SetActive(true);
-                        PlaceBridge(bridge, a, b, diagonal);
+                        PlaceBridge(bridge, a, b);
                     }
                 }
             }
         }
 
         /// <summary>
-        /// 把一根桥摆成「两端正好落在两个节点中心」。
+        /// 把一根桥摆成「<b>桥墩外缘正好落在两块平台的边缘、桥身转到位</b>」——
+        /// <b>全图共用同一个缩放系数</b>（见类注释）。
         ///
-        /// <para>两种摆法的推导见类注释；一句话：<b>直桥只缩 x（方向天然精确），
-        /// 斜桥先解出缩放系数再补旋转</b>。谁都不许在这些数上「差不多就行」——
-        /// 差一点就是桥端露在节点外面。</para>
+        /// <para>之所以敢用一个系数，是因为版式已经保证「任意一条边等长」
+        /// （六向格：<see cref="UiLayout.MapEdgeLength"/> 对 0° 与 ±60° 都成立），
+        /// 空隙 = 边长 − 2×平台半径 因此对每一条边都是同一个数。</para>
         /// </summary>
-        private static void PlaceBridge(RectTransform bridge, Vector2 a, Vector2 b, bool diagonal)
+        private static void PlaceBridge(RectTransform bridge, Vector2 a, Vector2 b)
         {
             Vector2 delta = b - a;
-            float len = delta.magnitude;
-            if (len < 1f)
+            float phi = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+
+            // 空隙 = 边长 − 2 × 平台半径；夹一个下限，免得极端布局缩成针尖。
+            float gap = UiLayout.MapEdgeLength - 2f * UiLayout.MapBridgePlatformRadius;
+            if (gap < UiLayout.MapBridgeMinLength)
             {
-                len = 1f;
+                gap = UiLayout.MapBridgeMinLength;
             }
 
-            float phi = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+            // 直桥素材两端深色桥墩的**外缘**相距 MapBridgeVisibleWidth ——
+            // 把这段距离缩成 gap，桥墩外缘就正好落在平台边缘上：
+            // 两块桥墩整块露在平台之外，中间的木板把空隙填满。
+            // ⚠ 2026-10-08 订正：以前拿「木板区宽（215）」当分母，系数大了 1.42 倍，
+            //   桥墩被整块缩进平台里（症状：只看得见木板，桥的两端不见了）。
+            float scale = gap / UiLayout.MapBridgeVisibleWidth;
 
             bridge.anchorMin = Vector2.zero;
             bridge.anchorMax = Vector2.zero;
             bridge.pivot = new Vector2(0.5f, 0.5f);
             bridge.anchoredPosition = (a + b) * 0.5f;
-
-            if (diagonal)
-            {
-                float capX = UiLayout.MapBridgeDiagonalCapX;
-                float capY = UiLayout.MapBridgeDiagonalCapY;
-
-                // 端帽向量 (capX·s, capY) 的模长必须等于 len → 反解 s。
-                // len ≤ capY 时无解（边比端帽的纵向跨度还短），夹一下别让 sqrt 出负数。
-                float inner = len * len - capY * capY;
-                float s = Mathf.Sqrt(inner > 1f ? inner : 1f) / capX;
-                float alpha = Mathf.Atan2(capY, capX * s) * Mathf.Rad2Deg;
-
-                bridge.localRotation = Quaternion.Euler(0f, 0f, phi - alpha);
-                bridge.localScale = new Vector3(s, 1f, 1f);
-                return;
-            }
-
+            bridge.localScale = new Vector3(scale, scale, 1f);
             bridge.localRotation = Quaternion.Euler(0f, 0f, phi);
-            bridge.localScale = new Vector3(len / UiLayout.MapBridgeStraightCapSpan, 1f, 1f);
         }
 
         // ══════════════════════════════════════════════════════
@@ -449,11 +455,13 @@ namespace MagicBrawl.App
 
         private void RefreshTexts()
         {
-            if (_progressText != null)
+            if (_hpText != null)
             {
-                _progressText.text = MapRun.HasRun
-                    ? "进度  " + MapRun.Progress + " / " + MapRun.ProgressTotal
-                    : "进度  —";
+                // 生命 = 局外持久生命（第一场之前满血）。战斗中掉的血由战斗场景在结算时
+                // 写回 MapRun，所以「打剩 2 血回地图就是 2 / 4」；上限每场恢复成初始上限。
+                _hpText.text = MapRun.HasRun
+                    ? "生命  " + MapRun.CurrentHp + " / " + MapRun.CurrentHpMax
+                    : "生命  —";
             }
 
             if (_goldText != null)

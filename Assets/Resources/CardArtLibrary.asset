@@ -103,3 +103,7 @@ MonoBehaviour:
     Illustration: {fileID: 21300000, guid: 2d014cd7c61532f4895fda899b892271, type: 3}
   - CardId: as
     Illustration: {fileID: 21300000, guid: dded0d6f7f387614f83fdc05a6ea91ae, type: 3}
+  - CardId: at
+    Illustration: {fileID: 21300000, guid: f5f9711a102814a4c955f37d03d95265, type: 3}
+  - CardId: au
+    Illustration: {fileID: 21300000, guid: 45e49cc378a7bc64eb35bd088fdf244c, type: 3}

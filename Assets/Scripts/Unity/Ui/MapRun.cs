@@ -73,6 +73,58 @@ namespace MagicBrawl.App
         /// <summary>金币。商店买卡会写回这里，地图顶栏读它。</summary>
         public static int Gold = DefaultGold;
 
+        /// <summary>
+        /// 开局生命（= 引擎的初始生命）。与 <see cref="BattleState.InitialHp"/> 同值。
+        ///
+        /// <para>2026-10-05：地图顶栏要从「进度」改成「生命」（用户口径），
+        /// 而<b>生命上限每场战斗结束后都恢复成它</b> —— 战斗中可以被削
+        /// （<c>EffectCutMaxHp</c>），但削掉的那部分不带到地图上。</para>
+        /// </summary>
+        public const int DefaultHp = BattleState.InitialHp;
+
+        /// <summary>
+        /// 地图顶栏显示用的<b>当前生命</b>。
+        ///
+        /// <para>复用 <see cref="PlayerHp"/>（局外持久生命），只是把它的
+        /// 「<c>0</c> = 还没有持久状态」翻译成<b>满血</b> —— 显示层不该关心那个哨兵值。</para>
+        /// </summary>
+        public static int CurrentHp
+        {
+            get { return HasPlayerHp ? PlayerHp : DefaultHp; }
+        }
+
+        /// <summary>地图顶栏显示用的生命上限（恒为初始上限，见 <see cref="DefaultHp"/>）。</summary>
+        public static int CurrentHpMax
+        {
+            get { return DefaultHp; }
+        }
+
+        /// <summary>
+        /// 玩家的<b>局外当前生命</b>（2026-10-05 · 带伤入场）。
+        ///
+        /// <para><b>为什么加这一个字段</b>：在这之前「进战斗是几血」只由角色资产决定 ——
+        /// 于是每一场战斗都是满血，冒险里打完一场掉的血下一场就白掉了。
+        /// 用户口径（也是 <c>冒险模式实施规格.md</c> §3 的生命模型）：
+        /// <b>入场当前生命 = 局外当前生命</b>，<b>入场上限 = 局外正常上限</b>，
+        /// 战斗结束把<b>存活时</b>的当前生命写回局外（战斗内回血的增量一并带走）。
+        /// 金币的载体也是这个类，生命跟它同一口径。</para>
+        ///
+        /// <para><b>⚠ <c>0</c> = 「还没有持久状态」</b>，此时战斗入场沿用角色资产自己的
+        /// 初始生命（= 满血）。所以<b>第一次</b>进战斗永远是满血，
+        /// 「从第二场起才带伤」；<see cref="StartNew"/> / <see cref="Clear"/> 都会把它清回 0。</para>
+        ///
+        /// <para>⚠ 它<b>不是</b>战斗内的实时生命 —— 战斗中掉的血要到这一局结束
+        /// （<c>BattleUi.HandleFinished</c>，玩家存活）才写回来。这样「重试 = 回到本场战斗开始」
+        /// 才成立（规格 §7.4）。</para>
+        /// </summary>
+        public static int PlayerHp;
+
+        /// <summary>局外有没有一份要带进战斗的当前生命（见 <see cref="PlayerHp"/>）。</summary>
+        public static bool HasPlayerHp
+        {
+            get { return PlayerHp > 0; }
+        }
+
         /// <summary>战斗场景报回来的一局结果是否还没被地图消费。</summary>
         public static bool BattleResultPending;
 
@@ -169,6 +221,7 @@ namespace MagicBrawl.App
             BattleWon = false;
             Won = false;
             Lost = false;
+            PlayerHp = 0;      // 新的一趟：第一场战斗满血（见 PlayerHp 的「0 = 还没有持久状态」）
         }
 
         /// <summary>把这趟冒险整个忘掉（回到「没有冒险」的初始态）。</summary>
@@ -184,6 +237,7 @@ namespace MagicBrawl.App
             BattleWon = false;
             Won = false;
             Lost = false;
+            PlayerHp = 0;      // 新的一趟：第一场战斗满血（见 PlayerHp 的「0 = 还没有持久状态」）
         }
 
         /// <summary>这个节点走过没有。</summary>
@@ -348,6 +402,42 @@ namespace MagicBrawl.App
         public static void SetGold(int gold)
         {
             Gold = gold < 0 ? 0 : gold;
+        }
+
+        /// <summary>
+        /// 一局战斗结束、玩家<b>还活着</b>时，把本场结束时的当前生命写回局外（2026-10-05）。
+        ///
+        /// <para><b>只在存活时调</b>：玩家输了 / 平局时生命是 0，写回来等于把「已死」这个状态
+        /// 变成一个还要被夹取的 1 —— 那是错的口径（失败由 <see cref="ReportBattle"/> 的
+        /// <c>won = false</c> 表达，不该由生命值重复表达）。</para>
+        ///
+        /// <para>战斗内回血带来的<b>增量一并带走</b>（规格 §3.3）：这一场打了 3 血进去、
+        /// 靠回血牌回到 5，那么局外就是 5 —— 不需要在这里区分「掉的血」与「回的血」。</para>
+        /// </summary>
+        public static void SetPlayerHp(int hp)
+        {
+            PlayerHp = hp < 1 ? 1 : hp;
+        }
+
+        /// <summary>
+        /// 把<b>局外当前生命恢复满</b>（2026-10-09 · 休息事件）。
+        ///
+        /// <para><b>为什么「恢复当前生命」就等于「连上限一起恢复」</b>：地图层看到的生命上限
+        /// 恒等于 <see cref="DefaultHp"/>（见 <see cref="CurrentHpMax"/>）—— 战斗中能被削掉的那部分
+        /// 上限（<c>EffectCutMaxHp</c>）本来就不带到地图上，每场战斗结束都会回到
+        /// <see cref="DefaultHp"/>。所以把当前生命写成 <see cref="DefaultHp"/>，
+        /// 玩家在地图上看到的就是「4 / 4」—— 当前值与上限一起满了。</para>
+        ///
+        /// <para>⚠ 直接赋值而不是走 <see cref="SetPlayerHp"/>：后者带一条「&lt; 1 夹到 1」的
+        /// 兜底（那是给战斗回写用的，防止把「已死」写成一个还要被夹的值）。
+        /// 休息的语义是「写满」，走那条路只是恰好结果相同、读起来却多一层疑惑。</para>
+        ///
+        /// <para>⚠ 只由休息事件调，且只在 <see cref="HasActiveRun"/> 为真时调
+        /// （独立场景契约 E1–E4，与宝箱写金币同口径）。</para>
+        /// </summary>
+        public static void RestoreFullHp()
+        {
+            PlayerHp = DefaultHp;
         }
     }
 }

@@ -573,6 +573,19 @@ namespace MagicBrawl.Core
             State.InCombo = false;
             State.ComboDepth = 0;
 
+            // 刻印 · TurnStart（2026-10-07）：双方已点亮的刻印各触发一次（火炬 at）。
+            //   插在这里 = 「回合开始」最靠前的落点；真正的结算由 Advance 的
+            //   AdvanceSpecialEffects 在下一拍之前跑完 —— 所以本回合的补牌与替换决策
+            //   排在它后面（玩家先看到刻印的结算，再被问要不要换牌）。
+            //   ⚠ PublishSigils 只**入队**，不动冷却区列表，可以安全地在遍历前后调用。
+            for (int sigilSeat = 0; sigilSeat < State.Players.Count; sigilSeat++)
+            {
+                if (!State.Of(sigilSeat).IsDead)
+                {
+                    PublishSigils(sigilSeat, SigilTiming.TurnStart);
+                }
+            }
+
             // 按座位各自判断本回合补不补（2026-10-03）：人类第 2–3 回合各补 1 张，
             // 怪物（开局就抽满 8 张）在这里一张都不补，于是也不会进入替换拍。
             var drawn = new List<CardInstance>();
@@ -692,6 +705,13 @@ namespace MagicBrawl.Core
                 _phase = Phase.Finished;
                 return;
             }
+
+            // 刻印 · AttackEnd（2026-10-07）：刚刚完成进攻的那一方，已点亮的刻印各触发一次
+            //   （海啸 au「每次进攻结束时获得一次加速」）。
+            //   位置与虚弱递减**同一口径**：连击的追加进攻走的是 Stage6 → BeginHalfTurn 的循环，
+            //   只有整条链走完才会回到本方法，所以「一次进攻半场」= 整条连击链，只算一次。
+            //   ⚠ 点亮它的那一拍就会走到这里，所以是「当拍即触发」（用户 2026-10-07 口径）。
+            PublishSigils(State.AttackerSeat, SigilTiming.AttackEnd);
 
             // 虚弱递减：刚刚完成进攻的那一方 −1 层（2026-09-29）。
             // 放在这里而不是 Stage6，是因为连击的追加进攻会再次回到 BeginHalfTurn ——
@@ -1193,10 +1213,13 @@ namespace MagicBrawl.Core
             {
                 // 合法性再校验一次：选项是按「已准备的光环预算」算出来的，
                 // 但回填来自上层，可能带着已经过期的准备集合。
-                int need = DefenseResolver.RequiredBonus(pick.Card, _atk.FinalPower);
+                // ⚠ 手牌数取「还没把它从手上摘掉」的那个数 —— 与 IssueDefense 里
+                //   DefenseResolver.BuildOptions 用的是同一个口径（Bis 手牌数含正在打出的这一张，
+                //   用户 2026-10-07 拍板）。两处不一致 = 「选项给了、提交却被打回」。
+                int need = DefenseResolver.RequiredBonus(pick.Card, _atk.FinalPower, defender.Hand.Count);
                 if (pick.PairCard != null)
                 {
-                    need += DefenseResolver.RequiredBonus(pick.PairCard, _atk.FinalPower);
+                    need += DefenseResolver.RequiredBonus(pick.PairCard, _atk.FinalPower, defender.Hand.Count);
                 }
 
                 if (need > _defensePower)
@@ -1349,7 +1372,15 @@ namespace MagicBrawl.Core
             _phase = State.IsOver ? Phase.Finished : Phase.Stage4Effects;
         }
 
-        private void DoStage5() { RunEffects(EffectStage.Aura, () => _phase = Phase.Stage6); }
+        private void DoStage5()
+        {
+            // 刻印点亮（2026-10-07）：第 ⑤ 步正好是「本牌已经进了冷却区（第 ④ 步）、
+            //   但这一拍还没收尾」那一刻 —— 与光环激活同一拍，所以「打了才亮、回手就灭」
+            //   这条语义天然成立（熄灭在 CardInstance / CooldownOps 里）。
+            //   只有**作为进攻牌打出**的那一张会被点亮（见 LightSigils）。
+            LightSigils(_atk.Card);
+            RunEffects(EffectStage.Aura, () => _phase = Phase.Stage6);
+        }
 
         private void DoStage6()
         {
@@ -1372,6 +1403,110 @@ namespace MagicBrawl.Core
             {
                 State.InCombo = false;
                 _phase = Phase.EndHalfTurn;
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  刻印（Sigil）· 2026-10-07
+        // ══════════════════════════════════════════════════════
+        //
+        //  用户口径：刻印「类似于光环」—— 挂在提供它的那张牌上、**只有进攻时会点亮**、
+        //  回到手牌时效果消失（= 与光环完全相同的那三条）；与光环的唯一差别是
+        //  **点亮之后每回合都会自动触发其效果**（光环是一次性指示物，用掉就没了）。
+        //
+        //  落在三个点位上（都在本文件里，一眼看得全）：
+        //    · 点亮 —— DoStage5 调 LightSigils（第 ⑤ 步，与光环激活同一拍）；
+        //    · 触发 —— DoBeginTurn（TurnStart）/ DoEndHalfTurn（AttackEnd）调 PublishSigils；
+        //    · 熄灭 —— CardInstance.ToHand/ToPool + CooldownOps.PutIntoCooldown/RemoveFromGame。
+        //
+        //  ⚠ 刻印**不是新算子**：卡表里写的就是普通的 Aura / Haste 效果，外加一个
+        //    EffectDef.Sigil 标记。所以「效果本身长什么样」一条代码都没重写，
+        //    BattleEngine.Effects.EnqueueEffects 只把它从「当拍结算」里摘出去。
+
+        /// <summary>
+        /// 点亮 <paramref name="card"/> 身上的 <b>α 刻印</b>（2026-10-07）。
+        ///
+        /// <para><b>为什么只认 α</b>：用户口径「刻印只有进攻时会点亮」。本方法只被
+        /// <see cref="DoStage5"/> 用 <c>_atk.Card</c>（本次打出的<b>进攻牌</b>）调用，
+        /// 但仍复核触发符号 —— 一张带 β 刻印的牌被当成防御牌打出时不该亮
+        /// （与光环「卡面符号 = 结算时机」同一条口径，见 CardDef.AuraTokenCountOf）。</para>
+        ///
+        /// <para>点亮发生在<b>进冷却区之后</b>，所以那一刻它已经是 <see cref="CardZone.Cooling"/>；
+        /// 不在冷却区（对局在更早的阶段就结束了）就不亮。</para>
+        /// </summary>
+        private void LightSigils(CardInstance card)
+        {
+            if (card == null || !card.IsCooling)
+            {
+                return;
+            }
+
+            for (int i = 0; i < card.Def.Effects.Count; i++)
+            {
+                EffectDef effect = card.Def.Effects[i];
+                if (effect.Sigil == SigilTiming.None || effect.Trigger != EffectTrigger.Attack)
+                {
+                    continue;
+                }
+
+                if (card.LitSigils.Contains(effect))
+                {
+                    continue;   // 幂等：同一条刻印不会记两遍（静态卡表里是同一个引用）
+                }
+
+                card.LightSigil(effect);
+                Emit(new SigilLitEvent { Seat = card.OwnerSeat, Card = card, Timing = effect.Sigil });
+            }
+        }
+
+        /// <summary>
+        /// 把 <paramref name="seat"/> 冷却区里<b>已点亮的刻印</b>中、时机等于
+        /// <paramref name="timing"/> 的那几条全部排进特殊效果队列（2026-10-07）。
+        ///
+        /// <para><b>为什么走 <c>_pendingSpecial</c> 而不是 <c>_effects</c></b>：<c>_effects</c>
+        /// 是「本次攻防的效果表」、按 <see cref="EffectStage"/> 分五步跑；而刻印的触发点在
+        /// <b>五步之外</b>（回合开始 / 半场收尾），而且海啸的「获得一次加速」要<b>弹一次选目标</b>
+        /// —— 半场收尾那一刻弹决策只能靠暂停-恢复管线。γ「冷却完毕」（潮汐 e）走的就是同一条
+        /// 管线（<c>AdvanceSpecialEffects</c>），AI / UI 两侧完全无感。</para>
+        ///
+        /// <para><b>本方法只入队、不结算</b>（所以可以安全地在遍历冷却区的前后调用）；
+        /// 真正的结算由 <c>Advance</c> 循环里的 <c>AdvanceSpecialEffects</c> 在下一拍之前跑完。</para>
+        ///
+        /// <para>⚠ 传入的 <c>EffectTrigger.Special</c> 只影响 <see cref="EffectContext.Trigger"/>：
+        /// 刻印的载荷（Aura / Haste）都不读它（读它的 <c>AddAttackPower</c> / <c>GrantCombo</c> /
+        /// <c>CopyAttack</c> 都不是刻印会用的算子）。</para>
+        /// </summary>
+        private void PublishSigils(int seat, SigilTiming timing)
+        {
+            if (timing == SigilTiming.None || seat < 0 || seat >= State.Players.Count || State.IsOver)
+            {
+                return;
+            }
+
+            PlayerState player = State.Of(seat);
+            for (int c = 0; c < player.CoolingZone.Count; c++)
+            {
+                CardInstance card = player.CoolingZone[c];
+                if (!card.SigilLive)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < card.LitSigils.Count; i++)
+                {
+                    EffectDef effect = card.LitSigils[i];
+                    if (effect.Sigil != timing)
+                    {
+                        continue;
+                    }
+
+                    _effectRegistry.Validate(effect);
+                    var context = new EffectContext(this, card,
+                        State.Mode.SelectDefender(State, card.OwnerSeat), EffectTrigger.Special, _atk,
+                        player.Hand.Count);
+                    _pendingSpecial.Add(new EffectActivation { Context = context, Definition = effect });
+                    Emit(new SigilTriggeredEvent { Seat = card.OwnerSeat, Card = card, Timing = timing });
+                }
             }
         }
 

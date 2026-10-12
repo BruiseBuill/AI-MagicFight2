@@ -42,6 +42,17 @@ namespace MagicBrawl.App
         /// <summary>本拍是否可用（引擎本拍的 Options 里确实存在对应的那一项）。</summary>
         public bool Usable;
 
+        /// <summary>
+        /// 这一枚画的是<b>刻印</b>而不是光环指示物（2026-10-07）。
+        ///
+        /// <para>用户口径：「刻印也需要做可见标记，<b>类似于光环</b>，只不过<b>无法像光环一样
+        /// 拖动使用</b>」。所以它复用的就是这份数据 / 这个图标 / 这一排槽位，
+        /// 唯一的差别是 <see cref="AuraIconView.OnBeginDrag"/> 直接拒绝拖动，
+        /// 以及不去理会「本拍能不能用」（刻印没有「使用」这个动作，
+        /// 压暗反而会让玩家以为它没在生效）。</para>
+        /// </summary>
+        public bool Sigil;
+
         /// <summary>池化复用的配对键（同一枚指示物在两次重建之间保持不变，避免闪）。</summary>
         public long Key
         {
@@ -62,6 +73,13 @@ namespace MagicBrawl.App
         {
             get
             {
+                // 刻印没有数值可写 —— 它的数值是每次触发时才产生的（可能还是「加速」这种无量纲的），
+                // 所以角上留空（AuraIconView.Bind 会顺手把数值底衬一起收掉）。
+                if (Sigil)
+                {
+                    return string.Empty;
+                }
+
                 switch (Kind)
                 {
                     case AuraKind.ImmuneHigh:
@@ -82,6 +100,11 @@ namespace MagicBrawl.App
         {
             get
             {
+                if (Sigil)
+                {
+                    return UiTheme.AuraPlateSigil;
+                }
+
                 switch (Kind)
                 {
                     case AuraKind.AtkPower:
@@ -335,16 +358,26 @@ namespace MagicBrawl.App
                 _value.text = data.ValueText;
             }
 
+            // 刻印没有数值 → 把右下角那枚底衬一起收掉，否则留一块空的深色小方块。
+            if (_valueBg != null)
+            {
+                _valueBg.enabled = !string.IsNullOrEmpty(data.ValueText);
+            }
+
             // 本拍能不能用 —— 只有「能用」的图标才亮边框，其余压暗但**照样看得见**
             //（玩家需要知道自己有什么，只是现在动不了）。
+            // ⚠ 刻印两者都不适用：它**永远不能拖**，所以「可用 / 不可用」这个概念对它不成立；
+            //   压暗（_dim）会让玩家以为它没在生效，而刻印亮着就是「正在每回合触发」的意思。
             if (_frame != null)
             {
-                _frame.color = data.Usable ? UiTheme.AuraIconReadyEdge : UiTheme.AuraIconEdge;
+                _frame.color = data.Sigil || data.Usable
+                    ? UiTheme.AuraIconReadyEdge
+                    : UiTheme.AuraIconEdge;
             }
 
             if (_dim != null)
             {
-                _dim.enabled = !data.Usable;
+                _dim.enabled = !data.Usable && !data.Sigil;
             }
 
             ResetState();
@@ -697,7 +730,9 @@ namespace MagicBrawl.App
         {
             if (_flying) return;
 
-            if (!Data.Usable || Data.Seat != BattleState.SeatPlayer
+            // 刻印拖不动（用户 2026-10-07 口径：「类似于光环，只不过无法像光环一样拖动使用」）。
+            // 长按看说明仍然保留（那是 OnPointerDown + Update 那条路，不经这里）。
+            if (!Data.Usable || Data.Sigil || Data.Seat != BattleState.SeatPlayer
                 || eventData.button != PointerEventData.InputButton.Left) return;
 
             // 「已准备」标记（M21）：拖一下 = 取消。不进拖拽态、不换父节点，

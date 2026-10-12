@@ -111,6 +111,16 @@ namespace MagicBrawl.App
             _routine = StartCoroutine(Run());
         }
 
+        /// <summary>
+        /// 起播前的等待（秒）。与 <c>Setup</c> 分开是因为「错开一个批次」这件事
+        /// 常常是循环里算出来的（第 i 张 = i × 间隔），塞进 <c>Setup</c> 会让每个调用点都多一个参数。
+        /// <b>必须在 <see cref="Play"/> 之前调</b>（<c>Play</c> 之后就晚了）。
+        /// </summary>
+        public void SetDelay(float seconds)
+        {
+            Delay = seconds < 0f ? 0f : seconds;
+        }
+
         /// <summary>立刻跳到终态（跳过动画）—— 设置里「关闭动画」或跳过演出时用。</summary>
         public void Snap()
         {

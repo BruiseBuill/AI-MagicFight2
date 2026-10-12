@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace MagicBrawl.Core
 {
     /// <summary>
-    /// 45 张卡的静态定义表（a–as）。
+    /// 47 张卡的静态定义表（a–au）。
     ///
     /// 录入依据：`Docs/rules/02-卡牌图鉴.md`。任何数值改动只改这一处。
     /// 校验钩子：<see cref="ValidatePowerDistribution"/> / <see cref="ValidateCooldownDistribution"/>
@@ -15,7 +15,7 @@ namespace MagicBrawl.Core
         private static readonly List<CardDef> Defs = new List<CardDef>();
         private static readonly Dictionary<string, CardDef> ById = new Dictionary<string, CardDef>(StringComparer.Ordinal);
 
-        /// <summary>全部 40 张卡，按卡表顺序（a → an）。</summary>
+        /// <summary>全部 47 张卡，按卡表顺序（a → au）。</summary>
         public static IReadOnlyList<CardDef> All
         {
             get { return Defs; }
@@ -229,6 +229,37 @@ namespace MagicBrawl.Core
             Add(44, "as", "冷冻核心", 6, 3, CardElement.Ice,
                 A(EffectOp.Slow, 1, text: "减速"),
                 A(EffectOp.Aura, 3, aura: AuraKind.DefPower, text: "光环：防御力量 +3"));
+
+            // ── 2026-10-07 新增（46–47）· 刻印 ────────────────────
+            // 「刻印」是新的**触发方式**而不是新算子：它像光环一样挂在提供它的那张牌上、
+            // **只有作为进攻牌打出时才点亮**、回手即熄灭（与光环完全相同的那三条），
+            // 差别只有一条 —— 点亮之后**每个回合都会自动再触发一次**自己的效果
+            // （光环是一次性指示物，用掉就没了）。卡表里就是在普通效果上加一个 `sigil:` 标记，
+            // 效果本身（Aura / Haste）一条都没改，见 Core/Cards/EffectDef.cs 的 SigilTiming。
+            //
+            // ⚠ **同一张牌的刻印必须同符号**（都是 α）—— 理由同光环：
+            //   `Sigil` 是「本牌作为进攻牌打出时才点亮」，混了 β 就会永远不亮。
+            //
+            // 火炬（火 · 力量 4 / 冷却 4）：α刻印 —— 每回合开始时获得光环：进攻力量 +2。
+            // ⚠ 与普通光环卡（ag 淬火等）的区别：那条 Aura 是「打出去当拍给 1 枚」，
+            //   这条是「打出去当拍**只点亮**，之后每回合开始各给 1 枚」—— 所以指示物会**累积**
+            //   （冷却 4 ⇒ 在冷却区期间最多堆到 3~4 枚，可分开用也可以一次全砸在一刀上）；
+            //   回手时未用的全部作废（用户 2026-10-07 口径：「累积叠加」）。
+            Add(45, "at", "火炬", 4, 4, CardElement.Fire,
+                A(EffectOp.Aura, 2, aura: AuraKind.AtkPower, sigil: SigilTiming.TurnStart,
+                    text: "刻印：每回合开始时获得光环：进攻力量 +2"));
+
+            // 海啸（水 · 力量 2 / 冷却 4）：
+            //   α刻印 —— 每次进攻结束时获得一次加速（触发口径见 SigilTiming.AttackEnd：
+            //            拥有者自己的进攻半场结束；点亮它的那一拍立刻触发）；
+            //   β      —— 防御时增加等于手牌数的力量值（**普通 β 效果，不是刻印** ——
+            //            刻印只有进攻时会点亮，一条 β 刻印永远不亮）。
+            // ⚠ α 那条 `mandatory: true`：刻印是**自动触发**的，不该再摆一个「跳过」按钮
+            //   （选完加速目标就结算；冷却区里没有合法目标时引擎静静地什么都不做）。
+            Add(46, "au", "海啸", 2, 4, CardElement.Water,
+                A(EffectOp.Haste, 1, sigil: SigilTiming.AttackEnd, mandatory: true,
+                    text: "刻印：每次进攻结束时获得一次加速"),
+                D(EffectOp.DefPlusPerHand, 1, text: "防御时增加等于手牌数的力量值"));
         }
 
         // ── 查询 ────────────────────────────────────────────────
@@ -262,18 +293,20 @@ namespace MagicBrawl.Core
         // ── 校验 ────────────────────────────────────────────────
 
         /// <summary>
-        /// 力量分布校验：1:4 / 2:4 / 3:6 / 4:5 / 5:6 / 6:6 / 7:7 / 8:4 / 9:2 / X:1（共 45 张）。
+        /// 力量分布校验：1:4 / 2:5 / 3:6 / 4:6 / 5:6 / 6:6 / 7:7 / 8:4 / 9:2 / X:1（共 47 张）。
         ///
         /// <para>前 40 张的一组数字来自原始文档、与逐卡录入完全吻合 —— 是最硬的数据断言。
         /// 2026-09-29 新增毒刺（力量 7）/ 击穿（力量 3）之后，两档各 +1
         /// （<b>3:5 → 3:6、7:5 → 7:6</b>，总数 40 → 42）；
         /// 2026-10-01 新增水之形（力量 1）/ 闪电球（力量 7）/ 冷冻核心（力量 6），
-        /// 三档各 +1（<b>1:3 → 1:4、7:6 → 7:7、6:5 → 6:6</b>，总数 42 → 45）。
+        /// 三档各 +1（<b>1:3 → 1:4、7:6 → 7:7、6:5 → 6:6</b>，总数 42 → 45）；
+        /// 2026-10-07 新增火炬（力量 4）/ 海啸（力量 2）之后两档各 +1
+        /// （<b>4:5 → 4:6、2:4 → 2:5</b>，总数 45 → 47）。
         /// 加卡时忘了改这里，报出来的是「力量分布不符」，看不出问题在新卡上。</para>
         /// </summary>
         public static bool ValidatePowerDistribution(out string report)
         {
-            int[] expected = { 4, 4, 6, 5, 6, 6, 7, 4, 2 };
+            int[] expected = { 4, 5, 6, 6, 6, 6, 7, 4, 2 };
             int[] actual = new int[9];
             int hidden = 0;
 
@@ -305,20 +338,21 @@ namespace MagicBrawl.Core
             }
 
             report = diffs.Count == 0
-                ? "力量分布 OK：1:4 2:4 3:6 4:5 5:6 6:6 7:7 8:4 9:2 X:1（共 45 张）"
+                ? "力量分布 OK：1:4 2:5 3:6 4:6 5:6 6:6 7:7 8:4 9:2 X:1（共 47 张）"
                 : "力量分布不符 → " + string.Join(" / ", diffs.ToArray());
             return diffs.Count == 0;
         }
 
         /// <summary>
-        /// 冷却分布校验：以逐卡数值为准 —— 2:8 / 3:23 / 4:14（共 45 张）。
+        /// 冷却分布校验：以逐卡数值为准 —— 2:8 / 3:23 / 4:16（共 47 张）。
         /// （原始文档标注为 3:20 / 4:13，相差 1 张，见 `02-卡牌图鉴.md` §统计校验；
         /// 2026-09-29 新增的毒刺 / 击穿都是冷却 4，所以 4:12 → 4:14；
-        /// 2026-10-01 新增水之形（冷却 2）/ 闪电球与冷冻核心（冷却 3），2:7 → 2:8、3:21 → 3:23。）
+        /// 2026-10-01 新增水之形（冷却 2）/ 闪电球与冷冻核心（冷却 3），2:7 → 2:8、3:21 → 3:23；
+        /// 2026-10-07 新增火炬 / 海啸都是冷却 4，4:14 → 4:16。）
         /// </summary>
         public static bool ValidateCooldownDistribution(out string report)
         {
-            int[] expected = { 0, 0, 8, 23, 14 };  // 下标 0..4，只用 2/3/4
+            int[] expected = { 0, 0, 8, 23, 16 };  // 下标 0..4，只用 2/3/4
             int[] actual = new int[5];
             for (int i = 0; i < Defs.Count; i++)
             {
@@ -339,7 +373,7 @@ namespace MagicBrawl.Core
             }
 
             report = diffs.Count == 0
-                ? "冷却分布 OK：2:8 3:23 4:14（共 45 张，以逐卡数值为准）"
+                ? "冷却分布 OK：2:8 3:23 4:16（共 47 张，以逐卡数值为准）"
                 : "冷却分布不符 → " + string.Join(" / ", diffs.ToArray());
             return diffs.Count == 0;
         }
@@ -469,28 +503,31 @@ namespace MagicBrawl.Core
         private static EffectDef A(
             EffectOp op, int a = 0, int b = 0, int c = 0,
             AuraKind aura = AuraKind.None, bool mandatory = false, string text = null,
-            EffectTargetScope targets = EffectTargetScope.Participants)
+            EffectTargetScope targets = EffectTargetScope.Participants,
+            SigilTiming sigil = SigilTiming.None)
         {
             return new EffectDef(EffectTrigger.Attack, op, a, b, c, aura, mandatory, text,
-                distinctTargetGroup: null, conditions: null, targets: targets);
+                distinctTargetGroup: null, conditions: null, targets: targets, sigil: sigil);
         }
 
         private static EffectDef D(
             EffectOp op, int a = 0, int b = 0, int c = 0,
             AuraKind aura = AuraKind.None, bool mandatory = false, string text = null,
-            EffectTargetScope targets = EffectTargetScope.Participants)
+            EffectTargetScope targets = EffectTargetScope.Participants,
+            SigilTiming sigil = SigilTiming.None)
         {
             return new EffectDef(EffectTrigger.Defend, op, a, b, c, aura, mandatory, text,
-                distinctTargetGroup: null, conditions: null, targets: targets);
+                distinctTargetGroup: null, conditions: null, targets: targets, sigil: sigil);
         }
 
         private static EffectDef S(
             EffectOp op, int a = 0, int b = 0, int c = 0,
             AuraKind aura = AuraKind.None, bool mandatory = false, string text = null,
-            EffectTargetScope targets = EffectTargetScope.Participants)
+            EffectTargetScope targets = EffectTargetScope.Participants,
+            SigilTiming sigil = SigilTiming.None)
         {
             return new EffectDef(EffectTrigger.Special, op, a, b, c, aura, mandatory, text,
-                distinctTargetGroup: null, conditions: null, targets: targets);
+                distinctTargetGroup: null, conditions: null, targets: targets, sigil: sigil);
         }
 
         private static void Add(

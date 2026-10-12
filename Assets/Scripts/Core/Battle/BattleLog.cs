@@ -351,6 +351,54 @@ namespace MagicBrawl.Core
         }
     }
 
+    /// <summary>
+    /// <b>刻印点亮</b>（2026-10-07）—— 一张带刻印的牌<b>作为进攻牌</b>打出、
+    /// 且第 ④ 步已把它送进冷却区之后，第 ⑤ 步点亮它身上的每一条刻印。
+    ///
+    /// <para>与 <see cref="AuraActivatedEvent"/>（光环拿到指示物）是<b>两件事</b>：
+    /// 光环是一次性资源、点亮即到账；刻印是一个开关，点亮本身不给任何数值
+    /// —— 数值要等它在 <see cref="SigilTriggeredEvent"/> 那一刻重放效果时才产生。</para>
+    /// </summary>
+    public sealed class SigilLitEvent : BattleEvent
+    {
+        /// <summary>点亮发生在谁的牌上。</summary>
+        public int Seat;
+
+        /// <summary>被点亮的牌。</summary>
+        public CardInstance Card;
+
+        /// <summary>这一条刻印的触发时机。</summary>
+        public SigilTiming Timing;
+
+        public override string Describe()
+        {
+            return "刻印点亮 seat" + Seat + " " + Card.Def.Name + "（" + Timing + "）";
+        }
+    }
+
+    /// <summary>
+    /// <b>刻印触发</b>（2026-10-07）—— 已点亮的刻印到达自己的时机，把效果重放一次。
+    ///
+    /// <para>它<b>每次触发都发一条</b>：火炬 4 回合冷却期间会发 3~4 条（每回合开始一条），
+    /// 海啸则是「每次自己进攻结束」一条。自测就是靠数它的条数来确认「真的在重复触发」。</para>
+    /// </summary>
+    public sealed class SigilTriggeredEvent : BattleEvent
+    {
+        /// <summary>刻印所属座位。</summary>
+        public int Seat;
+
+        /// <summary>贡献这条刻印的牌。</summary>
+        public CardInstance Card;
+
+        /// <summary>本次触发的是哪一档时机。</summary>
+        public SigilTiming Timing;
+
+        public override string Describe()
+        {
+            return "刻印触发 seat" + Seat + " " + Card.Def.Name + "（" + Timing + "）";
+        }
+    }
+
     /// <summary>胜负已分。</summary>
     public sealed class GameOverEvent : BattleEvent
     {

@@ -30,6 +30,18 @@ namespace MagicBrawl.App.EditorTools
         private const string ArtRoot = "Assets/Art";
         private const string UiDir = ArtRoot + "/Ui";
         private const string BgDir = ArtRoot + "/Backgrounds";
+
+        /// <summary>
+        /// <b>战斗场景用的那张背景</b>（2026-10-04 换成「水城」）。
+        ///
+        /// <para>它是 <c>BattleArtLibrary._background</c> 的唯一来源 —— 也就是
+        /// <c>BattleArtLayerBuilder</c> 里那个 <c>Bg_Stage</c> 节点铺的图。
+        /// 想换战斗背景，只改这一行 + 重跑本菜单 + 重跑 M11，不用碰代码或 Prefab。</para>
+        ///
+        /// <para>⚠ 之前那张 <c>Bg_Dungeon.png</c>（1536×990）仍在 <c>Backgrounds/</c> 里没删：
+        /// 地图主题（水城 / 地牢…）还没做，留着它随时能换回去。真要删再删。</para>
+        /// </summary>
+        private const string BattleBgFile = "Bg_WaterCity_Battle-v1.png";
         private const string CharsDir = ArtRoot + "/Chars";
         private const string IconsDir = ArtRoot + "/Icons";
         private const string ElementsDir = IconsDir + "/Elements";
@@ -106,6 +118,18 @@ namespace MagicBrawl.App.EditorTools
             new[] { ArtRoot + "/defense.png", CharsDir + "/_Source/Hero_Anim_Defend.png" },
             new[] { ArtRoot + "/BeHit.png", CharsDir + "/_Source/Hero_Anim_BeHit.png" },
             new[] { ArtRoot + "/Death.png", CharsDir + "/_Source/Hero_Anim_Death.png" },
+
+            // 2026-10-05 · 新法师（NewMage AlphaProof）批次：idle / attack / defend
+            // 三张源表换新（自带「棋盘格烘进 RGB」的假透明，切帧时由
+            // slice_hero_anim.py 的棋盘格抠图处理；behit / death 没有新素材，
+            // 由该脚本的 PLACEHOLDERS 借待机帧占位）。已在会话里用 MoveAsset
+            // 归档过一次，这里登记是为了重跑 RunAll 时保持幂等（MoveOne 会报「已在位」）。
+            new[] { ArtRoot + "/Hero_Anim_Idle_NewMage_AlphaProof_v1.png",
+                    CharsDir + "/_Source/Hero_Anim_Idle_NewMage_AlphaProof_v1.png" },
+            new[] { ArtRoot + "/Hero_Anim_Attack_NewMage_AlphaProof_v1.png",
+                    CharsDir + "/_Source/Hero_Anim_Attack_NewMage_AlphaProof_v1.png" },
+            new[] { ArtRoot + "/Hero_Anim_Defend_NewMage_AlphaProof_v1.png",
+                    CharsDir + "/_Source/Hero_Anim_Defend_NewMage_AlphaProof_v1.png" },
         };
 
         /// <summary>其它归位：旧路径 → 新路径（含改名）。</summary>
@@ -147,6 +171,23 @@ namespace MagicBrawl.App.EditorTools
             //     按 `<用途>_背景` 的既有口径规范成 `Bg_WitchWorkshop.png`。
             new[] { ArtRoot + "/2529ac9f-48ea-442c-8c58-760b693787ba.png",
                     BgDir + "/Bg_WitchWorkshop.png" },
+
+            // 2026-10-09 · **休息事件的地图图标**（帐篷 + 篝火，315×281）。
+            //     落到 Art 根目录时叫 `08_camp.png` —— ⚠ 那个编号与 `Map/08_bridge_straight.png`
+            //     <b>撞号</b>（`Map/` 里 08 / 09 是两张桥），而它跟起点那张 `06_camp.png`
+            //     也不是一回事（起点是「铺盖卷 + 篝火」，这张多一顶帐篷），
+            //     所以按「编号_用途」规范成 `Map/11_rest.png`（编号接着 10_treasure 排）。
+            new[] { ArtRoot + "/08_camp.png", ArtRoot + "/Map/11_rest.png" },
+
+            // 2026-10-09 · **宝箱场景的成品背景**（藏宝洞窟，1024×577）。
+            //     落到 Art 根目录时叫 `bg.jpg` —— 连文件名都没有语义。用户指定
+            //     「这张 bg 应该是开启宝箱的背景」→ 归类成 `Backgrounds/Bg_Treasure.png`
+            //     并让 `UiLayout.TreasureBgSpritePath` 指过去（原来用的是 `Bg_Dungeon`）。
+            //     ⚠ 它是 **jpg → png 转码**，不是改名：归位是在会话里用 PIL 做的
+            //     （见 `Docs/implementation/2026-10-09-休息事件与美术归类.md` §3），
+            //     下面这一行只是登记「源已不在、正本在哪里」—— 重跑时 `MoveOne`
+            //     会走「已在位」那条分支，是幂等的。
+            new[] { ArtRoot + "/bg.jpg", BgDir + "/Bg_Treasure.png" },
         };
 
         // ── 菜单入口（带确认弹窗，不能给脚本化调用）─────────────────────
@@ -160,7 +201,7 @@ namespace MagicBrawl.App.EditorTools
                     "① 把 UUID 源表移进 Ui/_Source 与 Chars/_Source\n" +
                     "② 第二批主角动画源表（Idle / Attack / defense / BeHit / Death）\n" +
                     "    → Chars/_Source/Hero_Anim_*.png\n" +
-                    "③ 背景 → Backgrounds/Bg_Dungeon.png、商店背景 → Backgrounds/Bg_Shop.png、\n" +
+                    "③ 战斗背景 → Backgrounds/" + BattleBgFile + "、商店背景 → Backgrounds/Bg_Shop.png、\n" +
                     "    强化背景 → Backgrounds/Bg_Upgrade.png、\n" +
                     "    女巫工坊背景 → Backgrounds/Bg_WitchWorkshop.png，参考图 → _Reference/\n" +
                     "④ 清掉 Art 根目录上与已归档正本重复的散图（搬进 Artifacts/backups/）\n" +
@@ -524,7 +565,7 @@ namespace MagicBrawl.App.EditorTools
                 buffs.ToArray(),
                 slotPlayer.ToArray(),
                 slotEnemy.ToArray(),
-                LoadSprite(BgDir + "/Bg_Dungeon.png"),
+                LoadSprite(BgDir + "/" + BattleBgFile),
                 LoadSprite(UiDir + "/Orb_Energy.png"),
                 BuildCharacter("Hero", manifest, log),
                 BuildCharacter("Monster", manifest, log));

@@ -1,0 +1,38 @@
+# ===== A. 文档断链 (0) =====
+
+# ===== B. 文档里点名、但工程中已不存在的资产路径 =====
+  Assets/Art/661ca76a-c73d-4618-b6e5-918c75968b58.png
+        <- Docs/implementation/23-M25查看对方手牌弹窗.md
+  Assets/Art/Cards/
+        <- Docs/00-当前基线.md
+        <- Docs/engineering/06-美术与字体规范.md
+        <- Docs/implementation/2026-09-30-卡面统一到插画与删除成品整图.md
+        <- Docs/implementation/2026-09-30-头顶出牌展示改用组成式卡面.md
+  Assets/Art/Cards/Card_12_l_磁暴.png
+        <- Docs/implementation/2026-09-28-磁暴引雷力量互换与漩涡可选与标题居中.md
+  Assets/Art/Cards/Card_41_ao_毒刺.png
+        <- Docs/implementation/2026-09-29-毒刺击穿与虚弱系统.md
+  Assets/Art/Icons/Elements/_Source/Type.png
+        <- Docs/implementation/2026-09-26-点击怪物思考框与七元素图标.md
+  Assets/Art/Reference-2.png
+        <- Docs/implementation/23-M25查看对方手牌弹窗.md
+  Assets/Art/Reference-3.png
+        <- Docs/implementation/25-M27手牌选择弹窗.md
+  Assets/Font/
+        <- Docs/validation/2026-09-25-文档与资源结构整理.md
+  Assets/Prefabs/Ui/CardView_Mini.prefab
+        <- Docs/archive/implementation/08-UiKit实现说明.md
+        <- Docs/implementation/36-M38卡面统一到单一Prefab.md
+        <- Docs/validation/2026-09-18-card-ui-update.md
+  Assets/Resources/Cards/Generated/
+        <- Docs/implementation/40-多轴强化与强化册.md
+  Assets/Resources/Monsters/Monster_Power|Double|Combo|Slow.asset
+        <- Docs/implementation/2026-10-06-AI双发防御修正与四流派敌人.md
+  Assets/Resources/Pools/MonsterPool_Power|Double|Combo|Slow.asset
+        <- Docs/implementation/2026-10-06-AI双发防御修正与四流派敌人.md
+  Assets/Scripts/Core/Adventure/
+        <- Docs/design/冒险模式规划.md
+  Assets/Scripts/Unity/Adventure/
+        <- Docs/design/冒险模式规划.md
+  Tools/RuleSelfTest.csproj
+        <- Docs/engineering/04-架构与接口.md

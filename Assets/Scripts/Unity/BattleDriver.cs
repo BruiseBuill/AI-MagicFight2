@@ -66,14 +66,40 @@ namespace MagicBrawl.App
         [Tooltip("本场战斗的怪物资产（留空 = 兜底怪物）。建议 Resources/Monsters/Monster_*.asset。")]
         [SerializeField] private CharacterConfig _monsterConfig;
 
+        /// <summary>
+        /// <b>终点（Boss 那一格）专用的怪</b>（2026-10-09）。
+        ///
+        /// <para><b>用户口径</b>：「最后的一个事件注定是精英战役，你需要配置一个精英，
+        /// 然后我来亲自给这个精英写卡组」。所以这里的 <c>_bossConfig</c> 就是那一只 ——
+        /// 它的卡组（<c>Assets/Resources/Pools/MonsterPool_Boss.asset</c>）由用户自己填，
+        /// 血量 / AI 档案 / 行为写在这份角色资产上。</para>
+        ///
+        /// <para><b>怎么接上的</b>：地图上的节点类型是「进去之后会发生什么」的唯一分类依据
+        /// （<see cref="MapNodeType"/> 的类注释），而终点固定是
+        /// <see cref="MapNodeType.Boss"/> —— 所以战斗侧不需要任何"这是第几层 / 第几场"的判断，
+        /// 只要问 <see cref="IsBossBattle"/>。判据只有一处（<see cref="MapRun"/>）。</para>
+        ///
+        /// <para><b>⚠ 留空 = 老行为</b>：那一场仍旧用 <see cref="_monsterConfig"/>，
+        /// 与这一格不存在时逐字相同。</para>
+        ///
+        /// <para><b>⚠ 单场景调试不受影响</b>：直接在编辑器里点开 <c>SampleScene</c> 进 Play 时
+        /// <see cref="MapRun"/> 是空的 → <see cref="IsBossBattle"/> 恒为 false →
+        /// 用的还是 <see cref="_monsterConfig"/>（独立场景契约 E1/E2）。</para>
+        /// </summary>
+        [Tooltip("终点（Boss 节点）专用的怪（留空 = 与普通战斗同一只）。"
+                 + "建议 Resources/Monsters/Monster_Boss.asset。")]
+        [SerializeField] private CharacterConfig _bossConfig;
+
         [Header("存档（玩家卡池的来源）")]
         [Tooltip("本场战斗读哪个存档的卡池。\n"
-                 + "· 战斗测试档（存档 1）= 默认。只有战斗读得到它；没有存档时用角色自带的卡池"
-                 + "（BattlePool = 全 45 张），点了设置面板的「保存并重开」才落盘。\n"
-                 + "· 主存档（存档 2）= 商店 / 强化 / 女巫工坊共用的那一份。正式跑冒险链路时切到它，"
-                 + "这样战斗里用的牌就是商店买来的那些。\n"
-                 + "⚠ 这两个档位是**两套独立的卡池**，互不影响。")]
-        [SerializeField] private SaveSlot _saveSlot = SaveSlot.Test;
+                 + "· 主存档（存档 2）= **默认（2026-10-05 起）**。商店 / 强化 / 女巫工坊 / 战斗"
+                 + "共用同一份卡池与同一份「卡牌获取状态」（已获得 / 曾展示）—— 战斗奖励里"
+                 + "排除掉的牌，商店货架上也一并排除。\n"
+                 + "· 战斗测试档（存档 1）= 原来的默认值（单场景调试手感）。只有战斗读得到它；"
+                 + "没有存档时用角色自带的卡池（BattlePool = 全 45 张），"
+                 + "点了设置面板的「保存并重开」才落盘。\n"
+                 + "⚠ 这两个档位是**两套独立的卡池 + 两套独立的获取状态**，互不影响。")]
+        [SerializeField] private SaveSlot _saveSlot = SaveSlot.Main;
 
         [Header("演出节奏")]
         [Tooltip("节拍总倍率：0 = 关闭演出（事件仍逐条发，只不等待）。")]
@@ -102,15 +128,32 @@ namespace MagicBrawl.App
         public int ParticipantCount { get { return _engine == null ? 0 : _engine.State.Players.Count; } }
         public bool IsPaused { get { return _paused; } }
         /// <summary>
-        /// 本场战斗读的存档档位。默认 <see cref="SaveSlot.Test"/>（战斗测试档）。
+        /// 本场战斗读的存档档位。
         ///
-        /// <para>切到 <see cref="SaveSlot.Main"/> 之后，本场战斗用的就是商店买过、女巫消耗过的
-        /// 那一份卡池 —— 也就是「冒险链路里的那个玩家」。</para>
+        /// <para><b>两个来源，优先级明确</b>：</para>
+        /// <list type="bullet">
+        /// <item><description>
+        ///   <b>玩家在主菜单里选过档</b>（<see cref="GameSession.HasChosen"/> 为真）——
+        ///   用他选的（<see cref="GameSession.Slot"/>）。这是「一场游戏」的正常路径；
+        /// </description></item>
+        /// <item><description>
+        ///   <b>没选过</b>（直接从编辑器点开 <c>SampleScene</c> 进 Play 调试）——
+        ///   用 Inspector 里的 <c>_saveSlot</c>。这样单场景调试不会被主菜单影响，
+        ///   与三个事件场景的「独立场景契约」同一口径。
+        /// </description></item>
+        /// </list>
+        ///
+        /// <para><b>⚠ 内部的读 / 写也必须走这个属性</b>，不能再用 <c>_saveSlot</c> ——
+        /// 混用会让「读的是主存档、写的是测试档」，而症状是「奖励拿了但商店里没有」，
+        /// 零报错。</para>
         /// </summary>
-        public SaveSlot ActiveSaveSlot { get { return _saveSlot; } }
+        public SaveSlot ActiveSaveSlot
+        {
+            get { return SaveSlots.Active(_saveSlot); }
+        }
 
         /// <summary>当前档位的落盘路径（设置面板显示用）。</summary>
-        public string CardPoolSavePath { get { return SaveStore.FilePathFor(_saveSlot); } }
+        public string CardPoolSavePath { get { return SaveStore.FilePathFor(ActiveSaveSlot); } }
         public void SetPaused(bool paused) { _paused = paused; }
 
         /// <summary>
@@ -351,9 +394,12 @@ namespace MagicBrawl.App
                         // 并按角色的 aiProfile 选择怪物专属子类（空 = 通用）。
                         // ⚠ 必须把 engine.State 传进去 —— 流派判定要读手牌，减速流派还要读
                         //   对方冷却区张数与手牌数；不传的话这两条功能会静默降级。
+                        // 2026-10-08：手写出牌优先级挂在角色定义上（来自它的卡池资产），
+                        // 与 AiProfile 同一条传递路径 —— 一个座位一份，不会串台。
                         : new AiController(MonsterAgentFactory.Create(
                             participant.Character.AiProfile, engine.State,
-                            _aiUseAuras, unchecked(seed + seat)));
+                            _aiUseAuras, unchecked(seed + seat),
+                            participant.Character.CardPriorities));
                 controllers.Add(seat, controller);
             }
 
@@ -635,8 +681,27 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
 
         /// <summary>
-        /// 某个座位用哪份角色资产。查找顺序（2026-10-03）：
-        /// ① <b>怪物资产</b>（对非本地座位）→ ② 名单里显式写的那一份 → ③ null（用兜底）。
+        /// 这一场是不是<b>终点（Boss 节点）</b>的那一战（2026-10-09）。
+        ///
+        /// <para><b>判据只有一处</b>：<see cref="MapRun"/> 里正在进入的那个节点的类型是不是
+        /// <see cref="MapNodeType.Boss"/>。战斗场景不在别处再判一遍「这是第几层 / 是不是最后一场」
+        /// —— 那正是「规则在两个地方各写一份」的老问题。</para>
+        ///
+        /// <para>没有冒险在跑（单场景调试）时它恒为 <c>false</c>。</para>
+        /// </summary>
+        public static bool IsBossBattle
+        {
+            get
+            {
+                return MapRun.HasPending
+                       && MapRun.Graph.Nodes[MapRun.PendingIndex].Type == MapNodeType.Boss;
+            }
+        }
+
+        /// <summary>
+        /// 某个座位用哪份角色资产。查找顺序（2026-10-09 起四项）：
+        /// ① <b>终点专用怪</b>（对非本地座位，且这一场是 Boss 那一格）
+        /// → ② <b>怪物资产</b>（对非本地座位）→ ③ 名单里显式写的那一份 → ④ null（用兜底）。
         ///
         /// <para>⚠ <b>怪物资产优先，不是名单优先</b> —— 这是实测逼出来的：本工程的
         /// <c>BattleCanvas.prefab</c> 里 <c>_participants</c> <b>早就填着</b>
@@ -649,6 +714,14 @@ namespace MagicBrawl.App
         /// </summary>
         private CharacterConfig ConfigFor(int seat)
         {
+            // ① 终点（Boss 那一格）专用的怪 —— 只对非本地座位有意义（2026-10-09）。
+            // ⚠ 它排在 _monsterConfig 之前：终点那一战的对手就是用户配的那只精英。
+            if (seat != _localSeat && _bossConfig != null && IsBossBattle)
+            {
+                return _bossConfig;
+            }
+
+            // ② 本场战斗的怪
             if (_monsterConfig != null && seat != _localSeat)
             {
                 return _monsterConfig;
@@ -718,8 +791,18 @@ namespace MagicBrawl.App
                     CardPool pool;
                     string error;
                     if (localOverride != null) pool = localOverride;
-                    else if (!SaveStore.TryLoadCardPool(_saveSlot, character, out pool, out error)) Debug.LogWarning(error + " 本局使用角色默认卡池。");
+                    else if (!SaveStore.TryLoadCardPool(ActiveSaveSlot, character, out pool, out error)) Debug.LogWarning(error + " 本局使用角色默认卡池。");
                     character = character.WithCardPool(pool);
+
+                    // 2026-10-05 · 带伤入场：冒险里玩家的入场当前生命 = 局外当前生命，
+                    // 入场上限仍是角色资产的正常上限（规格 §3.2）。
+                    // ⚠ 判据是「局外有没有一份当前生命」，不是「有没有在冒险里」——
+                    //   单场景调试同样走这条路（否则「冒险里带伤、单场景满血」会分成两套口径，
+                    //   而玩家看到的永远是后者）。第一次进场是 0 → 满血；之后逐场带伤。
+                    if (MapRun.HasPlayerHp)
+                    {
+                        character = character.WithHp(MapRun.PlayerHp, character.MaxHp);
+                    }
                 }
                 bool defaults = _participants == null || _participants.Length == 0;
                 participants.Add(new ParticipantSetup(character,
@@ -762,7 +845,7 @@ namespace MagicBrawl.App
                 error = ex.Message;
                 return false;
             }
-            if (!SaveStore.TrySaveCardPool(_saveSlot, pool, out error)) return false;
+            if (!SaveStore.TrySaveCardPool(ActiveSaveSlot, pool, out error)) return false;
             StartBattle();
             return true;
         }

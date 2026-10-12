@@ -10,11 +10,14 @@ namespace MagicBrawl.Core
     /// <para><b>它和 <see cref="CardUpgrade"/> 不是一回事，两套并存</b>：</para>
     /// <list type="bullet">
     /// <item><description>
-    ///   <b><see cref="CardUpgrade"/>（P5 · 石台）</b>：免费、一次一张、基础力量 +2 封顶 9，
-    ///   <b>不消耗任何牌</b>。
+    ///   <b><see cref="CardUpgrade"/>（P5 · 石台，代价与流程见 <see cref="AltarRite"/>）</b>：
+    ///   一次一张、基础力量 +2 封顶 9。<b>2026-10-06 起也要献祭一张牌</b>
+    ///   （用户原话：「强化时需要选择一张牌作为祭品，然后才能力量加2，不然无法强化」），
+    ///   但<b>不花金币</b>。
     /// </description></item>
     /// <item><description>
-    ///   <b>本类（女巫的工坊 · 水晶球）</b>：<b>献祭一张牌</b>换另一张牌的特殊强化。
+    ///   <b>本类（女巫的工坊 · 水晶球）</b>：<b>献祭一张牌</b>换另一张牌的特殊强化
+    ///   （把一条效果搬过去），而且<b>要花金币</b>。
     ///   两个空位 —— 左 = 被消耗的牌，右 = 强化目标。
     /// </description></item>
     /// </list>

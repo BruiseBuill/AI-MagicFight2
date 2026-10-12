@@ -1,0 +1,315 @@
+=== 1. 候选垃圾/历史目录体积 ===
+  .workbuddy/tmp (Unity 会话临时)                   2 个     0.90 MB
+  .workbuddy (工程内, 全部)                          3 个     0.90 MB
+  Captures (截图总)                              192 个   692.65 MB
+  Tools/art-audit/_work                         0 个     0.00 MB
+  Tools/art-audit/_tmp                          0 个     0.00 MB
+  Tools/font-audit                              7 个     0.02 MB
+  Docs/archive                                 11 个     0.11 MB
+  Docs/validation                               8 个     0.03 MB
+  Docs/implementation                          53 个     0.64 MB
+  Assets/Art/CardArt/_Draft                    24 个    11.61 MB
+  Assets/Art/_Reference                         8 个     7.54 MB
+  Assets/Art/Chars/_Source                     26 个    16.35 MB
+  Assets/Art/Icons/_Source                      6 个     5.09 MB
+  Assets/Art/Ui/_Source                        10 个     7.78 MB
+  Assets/Plugins/Demigiant (DOTween)          351 个     1.69 MB
+  Assets/ThirdParty/MagicCardKit               37 个     0.41 MB
+  Assets/ThirdParty/PolySprite                 72 个     0.27 MB
+  Assets/Settings                              11 个     3.78 MB
+  Assets/Font                                   0 个     0.00 MB
+  Assets/Art (全部)                             678 个   340.03 MB
+  Assets/Scripts                              327 个     2.82 MB
+  Assets/TextMesh Pro                          72 个     3.92 MB
+  Library (Unity 缓存)                         37783 个  2050.60 MB
+  Temp                                         10 个     0.14 MB
+  obj                                          27 个     1.98 MB
+  Logs                                         16 个     0.46 MB
+  .git                                        766 个   976.76 MB
+  Tools (全部)                                  125 个     2.85 MB
+  Tools/RuleSelfTest 日志                         0 个     0.00 MB
+
+=== 2. Font 目录：源文件体积 + 是否被引用 ===
+
+=== 3. 代码里出现的字体路径 ===
+
+=== 4. Art/Cards 与 Art/CardArt 文件清单 ===
+  --- Assets/Art/Cards
+  --- Assets/Art/CardArt
+      1165.5 KB Assets/Art/CardArt/Card_01_a_暴风雪.png
+      1294.2 KB Assets/Art/CardArt/Card_02_b_冰风暴.png
+      1786.7 KB Assets/Art/CardArt/Card_03_c_凝固.png
+       970.8 KB Assets/Art/CardArt/Card_04_d_寒流.png
+       200.2 KB Assets/Art/CardArt/Card_05_e_潮汐.jpg
+       861.0 KB Assets/Art/CardArt/Card_06_f_滚石冲击.png
+       211.3 KB Assets/Art/CardArt/Card_07_g_陨石.jpg
+       141.9 KB Assets/Art/CardArt/Card_08_h_沉重打击.jpg
+       239.7 KB Assets/Art/CardArt/Card_09_i_地震.jpg
+       972.6 KB Assets/Art/CardArt/Card_10_j_闪电.png
+       137.5 KB Assets/Art/CardArt/Card_11_k_电弧.jpg
+      1012.6 KB Assets/Art/CardArt/Card_12_l_磁暴.png
+       245.2 KB Assets/Art/CardArt/Card_13_m_雷鸣.jpg
+      1057.1 KB Assets/Art/CardArt/Card_14_n_引雷.png
+       198.8 KB Assets/Art/CardArt/Card_15_o_过载.jpg
+       209.7 KB Assets/Art/CardArt/Card_16_p_自燃.jpg
+       225.5 KB Assets/Art/CardArt/Card_17_q_海涌.jpg
+       215.6 KB Assets/Art/CardArt/Card_18_r_水刃.jpg
+       159.9 KB Assets/Art/CardArt/Card_19_s_喷泉.jpg
+       200.5 KB Assets/Art/CardArt/Card_20_t_荆棘.jpg
+       153.3 KB Assets/Art/CardArt/Card_21_u_飞叶连击.jpg
+       190.9 KB Assets/Art/CardArt/Card_22_v_藤蔓.jpg
+       922.5 KB Assets/Art/CardArt/Card_23_w_狂躁蘑菇.png
+       166.4 KB Assets/Art/CardArt/Card_24_x_模仿.jpg
+       126.2 KB Assets/Art/CardArt/Card_25_y_瀑流.jpg
+       132.9 KB Assets/Art/CardArt/Card_26_z_地动波.jpg
+       437.8 KB Assets/Art/CardArt/Card_27_aa_漩涡.jpg
+       200.3 KB Assets/Art/CardArt/Card_28_ab_湍流.jpg
+       539.0 KB Assets/Art/CardArt/Card_29_ac_雪球.png
+       910.8 KB Assets/Art/CardArt/Card_30_ad_雷云.png
+       238.9 KB Assets/Art/CardArt/Card_31_ae_灼烧.jpg
+       905.9 KB Assets/Art/CardArt/Card_32_af_冰封铠甲.png
+       451.1 KB Assets/Art/CardArt/Card_33_ag_淬火.jpg
+      1003.0 KB Assets/Art/CardArt/Card_34_ah_烈焰斗篷.png
+       465.2 KB Assets/Art/CardArt/Card_35_ai_爆燃.jpg
+       232.3 KB Assets/Art/CardArt/Card_36_aj_火灾.jpg
+       108.4 KB Assets/Art/CardArt/Card_37_ak_石化.jpg
+       131.7 KB Assets/Art/CardArt/Card_38_al_石盾.jpg
+       247.3 KB Assets/Art/CardArt/Card_39_am_充能.jpg
+      1283.7 KB Assets/Art/CardArt/Card_40_an_雪崩.png
+      1356.4 KB Assets/Art/CardArt/Card_41_ao_毒刺.png
+      1126.7 KB Assets/Art/CardArt/Card_42_ap_击穿.png
+      1630.6 KB Assets/Art/CardArt/Card_43_aq_水之形.png
+      1934.2 KB Assets/Art/CardArt/Card_44_ar_闪电球.png
+      1745.2 KB Assets/Art/CardArt/Card_45_as_冷冻核心.png
+      1634.5 KB Assets/Art/CardArt/Card_46_at_火炬.png
+      1781.3 KB Assets/Art/CardArt/Card_47_au_海啸.png
+      1682.4 KB Assets/Art/CardArt/_Draft/Draft_Fire_蒸汽锅炉.png
+       114.8 KB Assets/Art/CardArt/_Draft/Draft_Fire_鬼火.jpg
+       975.3 KB Assets/Art/CardArt/_Draft/Draft_Grass_剧毒种子.png
+      1695.6 KB Assets/Art/CardArt/_Draft/Draft_Grass_果实.png
+      1634.9 KB Assets/Art/CardArt/_Draft/Draft_Grass_虚弱花粉.png
+      1688.8 KB Assets/Art/CardArt/_Draft/Draft_Lightning_蓄电攻击_v1.png
+      1848.6 KB Assets/Art/CardArt/_Draft/Draft_Lightning_雷霆释放攻击_v1.png
+       172.5 KB Assets/Art/CardArt/_Draft/Draft_Sound_共振.jpg
+       182.9 KB Assets/Art/CardArt/_Draft/Draft_Sound_振荡.jpg
+        97.7 KB Assets/Art/CardArt/_Draft/Draft_Sound_次声波.jpg
+      1621.4 KB Assets/Art/CardArt/_Draft/Draft_Water_海啸_v4.png
+       128.7 KB Assets/Art/CardArt/_Draft/Draft_Water_雾隐.jpg
+  --- Assets/Art/Backgrounds
+      1790.3 KB Assets/Art/Backgrounds/Bg_Dungeon.png
+      2201.3 KB Assets/Art/Backgrounds/Bg_Shop.png
+      1794.8 KB Assets/Art/Backgrounds/Bg_Upgrade.png
+      2092.3 KB Assets/Art/Backgrounds/Bg_WaterCity_Battle-v1.png
+      1523.0 KB Assets/Art/Backgrounds/Bg_WitchWorkshop.png
+  --- Assets/Art/Fx
+       404.4 KB Assets/Art/Fx/Fx_Explosion_Light.png
+        98.6 KB Assets/Art/Fx/icon_no_number_ns_256.png
+  --- Assets/Art/Icons
+       100.8 KB Assets/Art/Icons/IconSheet_触发符号_TMP.png
+       323.1 KB Assets/Art/Icons/Icon_01_attack_剑.png
+       302.8 KB Assets/Art/Icons/Icon_02_defend_盾.png
+       404.0 KB Assets/Art/Icons/Icon_03_special_感叹号.png
+       236.5 KB Assets/Art/Icons/Icon_04_atkplus_力量增加.png
+       238.6 KB Assets/Art/Icons/Icon_05_defplus_防御增加.png
+       228.1 KB Assets/Art/Icons/Icon_06_combo_连击.png
+       246.2 KB Assets/Art/Icons/Icon_07_immune_免疫.png
+       226.2 KB Assets/Art/Icons/Icon_08_weak_虚弱.png
+       224.8 KB Assets/Art/Icons/Icon_09_fragile_脆弱.png
+       240.9 KB Assets/Art/Icons/Icon_10_haste_加速.png
+      1234.8 KB Assets/Art/Icons/_Source/IconSheet_盾剑特殊_三合一.png
+      2106.3 KB Assets/Art/Icons/_Source/Icon_效果七合一.png
+      1860.6 KB Assets/Art/Icons/_Source/Type.png
+
+=== 5. Captures 全清单 ===
+  2026-09-16 10:44     32.1 KB Captures/art-review/字体对比-04-英文点缀-小字号.png
+  2026-09-16 10:44     35.7 KB Captures/art-review/字体对比-04-英文点缀.png
+  2026-09-16 10:44    119.6 KB Captures/art-review/字体对比-01-正文黑体-小字号.png
+  2026-09-16 10:44    147.4 KB Captures/art-review/字体对比-02-标题黑体-小字号.png
+  2026-09-16 10:44    168.2 KB Captures/art-review/字体对比-01-正文黑体.png
+  2026-09-16 10:44    207.5 KB Captures/art-review/字体对比-02-标题黑体.png
+  2026-09-16 10:44    362.0 KB Captures/art-review/字体对比-03-手写体-小字号.png
+  2026-09-16 10:44    559.6 KB Captures/art-review/字体对比-03-手写体.png
+  2026-09-16 10:45   4040.4 KB Captures/art-review/卡牌总览-40张.png
+  2026-09-16 13:10    904.4 KB Captures/art-review/m7_uikit_01.png
+  2026-09-16 13:11    904.4 KB Captures/art-review/m7_uikit_02.png
+  2026-09-16 15:05   3659.4 KB Captures/art-review/新素材总览-01-元素原画.png
+  2026-09-16 15:06    162.9 KB Captures/art-review/新素材总览-02-PolySprite形状包.png
+  2026-09-16 15:30    568.3 KB Captures/art-review/新素材总览-05-无对应卡草稿.png
+  2026-09-16 15:30   1602.1 KB Captures/art-review/新素材总览-04-插画原图-按卡序.png
+  2026-09-16 15:56    105.1 KB Captures/art-review/新素材总览-03-原Art根目录两张图.png
+  2026-09-16 17:53    103.2 KB Captures/art-review/新素材总览-07-图标源图分块核对.png
+  2026-09-16 17:55     88.3 KB Captures/art-review/新素材总览-06-图标切分结果.png
+  2026-09-16 18:14    606.1 KB Captures/art-review/m8_uikit_02_detail.png
+  2026-09-16 18:16    427.4 KB Captures/art-review/m8_uikit_03_midgame.png
+  2026-09-16 18:17     51.8 KB Captures/art-review/m8_uikit_03b_emptyhand.png
+  2026-09-16 18:17     64.0 KB Captures/art-review/m8_uikit_04_result.png
+  2026-09-16 18:18    592.1 KB Captures/art-review/m8_uikit_01_replace.png
+  2026-09-16 19:41    593.7 KB Captures/art-review/m9_deal_01_open.png
+  2026-09-16 19:44    727.0 KB Captures/art-review/m9_deal_02_three_marked.png
+  2026-09-16 19:46    552.0 KB Captures/art-review/m9_deal_03_join_replace.png
+  2026-09-17 10:38   3094.3 KB Captures/art-review/m11_ui_01_first.png
+  2026-09-17 10:39   3079.6 KB Captures/art-review/m11_ui_04_cooldown.png
+  2026-09-17 10:39   3188.5 KB Captures/art-review/m11_ui_03_battle.png
+  2026-09-17 10:46   3070.4 KB Captures/art-review/m11_ui_06_cooldown_rows.png
+  2026-09-17 14:20   3149.5 KB Captures/art-review/m13_ui_01_arc.png
+  2026-09-17 14:35   3237.7 KB Captures/art-review/m13_ui_02_arrow_attack.png
+  2026-09-17 14:51   3169.9 KB Captures/art-review/m13_ui_06_arrow_defend.png
+  2026-09-17 14:57   2644.4 KB Captures/art-review/m13_badge.png
+  2026-09-17 14:57   3153.8 KB Captures/art-review/m13_ui_08_foe_card_visual-1.png
+  2026-09-18 10:26   2209.9 KB Captures/art-review/m15_ui_03_drag.png
+  2026-09-18 10:26   2371.4 KB Captures/art-review/m15_ui_02_tip.png
+  2026-09-18 10:26   2440.1 KB Captures/art-review/m15_ui_01_hudbuff.png
+  2026-09-18 13:31   3233.4 KB Captures/2026-09-18-aura-regression/hudbuff-long-press.png
+  2026-09-18 13:36   3229.8 KB Captures/2026-09-18-aura-regression/hudbuff-long-press-1.png
+  2026-09-18 13:58   3248.9 KB Captures/card-ui-controlled-check.png
+  2026-09-18 14:00   3275.3 KB Captures/card-ui-bottom-rows.png
+  2026-09-18 14:01   3284.7 KB Captures/card-ui-face-only.png
+  2026-09-19 10:20    268.4 KB Captures/art-review/m17_ui_02_cooling_mini.png
+  2026-09-19 10:31    714.0 KB Captures/art-review/m17_ui_01_hand_cards.png
+  2026-09-20 09:47    195.1 KB Captures/art-review/m20_01_head_1card.png
+  2026-09-20 09:47    245.4 KB Captures/art-review/m20_02_head_2cards.png
+  2026-09-20 10:38   5893.2 KB Captures/art-review/m21_06_all_combined.png
+  2026-09-20 10:47   6177.0 KB Captures/art-review/m21_02_aura_default_rows.png
+  2026-09-20 10:48   5914.4 KB Captures/art-review/m21_03_prepared_markers_and_hint.png
+  2026-09-20 10:49   5657.9 KB Captures/art-review/m21_05_drophint_shape_temp45.png
+  2026-09-21 15:57   3881.1 KB Captures/art-review/m25_peek_01_7张两行.png
+  2026-09-21 16:01   4024.1 KB Captures/art-review/m25_peek_02_翻面终态与角标.png
+  2026-09-21 16:03   3994.2 KB Captures/art-review/m25_peek_04_5张三加二.png
+  2026-09-21 16:03   4235.8 KB Captures/art-review/m25_peek_03_3张单行.png
+  2026-09-21 16:52   5026.1 KB Captures/art-review/m26_zone_pick.png
+  2026-09-21 17:26   5380.8 KB Captures/art-review/m27_handpick_01_empty.png
+  2026-09-21 17:40   5247.1 KB Captures/art-review/m27_handpick_04_fixed.png
+  2026-09-22 08:50   5229.0 KB Captures/art-review/m27_handpick_07_3cards_fixed.png
+  2026-09-22 08:50   5407.6 KB Captures/art-review/m27_handpick_08_1card.png
+  2026-09-22 09:50   4888.0 KB Captures/art-review/m28_monster_hand_01.png
+  2026-09-22 10:45   5924.3 KB Captures/art-review/screenshot-20260922-104546.png
+  2026-09-22 10:47   5889.2 KB Captures/art-review/m29_fix_layerorder_01.png
+  2026-09-22 15:45   5659.3 KB Captures/art-review/m30_handpick_3cards.png
+  2026-09-22 15:46   5985.3 KB Captures/art-review/m30_handpick_arc_disabled.png
+  2026-09-22 15:50   5861.8 KB Captures/art-review/m30_handpick_empty.png
+  2026-09-23 09:01   4800.8 KB Captures/art-review/m31_multi_wide.png
+  2026-09-23 09:02   5119.0 KB Captures/art-review/m31_whirlpool_final.png
+  2026-09-23 09:55   4882.5 KB Captures/art-review/m32_handpick_02_fixed_three.png
+  2026-09-23 09:55   5059.1 KB Captures/art-review/m32_handpick_01_fixed_empty.png
+  2026-09-23 13:19   4982.5 KB Captures/art-review/m34_aura_01_prepared.png
+  2026-09-23 13:20   4979.5 KB Captures/art-review/m34_aura_02_cancelled_still_hidden.png
+  2026-09-23 13:21   4970.7 KB Captures/art-review/m34_aura_03_midflight.png
+  2026-09-23 15:10   4796.1 KB Captures/art-review/m35_01_head_both.png
+  2026-09-23 15:14   4438.6 KB Captures/art-review/m35_02_foe_head_live.png
+  2026-09-23 15:14   6207.7 KB Captures/art-review/m35_03_hero_head_live.png
+  2026-09-23 15:18   4802.5 KB Captures/art-review/m35_04_both_head_clean.png
+  2026-09-23 17:03   5240.5 KB Captures/art-review/m36_midgame_01.png
+  2026-09-23 17:13   5136.0 KB Captures/art-review/m36_floattip_pop.png
+  2026-09-23 17:23   5147.1 KB Captures/art-review/m36_banner_test.png
+  2026-09-23 17:24   5134.8 KB Captures/art-review/m36_banner_test2.png
+  2026-09-23 17:28   5000.8 KB Captures/art-review/m36_floattip_show.png
+  2026-09-23 17:31   4999.5 KB Captures/art-review/m36_floattip_red.png
+  2026-09-23 17:33   4811.4 KB Captures/art-review/m36_probe_red.png
+  2026-09-23 17:34   4925.9 KB Captures/art-review/m36_tip_and_banner.png
+  2026-09-23 17:39   4984.9 KB Captures/art-review/m36_aura_cast.png
+  2026-09-23 17:41   5081.5 KB Captures/art-review/m36_floattip_final.png
+  2026-09-25 10:09      0.0 KB Captures/_prefab_baseline.txt
+  2026-09-25 15:35   5115.0 KB Captures/art-review/m38_unified_cards_01_play.png
+  2026-09-25 15:36   5039.7 KB Captures/art-review/m38_unified_cards_02_mini.png
+  2026-09-25 16:39   4117.8 KB Captures/art-review/m39_card_pool.png
+  2026-09-25 16:41   4385.3 KB Captures/art-review/m39_settings.png
+  2026-09-26 08:42      0.4 KB Captures/art-review/README.md
+  2026-09-26 08:42      0.7 KB Captures/README.md
+  2026-09-26 08:42    829.9 KB Captures/art-review/verify-titles.png
+  2026-09-26 08:53   4107.1 KB Captures/art-review/m40_pool_selectnone_01_cleared.png
+  2026-09-26 08:53   4107.1 KB Captures/art-review/m40_pool_selectnone_02_cleared.png
+  2026-09-26 10:02    313.6 KB Captures/art-review/elements_sheet.png
+  2026-09-26 10:37   5211.8 KB Captures/art-review/m41_think_bubble_10_battle.png
+  2026-09-26 13:34   6330.4 KB Captures/art-review/m42_font_fix_01_battle.png
+  2026-09-26 13:35   6371.2 KB Captures/art-review/m42_font_fix_02_detail.png
+  2026-09-26 16:16     83.6 KB Captures/shop_base-1.png
+  2026-09-26 16:16     83.6 KB Captures/shop_base.png
+  2026-09-26 16:18   5524.4 KB Captures/shop_verify.png
+  2026-09-26 16:24   5704.2 KB Captures/shop_after_buy.png
+  2026-09-26 16:24   5728.1 KB Captures/shop_soldout.png
+  2026-09-26 16:27     83.6 KB Captures/shop_after_buy-1.png
+  2026-09-26 16:27   5710.2 KB Captures/shop_soldout-1.png
+  2026-09-26 16:30   6231.3 KB Captures/shop_final.png
+  2026-09-26 16:56   5237.4 KB Captures/art-review/m43_bag_01_open.png
+  2026-09-26 16:57   6231.5 KB Captures/art-review/m43_shop_hero_bag_03_closed.png
+  2026-09-27 10:13   6218.4 KB Captures/shop_after_buys_soldout.png
+  2026-09-27 10:13   6244.9 KB Captures/shop_after_card110_price090.png
+  2026-09-27 10:43   6286.7 KB Captures/art-review/m44_bubble_01_no_bg.png
+  2026-09-27 10:44   6008.9 KB Captures/art-review/m44_handpick_01_no_subtitle.png
+  2026-09-27 10:46   6313.3 KB Captures/art-review/m44_bubble_02_final.png
+  2026-09-28 17:28    261.6 KB Captures/art-review/m45_cardface_n_power_2to3.png
+  2026-09-28 17:28    269.0 KB Captures/art-review/m45_cardface_l_power_3to2.png
+  2026-09-28 17:36   6057.7 KB Captures/art-review/m45_handpick_title_centered.png
+  2026-09-30 08:52   6284.1 KB Captures/art-review/2026-09-29-weaken-badge-01-shown.png
+  2026-09-30 08:52   6286.7 KB Captures/art-review/2026-09-29-weaken-badge-00-baseline.png
+  2026-09-30 08:58   6330.0 KB Captures/art-review/2026-09-29-weaken-badge-02-rebuilt.png
+  2026-09-30 09:23   6287.2 KB Captures/art-review/2026-09-30-facedrop-01-monster-head-before-clean.png
+  2026-09-30 09:30   6507.6 KB Captures/art-review/2026-09-30-facedrop-02-monster-head-fixed.png
+  2026-09-30 09:56   5243.0 KB Captures/2026-09-30-playedcard-facedrop-full.png
+  2026-09-30 09:56   6238.8 KB Captures/2026-09-30-playedcard-facedrop-01.png
+  2026-09-30 09:57    350.7 KB Captures/art-review/2026-09-30-playedcard-monster-head.png
+  2026-09-30 09:57    421.7 KB Captures/art-review/2026-09-30-playedcard-hero-head.png
+  2026-09-30 11:39   6301.5 KB Captures/art-review/2026-09-30-flightcard-composed-probe.png
+  2026-09-30 14:01   5521.6 KB Captures/art-review/p5_upgrade_01_idle.png
+  2026-09-30 14:02   4811.8 KB Captures/art-review/p5_upgrade_02_picker.png
+  2026-09-30 14:03   4785.1 KB Captures/art-review/p5_upgrade_04_selected.png
+  2026-09-30 14:03   4811.8 KB Captures/art-review/p5_upgrade_03_selected.png
+  2026-09-30 14:05   5507.7 KB Captures/art-review/p5_upgrade_05_fx_mid.png
+  2026-09-30 14:06   4675.4 KB Captures/art-review/p5fx_b_burst.png
+  2026-09-30 14:06   4707.7 KB Captures/art-review/p5fx_a_shrink.png
+  2026-09-30 14:06   4747.4 KB Captures/art-review/p5fx_c_reveal.png
+  2026-09-30 14:07   4660.0 KB Captures/art-review/p5fx_d_count.png
+  2026-09-30 14:07   4660.2 KB Captures/art-review/p5fx_e_final.png
+  2026-10-01 08:59   4690.6 KB Captures/art-review/p5fx_g_final_number.png
+  2026-10-01 09:06   4157.9 KB Captures/art-review/p5_upgrade_06_after_persist.png
+  2026-10-01 09:07   4694.0 KB Captures/art-review/p5fx_h_second_upgrade.png
+  2026-10-01 09:18    541.6 KB Captures/art-review/p5_upgrade_fx_storyboard.png
+  2026-10-01 09:18    574.7 KB Captures/art-review/p5_upgrade_fx_storyboard_2.png
+  2026-10-01 09:18    874.6 KB Captures/art-review/p5_upgrade_persist.png
+  2026-10-01 18:38   3978.1 KB Captures/art-review/p6_witch_01_idle.png
+  2026-10-01 18:39   3335.9 KB Captures/art-review/p6_witch_02_layer.png
+  2026-10-01 18:39   3808.0 KB Captures/art-review/p6_witch_03_picker.png
+  2026-10-02 16:21   2822.8 KB Captures/screenshot-20261002-162143.png
+  2026-10-02 17:20   3458.2 KB Captures/art-review/p7_map_01_overview.png
+  2026-10-02 17:25   3152.5 KB Captures/art-review/p7_map_02_run_lost.png
+  2026-10-02 17:26   3463.8 KB Captures/art-review/p7_map_03_back_from_shop.png
+  2026-10-02 17:28   3349.4 KB Captures/art-review/p7_map_04_random_seed.png
+  2026-10-03 14:15   5733.3 KB Captures/reveal_on.png
+  2026-10-03 14:16   4312.9 KB Captures/settings_reveal_toggle.png
+  2026-10-03 14:16   4822.1 KB Captures/reveal_off.png
+  2026-10-03 15:22   4491.1 KB Captures/screenshot-20261003-152239.png
+  2026-10-03 16:02   4252.9 KB Captures/witch_cost_04_poor.png
+  2026-10-03 16:02   4258.4 KB Captures/witch_cost_02_line.png
+  2026-10-03 16:02   4259.4 KB Captures/witch_cost_03_change.png
+  2026-10-03 16:02   4493.3 KB Captures/witch_cost_01_floor.png
+  2026-10-03 16:02   4699.1 KB Captures/witch_cost_00_idle.png
+  2026-10-03 16:02   4706.3 KB Captures/witch_cost_05_paid.png
+  2026-10-03 16:03   3738.5 KB Captures/witch_cost_01_floor-1.png
+  2026-10-03 16:03   3884.4 KB Captures/witch_cost_02_line-1.png
+  2026-10-03 16:03   4699.1 KB Captures/witch_cost_00_idle-1.png
+  2026-10-03 16:04   3878.3 KB Captures/witch_cost_03_change-1.png
+  2026-10-03 16:04   3884.5 KB Captures/witch_cost_04_poor-1.png
+  2026-10-03 16:04   4706.3 KB Captures/witch_cost_05_paid-1.png
+  2026-10-03 16:05   3738.5 KB Captures/witch_cost_01_floor-2.png
+  2026-10-03 16:05   3879.0 KB Captures/witch_cost_03_change-2.png
+  2026-10-03 16:05   3884.9 KB Captures/witch_cost_02_line-2.png
+  2026-10-03 16:05   3885.0 KB Captures/witch_cost_04_poor-2.png
+  2026-10-03 16:05   4699.1 KB Captures/witch_cost_00_idle-2.png
+  2026-10-03 16:06   4706.3 KB Captures/witch_cost_05_paid-2.png
+  2026-10-04 16:16   5707.5 KB Captures/01_battle_watercity.png
+  2026-10-04 16:20   4445.8 KB Captures/08_result_pick.png
+  2026-10-04 16:22   4344.0 KB Captures/09_result_win.png
+  2026-10-05 09:24   5121.8 KB Captures/art-review/m43_resultwin_pick.png
+  2026-10-05 09:25   4970.3 KB Captures/art-review/m43_resultlose.png
+  2026-10-05 10:03     83.6 KB Captures/art-review/p0_home_01_idle.png
+  2026-10-05 10:03    277.8 KB Captures/art-review/p0_home_02_ui.png
+  2026-10-05 10:12    277.8 KB Captures/art-review/p0_home_03_after_quit.png
+  2026-10-05 10:43   5561.9 KB Captures/art-review/m44_pool_battle.png
+  2026-10-05 10:43   5846.5 KB Captures/art-review/m44_settings_battle.png
+  2026-10-05 10:44   3457.8 KB Captures/art-review/m44_map_keys.png
+  2026-10-05 15:40   5660.0 KB Captures/hero_newmage_battle.png
+  2026-10-06 09:17   6536.5 KB Captures/hero_polygon_v1_battle.png
+  2026-10-06 09:19   6407.2 KB Captures/hero_polygon_v1_battle_confirm.png
+  2026-10-06 09:22     83.6 KB Captures/hero_polygon_v1_battle_final.png
+  2026-10-06 09:26   6411.5 KB Captures/hero_polygon_v1_battle_final2.png
+  2026-10-07 09:03   6550.9 KB Captures/hero_ai_v2_battle.png

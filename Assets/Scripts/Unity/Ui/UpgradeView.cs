@@ -170,6 +170,25 @@ namespace MagicBrawl.App
             _picker.Show(entries, title);
         }
 
+        /// <summary>
+        /// 打开选牌弹窗，并说明<b>这一步在选什么</b>（2026-10-06 石台两步流程）。
+        ///
+        /// <para><paramref name="hint"/> 是「还没选牌时底部那行点拨语」——
+        /// 石台用它把「确认之后祭品会被消耗、目标力量 +2」提前交代掉，
+        /// 因为玩家正是在<b>这一步</b>做取舍。</para>
+        /// </summary>
+        public void OpenPicker(IList<UpgradePickerView.Entry> entries, string title,
+            UpgradePickerView.Mode mode, string hint)
+        {
+            if (_picker == null)
+            {
+                return;
+            }
+
+            SetHintVisible(false);
+            _picker.Show(entries, title, mode, hint);
+        }
+
         /// <summary>关掉选牌弹窗（幂等）。</summary>
         public void ClosePicker()
         {

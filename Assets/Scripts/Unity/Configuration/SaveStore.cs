@@ -32,20 +32,29 @@ namespace MagicBrawl.App
         /// <para><b>版本 2（2026-10-02）</b>：<c>player.upgrades</c>（多轴强化配方）。
         /// 版本 1 的存档<b>直接读得进来</b> —— 旧格式缺这个字段时 <c>JsonUtility</c> 会留空列表，
         /// 语义正好是「什么都没强化」，所以不需要搬运代码（见 <see cref="Read"/>）。</para>
+        ///
+        /// <para><b>版本 3（2026-10-05）</b>：<c>player.everOwnedIds</c> / <c>player.offeredIds</c>
+        /// （卡牌获取池的两张单子）。同样是「缺字段 = 空列表」就够 —— 旧档的 <c>cardIds</c>
+        /// 会在 <see cref="Normalize"/> 里被补进 <c>everOwnedIds</c>，于是
+        /// 「老玩家已经拿到的那些牌」一条不落地都被排除掉。</para>
         /// </summary>
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         /// <summary>玩家的稳定角色 ID（与 <c>Resources/Characters/DefaultPlayer.asset</c> 对齐）。</summary>
         public const string DefaultPlayerCharacterId = "player.default";
 
         /// <summary>
-        /// 主存档<b>首次生成</b>时随机塞进去几张牌（用户 2026-10-01 口径：「选随机 10 张卡牌塞进去」）。
+        /// 主存档<b>首次生成</b>时随机塞进去几张牌（<b>2026-10-05 起 = 8 张</b>，用户口径：
+        /// 「在游戏开始时，玩家会获得自己的卡池（随机发 8 张）」）。
         ///
-        /// <para>10 &gt; <c>WitchWorkshop.MinPoolSize</c>（9），所以开新档第一次进女巫工坊
-        /// 是**能开工**的 —— 这一点是刻意的：起始 8 张那套旧口径下女巫永远是「无法进行特殊强化」，
-        /// 想验正常分支还得手动改 Inspector。</para>
+        /// <para><b>⚠ 8 &lt; <c>WitchWorkshop.MinPoolSize</c>（9）</b>：开新档第一次进女巫工坊
+        /// 会提示「无法进行特殊强化」。这是用户 2026-10-05 明确选择的口径（「只改成 8 张，门槛不动」），
+        /// 不是 bug —— 想让女巫工坊一开始就能用，就把这个数改回 10。</para>
+        ///
+        /// <para>历史：2026-10-01 曾刻意设成 10，正是为了让女巫工坊开档即可用；
+        /// 2026-10-05 为了让「待获取池」有更明显的增长曲线又压回 8。</para>
         /// </summary>
-        public const int MainStartingCardCount = 10;
+        public const int MainStartingCardCount = 8;
 
         // ══════════════════════════════════════════════════════
         //  路径
@@ -61,6 +70,114 @@ namespace MagicBrawl.App
         public static bool Exists(SaveSlot slot)
         {
             return File.Exists(FilePathFor(slot));
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  多存档位（2026-10-05）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// <b>玩家现在有哪几个存档</b>（有落盘文件的那些玩家档位），按「存档 1..N」的顺序。
+        ///
+        /// <para><b>⚠ 判据是「文件在不在」而不是 <c>TryLoadPlayer</c></b>：后者在文件缺失时
+        /// 会当场随机开一个新档并落盘（那是「开新档」的语义）—— 用它来「列个表」会凭空多出
+        /// 一堆空存档。</para>
+        ///
+        /// <para><see cref="SaveSlot.Test"/> 不在列表里：它是调试档，不是玩家的存档。</para>
+        /// </summary>
+        public static List<SaveSlot> ListPlayerSaves()
+        {
+            var list = new List<SaveSlot>();
+            for (int i = 0; i < SaveSlots.PlayerSlots.Length; i++)
+            {
+                if (Exists(SaveSlots.PlayerSlots[i]))
+                {
+                    list.Add(SaveSlots.PlayerSlots[i]);
+                }
+            }
+
+            return list;
+        }
+
+        /// <summary>下一个空着的玩家存档位。<b>满了返回 <c>false</c></b>（调用方提示「存档位已满」）。</summary>
+        public static bool TryNextFreePlayerSlot(out SaveSlot slot)
+        {
+            for (int i = 0; i < SaveSlots.PlayerSlots.Length; i++)
+            {
+                if (!Exists(SaveSlots.PlayerSlots[i]))
+                {
+                    slot = SaveSlots.PlayerSlots[i];
+                    return true;
+                }
+            }
+
+            slot = SaveSlot.Main;
+            return false;
+        }
+
+        /// <summary>
+        /// <b>新建一个存档</b>：现抽 <see cref="MainStartingCardCount"/> 张随机起手牌、
+        /// <b>立刻落盘</b>，返回那份玩家数据体。
+        ///
+        /// <para><b>⚠ 已经有的档位不许覆盖</b>：调用方要先 <see cref="TryNextFreePlayerSlot"/>
+        /// 拿空位。这里再挡一道 —— 「新建」把玩家已有的存档冲掉是不可逆的，
+        /// 不能靠界面上那一步小心。</para>
+        /// </summary>
+        public static bool TryCreateNew(SaveSlot slot, out PlayerData player, out string error)
+        {
+            player = null;
+            error = null;
+
+            if (!SaveSlots.IsPlayerSlot(slot))
+            {
+                error = "只有玩家的存档位能新建（" + SaveSlots.DisplayName(slot) + " 不行）。";
+                return false;
+            }
+
+            if (Exists(slot))
+            {
+                error = SaveSlots.DisplayName(slot) + " 已经有存档了。";
+                return false;
+            }
+
+            PlayerData fresh = CreateMainStartingPlayer();
+            if (!TryWrite(slot, fresh, out error))
+            {
+                return false;
+            }
+
+            player = fresh;
+            Debug.Log("[SaveStore] 新建 " + SaveSlots.DisplayName(slot) + "：" + fresh.cardIds.Count
+                      + " 张起始牌 —— " + FilePathFor(slot));
+            return true;
+        }
+
+        /// <summary>
+        /// <b>删掉一个存档</b>（删的是落盘文件）。文件本来就不在时也算成功（幂等）。
+        ///
+        /// <para><b>⚠ 这是不可逆的</b>：界面那一侧必须先让玩家确认一次
+        /// （<c>HomeSceneEntry</c> 的「删除 → 确认删除」两步）。这里只负责删。</para>
+        /// </summary>
+        public static bool TryDelete(SaveSlot slot, out string error)
+        {
+            error = null;
+            string path = FilePathFor(slot);
+
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    Debug.Log("[SaveStore] 已删除 " + SaveSlots.DisplayName(slot) + "：" + path);
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                error = "删除存档失败（" + SaveSlots.DisplayName(slot) + "）：" + ex.Message;
+                return false;
+            }
         }
 
         // ══════════════════════════════════════════════════════
@@ -488,6 +605,192 @@ namespace MagicBrawl.App
         }
 
         // ══════════════════════════════════════════════════════
+        //  卡牌获取池（2026-10-05）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 读某个档位的<b>卡牌获取状态</b>：把存档里的三张单子翻译成获取池认的两个集合。
+        ///
+        /// <list type="bullet">
+        /// <item><paramref name="acquired"/> = <c>cardIds</c>（现在持有）∪ <c>everOwnedIds</c>
+        ///（曾获得过，含被消耗掉的）—— 这些<b>出现概率为 0</b>；</item>
+        /// <item><paramref name="offered"/> = <c>offeredIds</c>（曾展示过但没获得）——
+        /// 这些<b>概率减半</b>。</item>
+        /// </list>
+        ///
+        /// <para>两张集合都按<b>基础 ID</b>归一（与 <c>CardAcquisition</c> 的比较口径一致）——
+        /// 不归一的话「已获得的 <c>a</c>」挡不住目录里的 <c>a+</c>。</para>
+        ///
+        /// <para>读档失败（文件坏 / 版本不支持）返回 <c>false</c>，两个集合置空 ——
+        /// 调用方该把这当作「什么都不知道」，别把整个奖励界面卡住。</para>
+        /// </summary>
+        public static bool TryLoadAcquisition(SaveSlot slot, out HashSet<string> acquired,
+            out HashSet<string> offered, out string error)
+        {
+            acquired = new HashSet<string>(StringComparer.Ordinal);
+            offered = new HashSet<string>(StringComparer.Ordinal);
+
+            PlayerData player;
+            if (!TryLoadPlayer(slot, out player, out error))
+            {
+                return false;
+            }
+
+            if (player == null)
+            {
+                return true;      // 没有存档 = 什么都没拿到过、什么都没展示过
+            }
+
+            AddBaseIds(acquired, player.cardIds);
+            AddBaseIds(acquired, player.everOwnedIds);
+            if (player.offeredIds != null)
+            {
+                for (int i = 0; i < player.offeredIds.Count; i++)
+                {
+                    string baseId = CardUpgrade.BaseIdOf(player.offeredIds[i]);
+                    if (baseId.Length > 0 && !acquired.Contains(baseId))
+                    {
+                        offered.Add(baseId);
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// <b>记录「这几张牌被展示给玩家看了」</b>（2026-10-05）——
+        /// 战斗奖励铺开三张候选、商店摆出四个货位时各调一次。
+        ///
+        /// <para>被展示过而<b>没被获得</b>的卡，下次出现概率减半；
+        /// 已经被获得过的卡不会被记进这张单子（它本来就是 0 概率）。</para>
+        ///
+        /// <para><b>⚠ 时机是「展示那一刻」</b>，不是「掷骰那一刻」—— 规则说的是
+        /// 「曾经展示过的卡片」，玩家看了没拿才算。</para>
+        /// </summary>
+        public static bool TryRecordOffered(SaveSlot slot, IEnumerable<string> ids, out string error)
+        {
+            error = null;
+            var bases = new List<string>();
+            AppendBaseIds(bases, ids);
+            if (bases.Count == 0)
+            {
+                return true;      // 没有可记的，不算失败
+            }
+
+            return MutatePlayer(slot, delegate (PlayerData player)
+            {
+                if (player.offeredIds == null)
+                {
+                    player.offeredIds = new List<string>();
+                }
+
+                for (int i = 0; i < bases.Count; i++)
+                {
+                    string baseId = bases[i];
+                    bool owned = player.cardIds != null && player.cardIds.Contains(baseId);
+                    if (!owned && player.everOwnedIds != null && player.everOwnedIds.Contains(baseId))
+                    {
+                        owned = true;
+                    }
+
+                    if (!owned && !player.offeredIds.Contains(baseId))
+                    {
+                        player.offeredIds.Add(baseId);
+                    }
+                }
+            }, out error);
+        }
+
+        /// <summary>
+        /// <b>玩家获得了一张牌</b>（2026-10-05）—— 战斗奖励选中一张、商店买下一张时调它。
+        ///
+        /// <para>一次写完三件事：进 <c>cardIds</c>（现在持有）、进 <c>everOwnedIds</c>
+        /// （<b>永久</b>不再出现，即使以后被消耗）、从 <c>offeredIds</c> 移出
+        /// （它已经不是「展示过但没获得」了）。</para>
+        ///
+        /// <para><b>⚠ 为什么必须一次写完</b>：分三次写会在中间失败时留下
+        /// 「牌拿到了、但获得记录没落盘」的存档 —— 下次同一张牌又从奖励里刷出来。
+        /// 与 <see cref="TryConsumeAndUpgrade"/> 同一条道理。</para>
+        ///
+        /// <para>已经是持有的牌时是<b>幂等</b>的（只补 <c>everOwnedIds</c>），不报错。</para>
+        /// </summary>
+        public static bool TryGrantCard(SaveSlot slot, string idOrBaseId, out string error)
+        {
+            error = null;
+            string baseId = CardUpgrade.BaseIdOf(idOrBaseId);
+            if (baseId.Length == 0)
+            {
+                error = "缺少卡 ID。";
+                return false;
+            }
+
+            return MutatePlayer(slot, delegate (PlayerData player)
+            {
+                if (player.cardIds == null)
+                {
+                    player.cardIds = new List<string>();
+                }
+
+                if (!player.cardIds.Contains(baseId))
+                {
+                    player.cardIds.Add(baseId);
+                }
+
+                if (player.everOwnedIds == null)
+                {
+                    player.everOwnedIds = new List<string>();
+                }
+
+                if (!player.everOwnedIds.Contains(baseId))
+                {
+                    player.everOwnedIds.Add(baseId);
+                }
+
+                if (player.offeredIds != null)
+                {
+                    player.offeredIds.Remove(baseId);
+                }
+            }, out error);
+        }
+
+        /// <summary>把一串 ID 归一成基础 ID 追加进目标清单（去重、跳过空值）。</summary>
+        private static void AppendBaseIds(List<string> target, IEnumerable<string> ids)
+        {
+            if (target == null || ids == null)
+            {
+                return;
+            }
+
+            foreach (string id in ids)
+            {
+                string baseId = CardUpgrade.BaseIdOf(id);
+                if (baseId.Length > 0 && !target.Contains(baseId))
+                {
+                    target.Add(baseId);
+                }
+            }
+        }
+
+        /// <summary>同上，但目标是集合。</summary>
+        private static void AddBaseIds(HashSet<string> target, IEnumerable<string> ids)
+        {
+            if (target == null || ids == null)
+            {
+                return;
+            }
+
+            foreach (string id in ids)
+            {
+                string baseId = CardUpgrade.BaseIdOf(id);
+                if (baseId.Length > 0)
+                {
+                    target.Add(baseId);
+                }
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
         //  内部
         // ══════════════════════════════════════════════════════
 
@@ -573,6 +876,34 @@ namespace MagicBrawl.App
             }
 
             player.cardIds = ids;
+
+            // ── 卡牌获取池的两张单子（2026-10-05）───────────────────────
+            //
+            //  ① everOwnedIds 必须覆盖 cardIds（「持有」蕴含「获得过」）——
+            //     旧档（v2 及以前）没有这个字段，靠这一步把它补齐，
+            //     否则老玩家手里那 10 张牌会重新出现在奖励 / 商店里。
+            //  ② 已经获得的牌不该同时留在 offeredIds 里（0 概率与「减半」是互斥状态）。
+            var everOwned = new List<string>();
+            AppendBaseIds(everOwned, player.everOwnedIds);
+            AppendBaseIds(everOwned, ids);
+            player.everOwnedIds = everOwned;
+
+            var offered = new List<string>();
+            if (player.offeredIds != null)
+            {
+                for (int i = 0; i < player.offeredIds.Count; i++)
+                {
+                    string baseId = CardUpgrade.BaseIdOf(player.offeredIds[i]);
+                    if (baseId.Length == 0 || everOwned.Contains(baseId) || offered.Contains(baseId))
+                    {
+                        continue;
+                    }
+
+                    offered.Add(baseId);
+                }
+            }
+
+            player.offeredIds = offered;
 
             if (player.upgrades == null)
             {
@@ -743,6 +1074,10 @@ namespace MagicBrawl.App
             for (int i = 0; i < take; i++)
             {
                 player.cardIds.Add(ids[i]);
+
+                // 开局这 8 张 = 「已获得」→ 进 everOwnedIds，它们<b>永远不会</b>再出现在
+                // 战斗奖励 / 商店货架上（2026-10-05 · 卡牌获取池）。
+                player.everOwnedIds.Add(ids[i]);
             }
 
             return player;

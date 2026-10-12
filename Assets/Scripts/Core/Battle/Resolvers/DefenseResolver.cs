@@ -42,7 +42,19 @@ namespace MagicBrawl.Core
         /// <para>只在防御侧叠加：本效果带 β 记号，与进攻力量无关；
         /// <see cref="CardInstance.EffectivePower"/>（模仿复制出来的力量）仍是进攻侧的口径。</para>
         /// </summary>
-        public static int DefendBonus(CardInstance card)
+        /// <param name="handCount">
+        /// 防御方<b>出牌前</b>的手牌张数 —— 只有 <see cref="EffectOp.DefPlusPerHand"/>
+        /// （海啸 au 的 β「防御时增加等于手牌数的力量值」）用得上，其余 β 效果与它无关。
+        ///
+        /// <para>⚠ <b>不传 = 按 0 张算</b>（该项加值归零）。调用点必须自己想清楚：
+        /// 凡是参与「这张牌挡不挡得住」判定的地方（<see cref="BuildOptions"/> /
+        /// <c>BattleEngine.DoChooseDefense</c> / 自测的合法性反查）都<b>必须传真实手牌数</b>，
+        /// 否则会出现「界面说挡得住、引擎校验说不够」这种两处口径分叉。</para>
+        ///
+        /// <para>「含不含正在打出的这一张」：<b>含</b>（用户 2026-10-07 拍板）——
+        /// 调用点传的都是「还没把它从手牌里摘掉」的那个数。</para>
+        /// </param>
+        public static int DefendBonus(CardInstance card, int handCount = 0)
         {
             if (card == null)
             {
@@ -53,9 +65,19 @@ namespace MagicBrawl.Core
             for (int i = 0; i < card.Def.Effects.Count; i++)
             {
                 EffectDef ef = card.Def.Effects[i];
-                if (ef.Trigger == EffectTrigger.Defend && ef.Op == EffectOp.DefPlus)
+                if (ef.Trigger != EffectTrigger.Defend)
+                {
+                    continue;
+                }
+
+                if (ef.Op == EffectOp.DefPlus)
                 {
                     sum += ef.A;
+                }
+                else if (ef.Op == EffectOp.DefPlusPerHand)
+                {
+                    // 海啸（au）：每张手牌 +A。手牌数为负没有意义，兜一下。
+                    sum += ef.A * (handCount < 0 ? 0 : handCount);
                 }
             }
 
@@ -63,20 +85,20 @@ namespace MagicBrawl.Core
         }
 
         /// <summary>本牌作为防御牌打出时的有效防御力量（= 有效力量 + β 加值）。</summary>
-        public static int DefensePower(CardInstance card)
+        public static int DefensePower(CardInstance card, int handCount = 0)
         {
-            return card == null ? 0 : card.EffectivePower + DefendBonus(card);
+            return card == null ? 0 : card.EffectivePower + DefendBonus(card, handCount);
         }
 
         /// <summary>本牌挡住指定攻击力量还差的防御力量（守护牌恒为 0）。</summary>
-        public static int RequiredBonus(CardInstance card, int attackPower)
+        public static int RequiredBonus(CardInstance card, int attackPower, int handCount = 0)
         {
             if (HasGuard(card))
             {
                 return 0;
             }
 
-            int need = attackPower - DefensePower(card);
+            int need = attackPower - DefensePower(card, handCount);
             return need < 0 ? 0 : need;
         }
 
@@ -108,12 +130,16 @@ namespace MagicBrawl.Core
             // 只有玩家/AI 本次明确消耗的光环可以补足防御力量。
             int avail = appliedDefenseBonus;
 
+            // β「防御时 +（每张手牌 ×A）」（海啸 au）的手牌数口径 = 出牌前的手牌张数
+            //（此时它还在手上，所以天然「含正在打出的这一张」）。
+            int handCount = defender.Hand.Count;
+
             if (!isDouble)
             {
                 for (int i = 0; i < defender.Hand.Count; i++)
                 {
                     CardInstance c = defender.Hand[i];
-                    int req = RequiredBonus(c, attackPower);
+                    int req = RequiredBonus(c, attackPower, handCount);
                     if (req > avail)
                     {
                         continue;
@@ -125,7 +151,7 @@ namespace MagicBrawl.Core
                         Seat = defenderSeat,
                         Card = c,
                         Value = req,
-                        Label = Describe(c, attackPower, req),
+                        Label = Describe(c, attackPower, req, handCount),
                     });
                 }
             }
@@ -138,7 +164,8 @@ namespace MagicBrawl.Core
                     {
                         CardInstance a = defender.Hand[i];
                         CardInstance b = defender.Hand[j];
-                        int req = RequiredBonus(a, attackPower) + RequiredBonus(b, attackPower);
+                        int req = RequiredBonus(a, attackPower, handCount)
+                                  + RequiredBonus(b, attackPower, handCount);
                         if (req > avail)
                         {
                             continue;
@@ -181,13 +208,13 @@ namespace MagicBrawl.Core
             return false;
         }
 
-        private static string Describe(CardInstance card, int attackPower, int required)
+        private static string Describe(CardInstance card, int attackPower, int required, int handCount)
         {
             // 防御力量与进攻力量不是同一个数（β 加值只算防御侧），所以这里把「实际用来挡的数」
             // 写清楚：玩家看选项时不该自己去心算「7 还是 8」。
-            int bonus = DefendBonus(card);
+            int bonus = DefendBonus(card, handCount);
             string head = "打出 " + card.Def.Name + "（力量 " + card.Def.PowerText
-                          + (bonus > 0 ? "，防御 +" + bonus + " → " + DefensePower(card) : string.Empty)
+                          + (bonus > 0 ? "，防御 +" + bonus + " → " + DefensePower(card, handCount) : string.Empty)
                           + "）";
             if (HasGuard(card))
             {

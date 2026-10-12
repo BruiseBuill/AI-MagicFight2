@@ -102,6 +102,45 @@ namespace MagicBrawl.Core
     }
 
     /// <summary>
+    /// <b>刻印</b>的重复触发时机（2026-10-07 新增）。
+    ///
+    /// <para><b>刻印是什么</b>（用户口径）：像光环一样挂在<b>提供它的那张牌</b>上、
+    /// <b>只有这张牌作为进攻牌打出时才点亮</b>，回手即熄灭；与光环的差别只有一条 ——
+    /// 光环是<b>一次性</b>指示物（用掉就没了），刻印点亮之后<b>每个回合都会自动再触发一次</b>
+    /// 自己的效果。</para>
+    ///
+    /// <para><b>它和 <see cref="EffectOp.Aura"/> 的关系</b>：刻印不是新算子，而是给
+    /// <b>既有算子</b>加的一层「触发方式」。卡表里写 <c>A(EffectOp.Aura, 2, aura: AuraKind.AtkPower,
+    /// sigil: SigilTiming.TurnStart)</c> 就是「α刻印：每回合开始时获得光环：进攻力量 +2」——
+    /// 效果本身（光环 / 加速）一条代码都不用重写，引擎只多做两件事：
+    /// <list type="number">
+    /// <item>打出去那一拍的第 ⑤ 步<b>点亮</b>它（而不是当场结算）；</item>
+    /// <item>之后每个点位把同一条效果<b>再跑一遍</b>（见 <see cref="SigilTiming"/> 各成员）。</item>
+    /// </list></para>
+    ///
+    /// <para>⚠ 不立项的话这两件事都无处安放：光环算子是在第 ⑤ 步「结算一次」的，
+    /// 而刻印要的是「第 ⑤ 步只点亮、以后每回合重放」。</para>
+    /// </summary>
+    public enum SigilTiming
+    {
+        /// <summary>不是刻印 —— 普通效果（绝大多数卡）。</summary>
+        None = 0,
+
+        /// <summary>
+        /// <b>每回合开始时</b>触发一次（「回合」= <c>BattleState.TurnNumber</c> 自增那一刻，
+        /// 双方各自的一次进攻合起来算一个回合）。火炬（at）用的就是它。
+        /// </summary>
+        TurnStart = 1,
+
+        /// <summary>
+        /// <b>拥有者自己的进攻半场结束时</b>触发一次。连击链算<b>一次</b>
+        /// （口径与虚弱递减一致：一次「进攻半场」= 整条连击链）。
+        /// 点亮它的那一拍<b>立刻</b>触发（用户 2026-10-07 口径）。海啸（au）用的就是它。
+        /// </summary>
+        AttackEnd = 2,
+    }
+
+    /// <summary>
     /// 效果算子。40 张卡全部映射到这里的算子上（`Docs/engineering/04-架构与接口.md` §3）。
     /// 参数约定：A / B / C 的含义逐算子说明在各自成员上。
     /// </summary>
@@ -269,6 +308,24 @@ namespace MagicBrawl.Core
         /// —— 不弹决策、不消耗任何东西。</para>
         /// </summary>
         ComboIfLastHand = 34,
+
+        // ── 2026-10-07 新增（海啸 au）──────────────────────────
+        /// <summary>
+        /// 海啸（au）：β「防御时增加<b>等于手牌数</b>的力量值」。
+        ///
+        /// <para>A = 每张手牌的加值（本卡为 1）。加值 = <b>A × 手牌数</b>，
+        /// 口径见 <c>DefenseResolver.DefendBonus(card, handCount)</c> ——
+        /// 手牌数取<b>防御方出牌前</b>的手牌张数（<b>含正在打出的这一张</b>，
+        /// 用户 2026-10-07 拍板）。</para>
+        ///
+        /// <para><b>为什么不复用 <see cref="DefPlus"/></b>：那个的 A 是一个静态常量
+        /// （潮汐 / 地动波的 +1）。本作「算子即规则」的口径下，<b>同一个算子不允许两种取值方式</b>
+        /// —— 一条效果到底加几点必须一眼看得出来（同 <see cref="SlowIfLastTwoHand"/> 的先例）。</para>
+        ///
+        /// <para>归 <c>EffectStage.Defense</c>：与 <see cref="DefPlus"/> / <see cref="Guard"/>
+        /// 一样是「防御侧查询」，真正读它的是 <c>DefenseResolver</c>，处理器是空实现。</para>
+        /// </summary>
+        DefPlusPerHand = 35,
     }
 
     /// <summary>Immutable, serializable effect recipe. Handler identity is independent of card identity.</summary>
@@ -284,6 +341,10 @@ namespace MagicBrawl.Core
         public readonly System.Collections.Generic.IReadOnlyList<EffectCondition> Conditions;
         public readonly System.Collections.Generic.IReadOnlyDictionary<string, int> Arguments;
         public readonly AuraKind Aura;
+
+        /// <summary>刻印的重复触发时机（见 <see cref="SigilTiming"/>）；<see cref="SigilTiming.None"/> = 普通效果。</summary>
+        public readonly SigilTiming Sigil;
+
         public readonly string Text;
 
         // Legacy card tables and integrations can keep using the operator constructor.
@@ -299,21 +360,23 @@ namespace MagicBrawl.Core
         public EffectDef(EffectTrigger trigger, EffectOp op, int a = 0, int b = 0, int c = 0,
             AuraKind aura = AuraKind.None, bool mandatory = false, string text = null,
             string distinctTargetGroup = null, System.Collections.Generic.IEnumerable<EffectCondition> conditions = null,
-            EffectTargetScope targets = EffectTargetScope.Participants)
+            EffectTargetScope targets = EffectTargetScope.Participants, SigilTiming sigil = SigilTiming.None)
             : this(trigger, op.ToString(), LegacyArguments(op, a, b, c), aura, text,
                 op == EffectOp.ReadyRefresh ? "cooldown.completed" : null,
-                targets, distinctTargetGroup, conditions, mandatory)
+                targets, distinctTargetGroup, conditions, mandatory, sigil)
         { }
 
         public EffectDef(EffectTrigger trigger, string handlerId,
             System.Collections.Generic.IDictionary<string, int> arguments = null,
             AuraKind aura = AuraKind.None, string text = null, string specialEvent = null,
             EffectTargetScope targets = EffectTargetScope.Participants, string distinctTargetGroup = null,
-            System.Collections.Generic.IEnumerable<EffectCondition> conditions = null, bool mandatory = false)
+            System.Collections.Generic.IEnumerable<EffectCondition> conditions = null, bool mandatory = false,
+            SigilTiming sigil = SigilTiming.None)
         {
             if (!System.Enum.IsDefined(typeof(EffectTrigger), trigger)) throw new System.ArgumentException("Invalid trigger.");
+            if (!System.Enum.IsDefined(typeof(SigilTiming), sigil)) throw new System.ArgumentException("Invalid sigil timing.");
             if (string.IsNullOrWhiteSpace(handlerId)) throw new System.ArgumentException("Effect handler ID is required.");
-            Trigger = trigger; HandlerId = handlerId; Aura = aura; Text = text ?? string.Empty;
+            Trigger = trigger; HandlerId = handlerId; Aura = aura; Sigil = sigil; Text = text ?? string.Empty;
             SpecialEvent = specialEvent ?? string.Empty; Targets = targets; DistinctTargetGroup = distinctTargetGroup ?? string.Empty;
             var values = new System.Collections.Generic.Dictionary<string, int>(arguments ?? new System.Collections.Generic.Dictionary<string, int>());
             Arguments = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(values);

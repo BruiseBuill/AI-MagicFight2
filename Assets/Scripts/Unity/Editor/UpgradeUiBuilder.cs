@@ -221,7 +221,7 @@ namespace MagicBrawl.App.EditorTools
                 new Vector2(UiLayout.UpgradeHintWidth, UiLayout.UpgradeHintHeight));
             TMP_Text hintText = AddText(hintGo, body, UiLayout.FontSizeUpgradeHint,
                 UiTheme.UpgradeHintText, TextAlignmentOptions.Center,
-                "点击台面，选择一张牌强化（基础力量 +2，上限 9）");
+                "点击台面：先选要强化的牌，再选一张祭品（祭品会被消耗掉）· 力量 +2，上限 9");
 
             // 离开键（只有它一个，所以右边距用 64 而不是给背包键让位的 176）
             Button leaveButton = BuildLeaveButton(canvasGo.transform, body, leave, out TMP_Text leaveLabel);

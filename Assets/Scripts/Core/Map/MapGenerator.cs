@@ -20,10 +20,20 @@ namespace MagicBrawl.Core
     /// <b>路径经过的格子就是节点、路径的每一步就是一条边</b>。这样「每个节点都能从起点走到、
     /// 也都能走到 Boss」是<b>构造出来的</b>，不需要事后修补（事后补边正是「连出一条死路」的来源）。</para>
     ///
-    /// <para><b>让它「一定画得出桥」的那条约束</b>：每一步的行号变化只允许 ∈ {−1, 0, +1}，
-    /// 且同两层之间不允许交叉边。于是任意一条边的两端，在版式上永远落在
-    /// 「同一行 / 上下邻行」这两种相对位置之一 —— 而表现层对这两种位置各有一套画法
-    /// （见 <c>MapView.BuildBridges</c>）。（第三处保证是版式：行距 144、列距 190 都远大于节点直径。）</para>
+    /// <para><b>让它「一定画得出桥、而且每根桥一样长」的那条约束</b>：每一步的行号变化
+    /// 只允许 ∈ {<b>0, +1</b>}，且同两层之间不允许交叉边。于是任意一条边的两端，
+    /// 在版式上永远是六向格里的<b>两个相邻格</b>（正右 0° / 右上 60°），边长恒等于
+    /// <c>UiLayout.MapHexEdge</c>。</para>
+    ///
+    /// <para><b>⚠ 为什么不能有 −1（往下一行）</b>（2026-10-06 六向格重做时定的）：
+    /// 三种前向邻居的行偏移是 <c>(a, 0)</c>、<c>(a+b, c)</c>、<c>(a−b, −c)</c>。
+    /// 要求三边等长 ⇒ <c>ab = 0</c>（后两条等长）⇒ <c>b = 0</c> ⇒
+    /// <c>√(a²+c²) = a</c> ⇒ <c>c = 0</c> —— 三个邻居落在同一点，矛盾。
+    /// 也就是说：**只要同时留着「平 / 上 / 下」三种走法，图里就必然出现两种边长的桥**
+    /// （旧版式实测 190 与 283.2，差 1.49 倍），而桥只能逐边缩，一粗一细。
+    /// 六向格里的第三个方向（右下 300°）其实是**同一层**的邻居，本层 DAG 画不出来，
+    /// 所以三条前向边里只能留两条。留下的是「平 + 上」——
+    /// 这样行号只增不减，地图仍然是从左下角爬到右上角。</para>
     ///
     /// <para><b>⚠ 「爬升」是硬约束不是偏好</b>：Boss 固定在最后一行，所以倒数第 L 层的节点
     /// <b>必须</b>在第 <c>bossRow − (last − L)</c> 行之上，否则最后一步会出现「行号差 &gt; 1」——
@@ -58,11 +68,21 @@ namespace MagicBrawl.Core
 
         // 节点类型权重（只在第 2 层..倒数第 2 层之间生效）。
         // 第 1 层固定普通战斗（与 `冒险模式实施规格.md` §6.3「第 1 层禁连」同口径）。
-        private const int WBattle = 46;
-        private const int WUnknown = 18;
-        private const int WShop = 14;
-        private const int WWitch = 12;
-        private const int WAltar = 10;
+        //
+        // 2026-10-09：追加宝箱（Treasure）时把六项重新归一化到总和 100
+        // —— 直接往旧表里塞一项会让「战斗 46/100」悄悄变成「46/108」，
+        // 每种节点的实际出现率全都被稀释一遍（改完没人看得出来，只能靠算）。
+        //
+        // 2026-10-09 同日追加休息（Rest）时**又归一化了一次**（七项 → 总和仍是 100）：
+        // 战斗 44→40、未知 16→14，腾出 6 给休息。改的只有这两项 —— 商店 / 女巫 / 石台 /
+        // 宝箱四项的绝对值一个都没动（它们的出现率仍然是自己那个数 / 100）。
+        private const int WBattle = 40;
+        private const int WUnknown = 14;
+        private const int WShop = 13;
+        private const int WWitch = 11;
+        private const int WAltar = 9;
+        private const int WTreasure = 7;
+        private const int WRest = 6;
 
         /// <summary>用默认尺寸生成一张图。</summary>
         public static MapGraph Generate(int seed)
@@ -198,10 +218,11 @@ namespace MagicBrawl.Core
         /// <summary>
         /// 分配节点类型（用户口径：起点 Camp、终点 Boss、中间随机）。
         ///
-        /// <para><b>三项保底</b>：整张图至少各有 1 个商店 / 女巫 / 石台 ——
-        /// 理由很实际：这三张节点图是用户专门做的，如果某次随机一个都没抽到，
+        /// <para><b>五项保底</b>（原四项 + 2026-10-09 追加的休息）：整张图至少各有
+        /// 1 个商店 / 女巫 / 石台 / 宝箱 / 休息 ——
+        /// 理由很实际：这几张节点图是用户专门做的，如果某次随机一个都没抽到，
         /// 玩家就整局看不到它们；而「随机」在这轮要表达的是<b>路线与分岔</b>，
-        /// 不是「这次没有商店」。正式接入冒险经济系统时这两行可以去掉。</para>
+        /// 不是「这次没有商店」。正式接入冒险经济系统时这几行可以去掉。</para>
         /// </summary>
         private static void AssignTypes(MapGraph graph, Rng rng, int layerCount, int rowCount)
         {
@@ -231,11 +252,13 @@ namespace MagicBrawl.Core
             EnsureType(graph, rng, MapNodeType.Shop, last);
             EnsureType(graph, rng, MapNodeType.Witch, last);
             EnsureType(graph, rng, MapNodeType.Altar, last);
+            EnsureType(graph, rng, MapNodeType.Treasure, last);
+            EnsureType(graph, rng, MapNodeType.Rest, last);
         }
 
         private static MapNodeType RollType(Rng rng)
         {
-            int roll = rng.Next(WBattle + WUnknown + WShop + WWitch + WAltar);
+            int roll = rng.Next(WBattle + WUnknown + WShop + WWitch + WAltar + WTreasure + WRest);
             if (roll < WBattle)
             {
                 return MapNodeType.Battle;
@@ -259,7 +282,19 @@ namespace MagicBrawl.Core
                 return MapNodeType.Witch;
             }
 
-            return MapNodeType.Altar;
+            roll -= WWitch;
+            if (roll < WAltar)
+            {
+                return MapNodeType.Altar;
+            }
+
+            roll -= WAltar;
+            if (roll < WTreasure)
+            {
+                return MapNodeType.Treasure;
+            }
+
+            return MapNodeType.Rest;
         }
 
         private static void EnsureType(MapGraph graph, Rng rng, MapNodeType want, int last)
@@ -391,7 +426,7 @@ namespace MagicBrawl.Core
             {
                 int start = EnsureNode(0, 0);
 
-                // 第一步：只允许走到第 0/1 行（起点在第 0 行，行号差 ≤ 1）。
+                // 第一步：只允许走到第 0/1 行（起点在第 0 行，行号差 0 或 +1）。
                 //
                 // ⚠ **轮到第几条路径就取第几行**（round-robin），不是随机取。
                 //   随机取的话 6 条路径有 3% 的概率全落在同一行 → 第 1 层宽度 1 →
@@ -428,31 +463,35 @@ namespace MagicBrawl.Core
             }
 
             /// <summary>
-            /// 选下一步的行号。候选 = {上一行, 本行, 下一行} ∩ [0, rowCount−1] ∩
+            /// 选下一步的行号。候选 = {本行, 下一行} ∩ [0, rowCount−1] ∩
             /// 「不早于 <see cref="NeedRow"/>」∩「不与已有边交叉」。
             ///
-            /// <para>带权顺序：上 5 / 平 4 / 下 2（洗牌后逐个试）——
-            /// 往上偏一点，地图才会整体「从左下角爬到右上角」；完全无偏的随机游走
-            /// 会让一半路径贴着最下面一行走到头。</para>
+            /// <para><b>只有「平」与「上」两种</b>（2026-10-06 六向格）：见类注释里那段证明 ——
+            /// 留着「下」就一定出现两种边长的桥。行号只增不减也意味着地图仍然只朝
+            /// 右上角走（Boss 在最后一层的最后一行）。</para>
+            ///
+            /// <para><b>权重 = 「上 3 : 平 5」</b>（洗牌后逐个试）。这不是拍脑袋的数：
+            /// 一条路要走完 8 步、从第 0 行爬到 Boss 所在的第 3 行，
+            /// 恰好是 <b>3 次「上」+ 5 次「平」</b>—— 按这个比例放，
+            /// 各条路径才会把 4 行都摊开用（地图不会挤成一条链）。</para>
+            ///
+            /// <para>⚠ 「落后了怎么办」不靠权重兜，靠 <see cref="NeedRow"/> 那道硬夹取：
+            /// 后面的层要求行号 ≥ <c>bossRow − 剩余步数</c>，达不到的候选会被跳过，
+            /// 所以最后几步该上的时候一定会上（连兜底那一格也是为了这个）。</para>
             /// </summary>
             private int PickNextRow(int layer, int row)
             {
                 int need = NeedRow(layer + 1, _last, _bossRow);
 
                 var pool = new List<int>();     // 候选「行号增量」
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 3; i++)
                 {
                     pool.Add(1);
                 }
 
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < 5; i++)
                 {
                     pool.Add(0);
-                }
-
-                for (int i = 0; i < 2; i++)
-                {
-                    pool.Add(-1);
                 }
 
                 _rng.Shuffle(pool);
@@ -473,10 +512,11 @@ namespace MagicBrawl.Core
                     return candidate;
                 }
 
-                // 三条增量被挡光时再兜一次底：把「恰好等于 need」那一格直接放行
-                // （它一定与上一层相邻，且 need 的爬升每层最多 +1）。
+                // 两个增量被挡光时再兜一次底：把「恰好等于 need」那一格直接放行
+                // （它一定与上一层相邻，且 need 的爬升每层最多 +1 —— 所以 need
+                //  只可能是本行或本行 +1；need < row 时「平」本来就已经通过了）。
                 if (need >= 0 && need < _rowCount
-                    && (need == row || need == row + 1 || need == row - 1)
+                    && (need == row || need == row + 1)
                     && !Crosses(layer, row, need))
                 {
                     return need;

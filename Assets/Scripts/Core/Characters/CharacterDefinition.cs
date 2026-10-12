@@ -95,6 +95,19 @@ namespace MagicBrawl.Core
         /// </summary>
         public DealProfile Deal { get; private set; }
 
+        /// <summary>
+        /// 这个角色的<b>手写出牌优先级表</b>（2026-10-08）—— 从它的卡池资产
+        /// （<c>CardPoolConfig.useManualPriority</c> + <c>priorities</c>）来，随
+        /// <see cref="AiProfile"/> 一路传到 <see cref="MonsterAgentFactory.Create"/> 里的 AI。
+        ///
+        /// <para><b>为什么放在角色定义上而不是「AI 自己去读资产」</b>：AI 在 Core，
+        /// 读不到 <c>ScriptableObject</c>；而这个表和 <see cref="AiProfile"/> 是同一类东西
+        /// ——「这只怪怎么打牌」的一部分（换到哪一关都该是同一套顺序）。</para>
+        ///
+        /// <para>默认 <c>null</c> = 没有手写表，AI 按四流派自动档位出牌。</para>
+        /// </summary>
+        public CardPriorityTable CardPriorities { get; private set; }
+
         private readonly CardPool _pool;
         public CardPool CreateCardPool() { return _pool.Copy(); }
         public IReadOnlyList<ICharacterAbilityDefinition> Abilities { get; private set; }
@@ -102,7 +115,7 @@ namespace MagicBrawl.Core
         public CharacterDefinition(string id, string name, CharacterKind kind, int initialHp,
             int maxHp, int minimumCardCount, CardPool pool,
             IEnumerable<ICharacterAbilityDefinition> abilities = null, string aiProfile = null,
-            DealProfile deal = null)
+            DealProfile deal = null, CardPriorityTable cardPriorities = null)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("角色 ID 不能为空。");
             if (initialHp <= 0 || maxHp < initialHp) throw new ArgumentException("生命必须大于 0，且不超过上限。");
@@ -114,6 +127,7 @@ namespace MagicBrawl.Core
             MinimumCardCount = minimumCardCount;
             AiProfile = aiProfile ?? string.Empty;
             Deal = deal;
+            CardPriorities = cardPriorities;
             _pool = pool.Copy();
             var list = new List<ICharacterAbilityDefinition>(abilities ?? new ICharacterAbilityDefinition[0]);
             if (list.Contains(null)) throw new ArgumentException("能力定义不能为空。");
@@ -122,7 +136,29 @@ namespace MagicBrawl.Core
 
         public CharacterDefinition WithCardPool(CardPool pool)
         {
-            return new CharacterDefinition(Id, Name, Kind, InitialHp, MaxHp, MinimumCardCount, pool, Abilities, AiProfile, Deal);
+            return new CharacterDefinition(Id, Name, Kind, InitialHp, MaxHp, MinimumCardCount, pool,
+                Abilities, AiProfile, Deal, CardPriorities);
+        }
+
+        /// <summary>
+        /// 换一组<b>入场生命</b>（2026-10-05 · 冒险的带伤入场）。
+        ///
+        /// <para><b>为什么需要它</b>：<see cref="InitialHp"/> / <see cref="MaxHp"/> 原来只来自
+        /// 角色资产 —— 于是「这个角色这一场是几血进场」这件事表达不了，每次进场都是满血。
+        /// 冒险要的是「<b>入场当前生命 = 局外当前生命，入场上限 = 局外正常上限</b>」
+        /// （<c>Docs/design/冒险模式实施规格.md</c> §3.2），所以得能在建定义的最后一步换掉这两个数。</para>
+        ///
+        /// <para><b>⚠ 这里做夹取，不把非法值留给构造器</b>：构造器断言
+        /// <c>initialHp &gt; 0</c> 且 <c>maxHp &gt;= initialHp</c>。冒险层把
+        /// <c>Hp &lt;= 0</c> 的角色直接发来（读档坏了、或外层忘了拦）时，
+        /// 让它在<b>这里</b>夹成 1/1 并继续，比在构造器里抛异常、把整局卡住要好。</para>
+        /// </summary>
+        public CharacterDefinition WithHp(int initialHp, int maxHp)
+        {
+            int clampedMax = maxHp < 1 ? 1 : maxHp;
+            int clampedInitial = initialHp < 1 ? 1 : (initialHp > clampedMax ? clampedMax : initialHp);
+            return new CharacterDefinition(Id, Name, Kind, clampedInitial, clampedMax,
+                MinimumCardCount, _pool, Abilities, AiProfile, Deal, CardPriorities);
         }
 
         public static CharacterDefinition DefaultPlayer()

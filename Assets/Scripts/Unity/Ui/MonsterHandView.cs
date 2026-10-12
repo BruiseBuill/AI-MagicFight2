@@ -140,9 +140,11 @@ namespace MagicBrawl.App
                     knownCount++;
                 }
 
-                // 已知 → 正面卡面；未知 → 牌背。**「知不知道」与「有没有图」分开传**
+                // 已知 → 组成式卡面（CardView_Hand 实例，插画 + 卡名 + 力量 + 冷却 + 效果文字）；
+                // 未知 → 牌背。**「知不知道」与「有没有图」分开传**
                 //（见 MonsterHandSlot.Bind 的说明：缺图不能伪装成未知）。
-                _active[i].Bind(isKnown, isKnown ? FaceSpriteFor(card.CardId) : null, back);
+                // 最后一个参数是「老 Prefab 没有卡面节点」时的兜底插画。
+                _active[i].Bind(isKnown, card, back, isKnown ? FaceSpriteFor(card.CardId) : null);
             }
 
             Layout(n);

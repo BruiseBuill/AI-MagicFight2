@@ -34,6 +34,22 @@ namespace MagicBrawl.Core
         internal readonly System.Collections.Generic.List<AuraToken> ActiveAuras = new System.Collections.Generic.List<AuraToken>();
         private int _nextAuraId;
 
+        /// <summary>
+        /// 本牌身上<b>已经点亮的刻印</b>（= 卡表里 <see cref="EffectDef.Sigil"/> 不是 None、
+        /// 且本牌作为<b>进攻牌</b>打出过的那几条效果）。
+        ///
+        /// <para><b>与 <see cref="ActiveAuras"/> 是两套东西</b>：那里是「可消耗的指示物」，
+        /// 这里是「一个已经打开的开关」。刻印不消耗、不能拖、也不按数量算 ——
+        /// 它只是在<b>每个回合</b>按 <see cref="SigilTiming"/> 把同一条效果再跑一遍。</para>
+        ///
+        /// <para><b>生命周期</b>：点亮发生在打出那一拍的第 ⑤ 步；熄灭发生在
+        /// <see cref="ToHand"/> / <see cref="ToPool"/> / <c>CooldownOps.PutIntoCooldown</c> /
+        /// <c>CooldownOps.RemoveFromGame</c> —— 也就是「只要这张牌一离开（或重新进入）冷却区就归零」，
+        /// 与光环指示物的清空点是同一批（用户口径：刻印回到手牌中时效果消失）。</para>
+        /// </summary>
+        internal readonly System.Collections.Generic.List<EffectDef> LitSigils =
+            new System.Collections.Generic.List<EffectDef>();
+
         /// <summary>实例唯一编号（自测与事件流里便于追踪）。</summary>
         public readonly int Uid;
 
@@ -140,6 +156,33 @@ namespace MagicBrawl.Core
         }
 
         /// <summary>
+        /// 本牌身上是否有<b>点亮的刻印</b>（只读；表现层用它决定要不要画那一枚「刻印」标记）。
+        ///
+        /// <para>⚠ 它<b>不代表「本拍能用」</b> —— 刻印是自动触发的，玩家不能像光环那样拖动使用。</para>
+        /// </summary>
+        public bool SigilLive
+        {
+            get { return LitSigils.Count > 0; }
+        }
+
+        /// <summary>点亮一条刻印（幂等：同一条效果重复点亮不会记两遍 —— 静态卡表里是同一个引用）。</summary>
+        internal void LightSigil(EffectDef effect)
+        {
+            if (effect == null || LitSigils.Contains(effect))
+            {
+                return;
+            }
+
+            LitSigils.Add(effect);
+        }
+
+        /// <summary>熄灭全部刻印（回手 / 回牌池 / 进冷却区 / 被移出游戏时统一走它）。</summary>
+        internal void ClearSigils()
+        {
+            LitSigils.Clear();
+        }
+
+        /// <summary>
         /// 回到手牌。手牌里不保留任何光环状态 —— 光环是「作为进攻牌打出后」才获得的
         /// （`Docs/rules/01-规则基线.md` §6.1），且回手时未使用的指示物全部作废（§6.4）。
         /// </summary>
@@ -149,6 +192,7 @@ namespace MagicBrawl.Core
             RemainingCooldown = 0;
             AuraTokens = 0;
             AuraLive = false;
+            ClearSigils();
             // ⚠ 不能写成 EffectivePower = Def.Power —— 那会把水之形（aq）的
             //   BattlePowerBonus 成长静默吃掉（见 ResetEffectivePower）。
             ResetEffectivePower();
@@ -161,6 +205,7 @@ namespace MagicBrawl.Core
             RemainingCooldown = 0;
             AuraTokens = 0;
             AuraLive = false;
+            ClearSigils();
             BattlePowerBonus = 0;
             ResetEffectivePower();
         }

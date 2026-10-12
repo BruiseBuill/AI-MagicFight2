@@ -64,15 +64,23 @@ SHADOW_KILL = 0.0
 
 # ── 帧清单 ──────────────────────────────────────────────────────────
 # (源文件, 动作名, 列数, 行数)
-# ⚠ idle 2026-09-21 换图：4×4 = 16 帧（旧 6×3 = 18 帧作废；
-#   apply() 会把超出新帧数的旧编号残帧清掉，防止 17/18 帧混进 clip）。
+# ⚠ 2026-10-05：idle/attack/defend 换 NewMage AlphaProof 三张表（见文件头注释）。
+#   behit / death 不再从旧表白底源图切 —— 由下面的 PLACEHOLDERS 借 idle 占位。
 SHEETS = [
-    ("Chars/_Source/Hero_Anim_Idle.png", "idle", 4, 4),
-    ("Chars/_Source/Hero_Anim_Attack.png", "attack", 4, 3),
-    ("Chars/_Source/Hero_Anim_Defend.png", "defend", 4, 3),
-    ("Chars/_Source/Hero_Anim_BeHit.png", "behit", 4, 3),
-    ("Chars/_Source/Hero_Anim_Death.png", "death", 4, 3),
+    ("Chars/_Source/Hero_Anim_Idle_NewMage_AlphaProof_v1.png", "idle", 4, 4),
+    ("Chars/_Source/Hero_Anim_Attack_NewMage_AlphaProof_v1.png", "attack", 4, 3),
+    ("Chars/_Source/Hero_Anim_Defend_NewMage_AlphaProof_v1.png", "defend", 4, 3),
 ]
+
+# ── 占位动作（2026-10-05）──────────────────────────────────────────
+# 没有新素材的动作 → 借待机动画占位：帧、画布、锚点全部同 idle，
+# 只是各走各的帧率（behit 18fps / death 9fps，由 UiLayout 落进 Clip.Fps）。
+# ⚠ apply() 会把占位帧写进 Hero/<动作>/ 并覆盖 anim_frames.txt 对应行 ——
+#   新素材到位后，把该动作的表加回 SHEETS 重切一次即可自动覆盖。
+PLACEHOLDERS = {
+    "behit": "idle",
+    "death": "idle",
+}
 
 # ── 编号标签的识别口径（实测，不是猜）───────────────────────────────
 #
@@ -102,32 +110,65 @@ EDGE_FADE = 70
 # ── 抠底 ────────────────────────────────────────────────────────────
 
 def is_keyed(path: Path) -> bool:
-    """带 Alpha 的源图（Attack.png）直接用它自己的通道，不重抠。"""
-    return Image.open(path).mode in ("RGBA", "LA")
+    """带**真 alpha** 的源图直接用它自己的通道，不重抠。
+
+    ⚠ 2026-10-05 的 NewMage AlphaProof 三张表是「假 RGBA」—— alpha 全 255，
+    棋盘格烘在 RGB 里。只看 mode 会误判成已抠好（第一版就栽在这，
+    表现是每帧「内容」占满整格、attack/defend 分析数据一模一样），
+    所以必须再看 alpha 的最小值。
+    """
+    im = Image.open(path)
+    if im.mode not in ("RGBA", "LA"):
+        return False
+    return im.getchannel("A").getextrema()[0] < 255
+
+
+# 棋盘格底的两档灰（2026-10-05 实测，无损 PNG 无噪点，全域就这两个精确值）。
+BG_TONES = ((194, 198, 196), (226, 228, 226))
+BG_NEAR = 40       # 距任一底色 Chebyshev < 此值 → 底色候选
+BG_EXACT = 10      # 距底色 < 此值 → 算「精确底色像素」，给封闭口袋用
 
 
 def key_out(im: Image.Image) -> np.ndarray:
     """
-    白底 → RGBA。返回 float32 数组（0..1 的 alpha + 已反预乘的 RGB）。
+    棋盘格底 → RGBA。返回 uint8 数组（H×W×4）。
 
-    **反预乘**是关键：边缘像素实际是 `α·前景 + (1−α)·白`，
-    直接保留观测色会在抠完之后留一圈白晕；按 α 反解前景色才能得到干净边缘。
+    **为什么不能沿用白底那套「距离抠」**：主角身上有浅灰蓝的水晶高光、帽子白星，
+    距两档底灰只有 ~20-39，按距离做 alpha 会把它们抠成半透明。
+    改用**连通性口径**：
+
+    1. 候选底 = 距任一底色 Chebyshev < :data:`BG_NEAR` 的像素；
+    2. 从图像四边泛洪 → 真背景（棋盘格整张连续，每个格子的底都连得到四边）；
+    3. 没被泛到的候选连通域（手臂与法杖之间那种**封闭棋盘格口袋**）用
+       「双色调检验」：域内同时存在两档底色的**精确像素**才算背景 ——
+       水晶高光是单一色、不含精确底色像素 → 保留。
     """
+    from scipy import ndimage
+
     rgb = np.asarray(im.convert("RGB")).astype(np.float32)
-    dist = np.max(255.0 - rgb, axis=2)          # 距纯白最远的那一档
-    alpha = np.clip((dist - BG_LO) / (BG_HI - BG_LO), 0.0, 1.0)
+    d = np.min([np.abs(rgb - np.array(t, dtype=np.float32)).max(axis=2)
+                for t in BG_TONES], axis=0)
+    cand = d < BG_NEAR
 
-    lum = rgb.max(axis=2)
-    sat = rgb.max(axis=2) - rgb.min(axis=2)
-    shadow = (sat < SHADOW_SAT) & (lum > SHADOW_LUM)
-    alpha = np.where(shadow, alpha * SHADOW_KILL, alpha)
+    lab, n = ndimage.label(cand)
+    bg = np.zeros(cand.shape, dtype=bool)
+    if n:
+        border = np.unique(np.concatenate(
+            [lab[0, :], lab[-1, :], lab[:, 0], lab[:, -1]]))
+        border = set(int(b) for b in border if b != 0)
+        bg |= np.isin(lab, list(border)) if border else False
 
-    a = np.clip(alpha, 0.0, 1.0)[:, :, None]
-    fg = np.zeros_like(rgb)
-    solid = a[:, :, 0] > 1e-4
-    fg[solid] = (rgb[solid] - (1.0 - a[solid]) * 255.0) / a[solid]
-    fg = np.clip(fg, 0.0, 255.0)
-    return np.dstack([fg, a[:, :, 0] * 255.0])
+        exact = [np.abs(rgb - np.array(t, dtype=np.float32)).max(axis=2) < BG_EXACT
+                 for t in BG_TONES]
+        for i in range(1, n + 1):
+            if i in border:
+                continue
+            m = lab == i
+            if exact[0][m].any() and exact[1][m].any():
+                bg |= m
+
+    alpha = (~bg).astype(np.float32)
+    return np.dstack([rgb, alpha * 255.0]).astype(np.uint8)
 
 
 def load_sheet(path: Path) -> Image.Image:
@@ -538,7 +579,11 @@ def apply(plan: dict) -> None:
     #   （怪物三行 + 本次没动的主角动作），只覆盖本次重切的动作。
     #   2026-09-21 修：旧版「非 Hero/ 全保留」在 --only 单切 idle 时会把
     #   Hero/attack 等其它动作的行整个丢掉，Unity 侧锚点悄悄退回底部居中。
-    regenerated = {name for name in plan if not name.endswith("__meta")}
+    #   2026-10-05 修：regenerated 原来放的是姿态名（"idle"），跟清单行名
+    #   （"Hero/idle"）永远比不上 → 旧行从没被真正替换过、每次重切都**追加**
+    #   重复行，全靠 Unity 侧 ReadManifest 的字典「后行覆盖前行」才没炸。
+    #   现在统一成 "Hero/<姿态>" 口径；怪物行（"Monster/…"）不受影响。
+    regenerated = {"Hero/" + name for name in plan if not name.endswith("__meta")}
     old_lines = (ART / "Chars" / "anim_frames.txt").read_text(encoding="utf-8").splitlines()
     for ln in old_lines:
         s = ln.strip()
@@ -631,6 +676,14 @@ def main() -> None:
     report_motion(plan)
     preview(plan)
     if "--apply" in sys.argv:
+        # 占位动作在预览之后才注入：预览带里不重复展示 idle 的拷贝。
+        for dst_pose, src_pose in PLACEHOLDERS.items():
+            if src_pose not in plan:
+                print(f"  ⚠ 占位源 {src_pose} 不在本次切分里，跳过 {dst_pose}")
+                continue
+            plan[dst_pose] = [dict(f) for f in plan[src_pose]]
+            plan[dst_pose + "__meta"] = [dict(m) for m in plan[src_pose + "__meta"]]
+            print(f"  占位 {dst_pose} ← {src_pose}（{len(plan[dst_pose])} 帧，画布/锚点同 {src_pose}）")
         apply(plan)
 
 

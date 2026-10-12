@@ -1,3 +1,4 @@
+using MagicBrawl.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -29,6 +30,16 @@ namespace MagicBrawl.App
         [Tooltip("「未知」时压在上面的一层暗色（平时失活）。")]
         [SerializeField] private Image _dim;
 
+        /// <summary>
+        /// 「已知」时显示的<b>组成式卡面</b>（唯一那份 <c>CardView_Hand.prefab</c> 的实例），
+        /// 默认失活 —— 2026-10-05 加。
+        ///
+        /// <para>与 <see cref="PeekCardSlot.CardFace"/> 同一件事：工程里只剩插画那一份美术，
+        /// 直接换 <see cref="_face"/> 的 sprite 会只显示一张光图，没有卡名 / 力量 / 冷却 /
+        /// 效果文字（用户 2026-10-05：「只显示插画，不显示卡面」）。</para>
+        /// </summary>
+        [SerializeField] private CardView _cardFace;
+
         /// <summary>这一格当前显示的是不是牌背（未知）。供自测对账。</summary>
         public bool IsUnknown { get; private set; }
 
@@ -42,6 +53,12 @@ namespace MagicBrawl.App
             get { return _dim; }
         }
 
+        /// <summary>「已知」时显示的组成式卡面（见字段说明）。可能为 null（老 Prefab）。</summary>
+        public CardView CardFace
+        {
+            get { return _cardFace; }
+        }
+
         /// <summary>
         /// 摆一张牌。
         ///
@@ -51,20 +68,47 @@ namespace MagicBrawl.App
         /// 一张<b>明明看过</b>的牌会因为缺图被静默画成牌背 —— 那是把美术缺料伪装成情报缺失，
         /// 玩家会以为自己的记忆不对。所以两者分开：知不知道该亮，能不能亮是另一回事
         /// （缺图时退化成一块深色矩形，位置和数量仍然正确）。</para>
+        ///
+        /// <para><b>2026-10-05 起「已知」走 <see cref="_cardFace"/></b>（组成式卡面）：
+        /// 它自己会把插画 + 卡名 + 力量 + 冷却 + 效果文字一起画出来。
+        /// <paramref name="card"/> 就是那一张牌的快照；<see cref="_face"/> 只留给牌背。</para>
         /// </summary>
         /// <param name="isKnown">玩家是否知道这是哪张牌（由上层按 uid 判定）。</param>
-        /// <param name="face">已知时的正面卡面；可能为 null（库还没这批次素材）。</param>
+        /// <param name="card">已知时那张牌的快照（未知时用不到）。</param>
         /// <param name="backSprite">未知时的牌背图。</param>
-        public void Bind(bool isKnown, Sprite face, Sprite backSprite)
+        /// <param name="fallbackFace">
+        /// 兜底正面图：<b>只有老的 Prefab 里没有卡面子节点时</b>才会用到
+        /// （那时退回「插画塞 Image」的老行为）。跑过补丁之后恒为 null。
+        /// </param>
+        public void Bind(bool isKnown, CardSnapshot card, Sprite backSprite, Sprite fallbackFace = null)
         {
             IsUnknown = !isKnown;
 
+            bool showCardFace = isKnown && _cardFace != null;
+
+            if (_cardFace != null)
+            {
+                if (isKnown)
+                {
+                    _cardFace.Bind(card, CardView.ViewMode.Hand, 0);
+                    // ⚠ 尺寸一律运行时重申（铁律 15）：构建器写进 Prefab 的缩放不随嵌套 Prefab 落盘。
+                    _cardFace.SetFaceWidth(UiLayout.MonsterHandCardWidth);
+                    _cardFace.SetReadOnly();      // 纯展示，不吃射线也不压暗
+                }
+
+                if (_cardFace.gameObject.activeSelf != showCardFace)
+                {
+                    _cardFace.gameObject.SetActive(showCardFace);
+                }
+            }
+
             if (_face != null)
             {
-                // 未知 → 牌背；已知 → 正面卡面（拿不到就退化成深色方块，但仍是「亮着」的那格）
-                Sprite show = isKnown ? face : backSprite;
+                // 这张 Image 服务两件事：未知时画牌背；已知但**没有卡面节点**时退回插画。
+                Sprite show = isKnown ? fallbackFace : backSprite;
                 _face.sprite = show;
                 _face.color = show != null ? Color.white : UiTheme.MiniCardFace;
+                _face.enabled = !showCardFace;
             }
 
             if (_dim != null)

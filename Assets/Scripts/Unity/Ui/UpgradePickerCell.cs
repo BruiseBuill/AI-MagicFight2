@@ -117,7 +117,7 @@ namespace MagicBrawl.App
             // ⚠ 尺寸一律运行时重申（铁律 15）：编辑模式写进 Prefab 的那份 localScale 不落盘。
             _card.SetFaceWidth(UiLayout.ShopBagCardFaceWidth);
 
-            _card.SetInteractable(false);       // 卡面自己不接点击；不压暗（压暗由 _blocked 负责）
+            _card.SetReadOnly();       // 卡面自己不接点击；不压暗（压暗由 _blocked 负责）
             _card.SetSelected(false);
             _card.SetDimmed(false);
         }

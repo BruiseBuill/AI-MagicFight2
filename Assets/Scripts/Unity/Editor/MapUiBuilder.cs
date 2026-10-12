@@ -276,8 +276,8 @@ namespace MagicBrawl.App.EditorTools
             SetRef(serialized, "_playerImage", playerImg);
             SetRef(serialized, "_title", titleText);
             SetRef(serialized, "_hint", hintText);
-            SetRef(serialized, "_progressText", FindDeep(canvasGo.transform, "ProgressNumber") != null
-                ? FindDeep(canvasGo.transform, "ProgressNumber").GetComponent<TMP_Text>() : null);
+            SetRef(serialized, "_hpText", FindDeep(canvasGo.transform, "HpNumber") != null
+                ? FindDeep(canvasGo.transform, "HpNumber").GetComponent<TMP_Text>() : null);
             SetRef(serialized, "_goldText", FindDeep(canvasGo.transform, "GoldNumber") != null
                 ? FindDeep(canvasGo.transform, "GoldNumber").GetComponent<TMP_Text>() : null);
             SetRef(serialized, "_endLayer", FindDeep(canvasGo.transform, "EndLayer") != null
@@ -323,12 +323,16 @@ namespace MagicBrawl.App.EditorTools
 
         /// <summary>
         /// 顶栏 —— 参数与商店 <c>BuildHud</c> 逐条一致（同一张 <c>Hud_Bar</c>、同一套 <c>UiLayout.Hud*</c>），
-        /// 只是两个数字位的名字改成 <c>ProgressNumber</c> / <c>GoldNumber</c>。
+        /// 只是两个数字位的名字改成 <c>HpNumber</c> / <c>GoldNumber</c>。
         ///
-        /// <para><b>⚠ 为什么不沿用战斗那套 <c>HpNumber</c> / <c>ResNumber</c></b>：那套名字的语义是
-        /// 「生命 / 资源」，而地图顶上这两个数一个是层数进度、一个是金币。名字留着旧语义，
-        /// 下一个改的人会按名字去猜，而地图里<b>没有</b>「生命」这个量（战斗的入场生命不由地图给），
-        /// 那才是最费时间的错。</para>
+        /// <para><b>⚠ 2026-10-05：第一格从「进度」改成了「生命」</b>（用户口径：
+        /// 「地图界面的生命值和战斗界面的生命值是一致的……根本不需要显示进度」）。
+        /// 节点名也从 <c>ProgressNumber</c> 改成 <c>HpNumber</c> —— 留着旧名字，
+        /// 下一个改的人会按名字去猜，而这里显示的已经不是进度了。</para>
+        ///
+        /// <para><b>⚠ 为什么这里<b>没有</b>爱心图标</b>：战斗顶栏那枚红心是
+        /// <c>CharacterView.SetHpBadge</c> 画的浮动徽标；地图顶栏是商店那套纯文本数字位，
+        /// 用户明确说「不要用爱心的符号」，所以这里只有文字。</para>
         /// </summary>
         private static void BuildHud(Transform parent, TMP_FontAsset body, TMP_FontAsset title,
             StringBuilder log)
@@ -363,12 +367,12 @@ namespace MagicBrawl.App.EditorTools
             AddText(subGo, body, UiLayout.FontSizeHudSub, UiTheme.TextSecondary,
                 TextAlignmentOptions.Left, "冒险地图");
 
-            GameObject progressGo = NewUi("ProgressNumber", hudRoot);
+            GameObject progressGo = NewUi("HpNumber", hudRoot);
             Box(Rt(progressGo), new Vector2(0f, 1f), new Vector2(0f, 1f),
                 new Vector2(UiLayout.HudHpX, -UiLayout.HudHpY),
                 new Vector2(UiLayout.HudHpWidth, UiLayout.HudHpHeight));
             AddText(progressGo, body, UiLayout.FontSizeHudHp, UiTheme.TextPrimary,
-                TextAlignmentOptions.Left, "进度 0 / 8");
+                TextAlignmentOptions.Left, "生命  4 / 4");
 
             GameObject goldGo = NewUi("GoldNumber", hudRoot);
             Box(Rt(goldGo), new Vector2(0f, 1f), new Vector2(0f, 1f),
@@ -378,7 +382,7 @@ namespace MagicBrawl.App.EditorTools
                 TextAlignmentOptions.Left, "50");
 
             log.AppendLine("  顶栏：Hud_Bar" + (hudBarSprite != null ? "（战斗美术）" : "（缺图·纯色板）")
-                           + " + Name / Subtitle / ProgressNumber / GoldNumber");
+                           + " + Name / Subtitle / HpNumber / GoldNumber");
         }
 
         /// <summary>
@@ -615,14 +619,14 @@ namespace MagicBrawl.App.EditorTools
         }
 
         /// <summary>
-        /// 把五个场景登记进 Build Settings，<b>地图排第一</b>。
+        /// 把六个场景登记进 Build Settings，<b>开始场景（Home）排第一</b>。
         ///
         /// <para><b>⚠ 这不是可选项</b>：<c>SceneManager.LoadScene("Shop")</c> 这类按名字的调用，
         /// 场景不在 Build Settings 里就会当场抛错 —— 而它抛的时刻是<b>玩家点到那个节点的时候</b>，
         /// 前面所有验证都看不出来。</para>
         ///
         /// <para>顺序 = <see cref="MapRoutes.BuildOrder"/>；<b>排第一的那个就是正式构建的启动场景</b>，
-        /// 所以地图在最前 = 打开游戏从地图开始。</para>
+        /// 所以 Home 在最前 = 打开游戏从「选存档」进。</para>
         /// </summary>
         private static void EnsureBuildSettings(StringBuilder log)
         {
@@ -670,7 +674,7 @@ namespace MagicBrawl.App.EditorTools
             EditorBuildSettings.scenes = next.ToArray();
 
             log.AppendLine("  Build Settings：" + want.Count + " 个场景（新登记 " + missing
-                           + " 个）· 启动场景 = " + MapRoutes.MapScene);
+                           + " 个）· 启动场景 = " + MapRoutes.BuildOrder[0]);
         }
 
         // ══════════════════════════════════════════════════════

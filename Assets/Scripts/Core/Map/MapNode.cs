@@ -10,8 +10,10 @@ namespace MagicBrawl.Core
     ///
     /// <para><b>行（<see cref="Row"/>）的语义</b>：0 = 最下，往上递增，
     /// 上限是 <see cref="MapGraph.RowCount"/> − 1。它在版式上就是纵向的第几格，
-    /// 所以「相邻两层的行号差 ≤ 1」这条生成约束<b>同时也是</b>「两个节点之间的桥画得出来」
-    /// 的保证 —— 桥的两端永远落在同一个 190 × 144 的格子上或它的上下邻格里。</para>
+    /// 所以「相邻两层的行号差 ∈ {0, +1}」这条生成约束<b>同时也是</b>
+    /// 「两个节点之间的桥画得出来、而且每根一样长」的保证 ——
+    /// 两端永远落在六向格里<b>相邻的两个格点</b>上（正右 0° / 右上 60°，
+    /// 边长恒为 <c>UiLayout.MapHexEdge</c>）。</para>
     /// </summary>
     public sealed class MapNode
     {
@@ -54,7 +56,8 @@ namespace MagicBrawl.Core
             {
                 return Type == MapNodeType.Battle || Type == MapNodeType.Boss
                        || Type == MapNodeType.Shop || Type == MapNodeType.Witch
-                       || Type == MapNodeType.Altar;
+                       || Type == MapNodeType.Altar || Type == MapNodeType.Treasure
+                       || Type == MapNodeType.Rest;
             }
         }
     }

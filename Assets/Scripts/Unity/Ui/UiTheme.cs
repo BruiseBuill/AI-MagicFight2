@@ -67,6 +67,74 @@ namespace MagicBrawl.App
         /// <summary>结算浮层背后的遮罩（压暗整局画面）。</summary>
         public static readonly Color OverlayVeil = new Color(0f, 0f, 0f, 0.72f);
 
+        // ══════════════════════════════════════════════════════
+        //  战斗胜利结算界面（2026-10-04 · 参考 Assets/Art/Reference-5.png）
+        // ══════════════════════════════════════════════════════
+        //
+        //  取自参考图的实际取色（那张图整体压得很暗，元素是暖金 + 暗紫 + 暖白三色）。
+        //  与旧 ResultRoot 那块深蓝浮层不是一支 —— 参考图是「暗紫金属 + 暖金描边」的调子。
+
+        /// <summary>
+        /// 结算界面底图上的暗纱。
+        ///
+        /// <para>比 <see cref="OverlayVeil"/> 轻一档：那块底图本来就是**要给人看的**
+        /// （用户口径「将背景换成正常的战斗背景」）—— 压到 0.72 就只剩一片黑，
+        /// 白换了背景。</para>
+        ///
+        /// <para><b>2026-10-04 试拍后从 0.58 提到 0.64</b>：0.58 下水城的石板地太亮，
+        /// 中央那三张卡与金色元素有点「浮在白天里」，没有参考图那种「聚光在中间」的层次；
+        /// 0.64 = 水面与桥还读得出轮廓，前景暖金立刻跳出来。</para>
+        /// </summary>
+        public static readonly Color ResultWinVeil = new Color(0f, 0f, 0f, 0.64f);
+
+        /// <summary>「战斗胜利」横幅牌匾的底（暗紫，取自参考图横幅主体）。</summary>
+        public static readonly Color ResultWinBannerPlate = Hex("4E3B4A");
+
+        /// <summary>横幅牌匾的下缘（上浅下深，让牌匾有厚度）。</summary>
+        public static readonly Color ResultWinBannerShade = Hex("3A2C36");
+
+        /// <summary>横幅牌匾两端「燕尾」的布角（比主体再暗一档）。</summary>
+        public static readonly Color ResultWinBannerTail = Hex("3F2F3C");
+
+        /// <summary>横幅 / 按钮的金色描边（参考图那圈细金边）。</summary>
+        public static readonly Color ResultWinGold = Hex("C8A96A");
+
+        /// <summary>徽记的金属色（比描边亮一档，读作「这是顶上的那枚」）。</summary>
+        public static readonly Color ResultWinCrest = Hex("DCC189");
+
+        /// <summary>徽记的凹槽 / 中心（暗色，压出层次）。</summary>
+        public static readonly Color ResultWinCrestInner = Hex("2A2028");
+
+        /// <summary>「战斗胜利」标题的字色（暖白，取自参考图）。</summary>
+        public static readonly Color ResultWinTitle = Hex("F5EADB");
+
+        /// <summary>「获得奖励」分隔线（线 + 菱形 + 文字）的颜色。</summary>
+        public static readonly Color ResultWinDivider = Hex("B9A177");
+
+        /// <summary>奖励卡背后那层暗衬（把卡从背景里托出来）。</summary>
+        public static readonly Color ResultWinCardBackdrop = new Color(0f, 0f, 0f, 0.38f);
+
+        /// <summary>金币图标的亮面。</summary>
+        public static readonly Color ResultWinCoin = Hex("E8B94A");
+
+        /// <summary>金币图标的暗面 / 描边。</summary>
+        public static readonly Color ResultWinCoinEdge = Hex("8A6520");
+
+        /// <summary>「+ 20」的字色。</summary>
+        public static readonly Color ResultWinGoldText = Hex("FFF3DE");
+
+        /// <summary>「继续」键牌匾的底（浅灰褐，取自参考图按钮）。</summary>
+        public static readonly Color ResultWinButtonPlate = Hex("7A6F5E");
+
+        /// <summary>「继续」键悬停时的底。</summary>
+        public static readonly Color ResultWinButtonHot = Hex("93876F");
+
+        /// <summary>「继续」键的文字色。</summary>
+        public static readonly Color ResultWinButtonText = Hex("FFF8EC");
+
+        /// <summary>键上两侧那两枚小四角星（装饰）。</summary>
+        public static readonly Color ResultWinSparkle = Hex("EDE0C4");
+
         /// <summary>选项按钮常态 / 悬停。</summary>
         public static readonly Color PickerRow = Hex("232C3C");
         public static readonly Color PickerRowHot = Hex("33405A");
@@ -210,6 +278,14 @@ namespace MagicBrawl.App
         /// <summary>免疫。</summary>
         public static readonly Color AuraPlateImmune = Hex("B98A2A");
 
+        /// <summary>
+        /// <b>刻印</b>（2026-10-07）—— 与光环同一排、同一种图标，但<b>拖不动</b>。
+        ///
+        /// <para>颜色取琥珀金，与「免疫」的 <see cref="AuraPlateImmune"/>（偏黄铜、更暗）刻意分开：
+        /// 一眼能看出「这枚不是能拖去用的光环」。</para>
+        /// </summary>
+        public static readonly Color AuraPlateSigil = Hex("D9822B");
+
         /// <summary>底版描边（暗色，让图标在浅色背景上也立得住）。</summary>
         public static readonly Color AuraIconEdge = Hex("10151E");
 
@@ -315,6 +391,23 @@ namespace MagicBrawl.App
 
         /// <summary>结算结果「不送入冷却」——中性，不抢注意力。</summary>
         public static readonly Color PeekKept = TextSecondary;
+
+        /// <summary>
+        /// M25b 眼睛：正在看（亮）。暖白，压在深色手牌区上最亮。
+        /// 素材本身是近白灰阶，所以这三种色是<b>乘算</b>上去的 —— 换成任何中性亮色都读得出。
+        /// </summary>
+        public static readonly Color PeekEyeActive = new Color(1f, 0.99f, 0.94f, 1f);
+
+        /// <summary>M25b 眼睛：无事发生（变暗）。压得很低 —— 「暗下去」本身就是结果。</summary>
+        public static readonly Color PeekEyeDim = new Color(0.34f, 0.36f, 0.42f, 1f);
+
+        /// <summary>
+        /// M25b 眼睛：这张牌要被送进冷却（变红）。
+        ///
+        /// <para>不用 <see cref="EnemyAccent"/>（那支是橙红 FF7043）—— 「变红」要和
+        /// 「变暗」在余光里就能分辨，所以这里给一支更饱和的正红。</para>
+        /// </summary>
+        public static readonly Color PeekEyeCooled = Hex("F04438");
 
         // ══════════════════════════════════════════════════════
         //  M27 手牌选择弹窗（磁暴 / 充能 / 电弧）
@@ -675,6 +768,36 @@ namespace MagicBrawl.App
 
         /// <summary>结束浮层的正文与按钮文字色。</summary>
         public static readonly Color MapEndText = ShopLeaveText;
+
+        // ══════════════════════════════════════════════════════
+        //  休息事件场景（2026-10-09 · P9 · 当前是占位）
+        // ══════════════════════════════════════════════════════
+        //
+        //  用户口径：「该事件对应的场景暂时还没有做好，先姑且用个黑屏 + 按钮的方式替代一下」。
+        //  所以这一组颜色只服务「一块黑底 + 一个能点的键」，正式场景做好后这套可以整个删掉。
+
+        /// <summary>
+        /// 休息场景的整屏底色 —— <b>近黑</b>。
+        ///
+        /// <para>刻意比 <see cref="Backdrop"/>（<c>0F131B</c>，带一点蓝的板岩色）更黑一档：
+        /// 它要一眼读出「这里还没有美术、这是占位」，而不是跟其它事件场景的深色底混为一谈。</para>
+        /// </summary>
+        public static readonly Color RestPlaceholderBackdrop = Hex("05070B");
+
+        /// <summary>场景标题色（与商店 / 强化 / 女巫 / 宝箱同一支暖金）。</summary>
+        public static readonly Color RestTitleText = ShopTitleText;
+
+        /// <summary>
+        /// 「休息」大键的底。用暖金实心块（不是美术底图）—— 压在近黑底上对比最强，
+        /// 也省掉一张「键底」素材（占位阶段不该再增加美术负担）。
+        /// </summary>
+        public static readonly Color RestButtonPlate = Hex("C8A96A");
+
+        /// <summary>「休息」大键的文字色（近黑，压在暖金底上）。</summary>
+        public static readonly Color RestButtonText = Hex("1A1408");
+
+        /// <summary>引导行与「离开」键的文字色（与商店 / 宝箱那支近白同源）。</summary>
+        public static readonly Color RestHintText = Hex("FFF3DE");
 
         /// <summary>把 "RRGGBB" 转成 Color（不解析 # 前缀之外的花样，够用即可）。</summary>
         public static Color Hex(string hex)

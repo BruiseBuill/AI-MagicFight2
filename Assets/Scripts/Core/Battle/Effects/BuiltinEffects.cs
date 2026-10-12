@@ -92,6 +92,11 @@ namespace MagicBrawl.Core
             });
             // Defense modifiers are queried before committing a legal defense, never applied twice.
             Automatic(registry, EffectOp.DefPlus, EffectStage.Defense, (c, e) => { });
+            // 海啸（au）：β「防御时增加等于手牌数的力量值」（2026-10-07）。
+            //   与 DefPlus / Guard 一样是纯粹的「防御侧查询」—— 处理器是空实现，
+            //   真正读它的是 DefenseResolver.DefendBonus(card, handCount)
+            //  （手牌数由调用方给，因为「等于手牌数」这个量在卡表里取不到）。
+            Automatic(registry, EffectOp.DefPlusPerHand, EffectStage.Defense, (c, e) => { });
             Automatic(registry, EffectOp.Guard, EffectStage.Defense, (c, e) => { });
         }
         private static void Register(EffectRegistry r, EffectOp op, EffectStage stage,

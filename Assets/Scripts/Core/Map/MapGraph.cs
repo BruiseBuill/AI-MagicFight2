@@ -12,7 +12,9 @@ namespace MagicBrawl.Core
     /// <para><b>四条不变量</b>（生成器负责，<c>MapScenario</c> 逐条验、1000 个种子）：
     /// <list type="number">
     /// <item>起点唯一（<see cref="MapNodeType.Camp"/>）、终点唯一（<see cref="MapNodeType.Boss"/>）；</item>
-    /// <item>每条边的两端行号差 <b>≤ 1</b> —— 这是「桥一定画得出来」的几何前提；</item>
+    /// <item>每条边的两端行号差 <b>∈ {0, +1}</b> —— 这是「桥一定画得出来、而且
+    ///   每根一样长」的几何前提（六向格的两个前向邻居，见 <c>MapGenerator</c> 类注释里
+    ///   那段「为什么不能有 −1」的证明）；</item>
     /// <item>没有交叉边（同两层之间不存在 <c>(a−c)·(b−d) &lt; 0</c> 的两条边）；</item>
     /// <item>每个节点都从起点可达、也都能走到 Boss（没有死路、没有孤岛）。</item>
     /// </list></para>

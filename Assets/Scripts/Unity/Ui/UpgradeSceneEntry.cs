@@ -8,6 +8,13 @@ namespace MagicBrawl.App
     /// <summary>
     /// 强化场景的<b>单场景入口</b>（2026-09-30 · 独立场景契约 E1–E4）。
     ///
+    /// <para><b>⚠ 2026-10-06 改口径（用户原话）</b>：「强化时需要选择一张牌作为祭品，
+    /// 然后才能力量加2，不然无法强化（类似于女巫）」。于是本场景变成<b>两步</b>：
+    /// ① 点台面 → 选「要强化的牌」；② 紧接着 → 选「祭品（会被消耗）」，两者都定了才动画 + 落盘。
+    /// <b>规则本体全部在 <see cref="AltarRite"/></b>（Core），本类只负责流程、文案与写存档；
+    /// 卡池少于 <see cref="AltarRite.MinPoolSize"/> 张时只提示、连弹窗都不开
+    /// （与女巫工坊 <see cref="WitchWorkshop.CanOpen"/> 同一套做法）。</para>
+    ///
     /// <para><b>为什么需要它</b>：强化是冒险模式里的一个事件节点，正式流程中它会从地图层
     /// 接到一份 <c>RunSnapshot</c>（这一趟冒险已持有的牌）+ 一个节点种子。那套链路还没接，
     /// 而<b>每个事件类型都必须能被单独进 Play 调试</b>（架构文档 §3），
@@ -38,6 +45,15 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class UpgradeSceneEntry : MonoBehaviour
     {
+        /// <summary>
+        /// 本场景读写哪个档 = <b>玩家在主菜单选的那个</b>（没选过就 <c>Main</c>，单场景调试不受影响）。
+        /// 与 <c>ShopSceneEntry.SlotInUse</c> 同一口径，见那里的说明。
+        /// </summary>
+        private static SaveSlot SlotInUse
+        {
+            get { return SaveSlots.Active(SaveSlot.Main); }
+        }
+
         // ── 调试参数（正式接入后由地图层 / 存档给）────────────────────
 
         [Header("调试 · 卡池")]
@@ -84,6 +100,23 @@ namespace MagicBrawl.App
 
         /// <summary>强化动画正在播。</summary>
         private bool _busy;
+
+        /// <summary>第 1 步选的「要强化的牌」（还没选 = <c>null</c>）。</summary>
+        private CardDef _target;
+
+        /// <summary>第 2 步选的「祭品」—— 确认后它会从卡池里消失（还没选 = <c>null</c>）。</summary>
+        private CardDef _sacrifice;
+
+        /// <summary>
+        /// 第 1 步刚确认、正在等弹窗关掉 —— 关掉之后再弹第 2 步。
+        ///
+        /// <para><b>⚠ 为什么必须等下一拍</b>：弹窗的「确认」是这样走的
+        /// <c>Confirmed → Hide() → Closed</c>（见 <see cref="UpgradePickerView"/>）。
+        /// 在 <c>Confirmed</c> 里直接开下一轮，会被紧随的 <c>Hide()</c> 立刻按灭 ——
+        /// 症状是「第 1 步确认完，弹窗整个关掉、什么都没发生」（零报错）。
+        /// 所以这里只记个标记，真正开第 2 步放在 <see cref="OnPickerClosed"/> 里。</para>
+        /// </summary>
+        private bool _pendingSacrifice;
 
         private void Awake()
         {
@@ -133,10 +166,13 @@ namespace MagicBrawl.App
 
             _ended = false;
             _busy = false;
+            _target = null;
+            _sacrifice = null;
+            _pendingSacrifice = false;
 
             _view.SetTitle("强化卡牌");
             _view.SetLeaveLabel("离开");
-            _view.SetHint("点击台面，选择一张牌强化（基础力量 +2，上限 9）");
+            _view.SetHint("点击台面：先选要强化的牌，再选一张祭品（祭品会被消耗掉）· 力量 +2，上限 9");
             _view.SetHintVisible(true);
             _view.SetTableInteractable(true);
             _view.ClosePicker();
@@ -148,7 +184,10 @@ namespace MagicBrawl.App
             ResolveCards();
 
             Debug.Log("[UpgradeSceneEntry] 卡池 " + _cards.Count + " 张 · 可强化 " + CountUpgradable()
-                      + " 张 · 强化册 " + _upgrades.Count + " 张"
+                      + " 张 · 门槛 " + (AltarRite.CanOpen(_cards.Count)
+                          ? "已达（≥" + AltarRite.MinPoolSize + "）"
+                          : "未达（需 ≥" + AltarRite.MinPoolSize + "）")
+                      + " · 强化册 " + _upgrades.Count + " 张"
                       + (_pool != null ? "（来源 " + _pool.displayName + "）" : ""));
         }
 
@@ -211,7 +250,7 @@ namespace MagicBrawl.App
             // 正式来源：主存档的玩家卡池
             PlayerData player;
             string error;
-            if (!SaveStore.TryLoadPlayer(SaveSlot.Main, out player, out error))
+            if (!SaveStore.TryLoadPlayer(SlotInUse, out player, out error))
             {
                 Debug.LogWarning("[UpgradeSceneEntry] 读主存档失败，本局卡池为空：" + error);
                 return;
@@ -290,7 +329,7 @@ namespace MagicBrawl.App
             for (int i = 0; i < _cards.Count; i++)
             {
                 string reason;
-                if (CardUpgrade.CanUpgrade(_cards[i], out reason))
+                if (AltarRite.CanBeTarget(_cards[i], null, out reason))
                 {
                     n++;
                 }
@@ -299,15 +338,42 @@ namespace MagicBrawl.App
             return n;
         }
 
-        /// <summary>把卡池翻译成弹窗要的格子数据（**唯一的规则判定点**）。</summary>
-        private List<UpgradePickerView.Entry> BuildEntries()
+        /// <summary>
+        /// 第 1 步的格子数据：<b>要强化的牌</b>（判据 <see cref="AltarRite.CanBeTarget"/>，
+        /// 参数 2 = 祭品还没选）。
+        ///
+        /// <para>不可选的格子照旧留在列表里、只压暗并写上原因（不从列表里去掉：
+        /// 玩家要能看见「我有这张牌、它为什么不能强化」，直接消失会被当成 bug）。</para>
+        /// </summary>
+        private List<UpgradePickerView.Entry> BuildTargetEntries()
         {
             var list = new List<UpgradePickerView.Entry>(_cards.Count);
             for (int i = 0; i < _cards.Count; i++)
             {
                 CardDef card = _cards[i];
                 string reason;
-                bool ok = CardUpgrade.CanUpgrade(card, out reason);
+                bool ok = AltarRite.CanBeTarget(card, null, out reason);
+                list.Add(new UpgradePickerView.Entry { Card = card, Upgradable = ok, Reason = reason });
+            }
+
+            return list;
+        }
+
+        /// <summary>
+        /// 第 2 步的格子数据：<b>祭品</b>（判据 <see cref="AltarRite.CanBeSacrifice"/>）。
+        ///
+        /// <para>整份卡池里只有「已经选定的目标」那一格不可选（<see cref="AltarRite.SameCard"/>
+        /// 按基础 ID 比，所以基础版与它的 <c>+</c> 版也算同一张）——
+        /// 其它任何牌都能当祭品，包括已强化过的、力量为 X 的、效果连锁的。</para>
+        /// </summary>
+        private List<UpgradePickerView.Entry> BuildSacrificeEntries()
+        {
+            var list = new List<UpgradePickerView.Entry>(_cards.Count);
+            for (int i = 0; i < _cards.Count; i++)
+            {
+                CardDef card = _cards[i];
+                string reason;
+                bool ok = AltarRite.CanBeSacrifice(card, _target, out reason);
                 list.Add(new UpgradePickerView.Entry { Card = card, Upgradable = ok, Reason = reason });
             }
 
@@ -325,27 +391,29 @@ namespace MagicBrawl.App
                 return;
             }
 
-            _view.OpenPicker(BuildEntries(), "强化卡牌");
+            // 卡池不够就只提示一句（连弹窗都不弹）—— 与女巫工坊同一套做法。
+            if (!AltarRite.CanOpen(_cards.Count))
+            {
+                string blocked = AltarRite.OpenBlockedReason(_cards.Count);
+                _view.SetHint(blocked);
+                _view.SetHintVisible(true);
+                Debug.Log("[UpgradeSceneEntry] " + blocked);
+                return;
+            }
+
+            _target = null;
+            _sacrifice = null;
+            _pendingSacrifice = false;
+
+            _view.OpenPicker(BuildTargetEntries(), "强化卡牌 · 第 1 步：选择要强化的牌");
         }
 
         /// <summary>
-        /// 玩家按了「确认」：把这一笔强化<b>追加进强化册</b>（写回主存档）→ 重建目录 →
-        /// 换掉卡池里那一张 → 播动画。
+        /// 弹窗按了「确认」。<b>同一个回调要用两次</b>（2026-10-06 两步流程）：
+        /// 第 1 次拿到的是「要强化的牌」，第 2 次拿到的是「祭品」。
         ///
-        /// <para><b>⚠ 顺序不能换</b>：先落盘拿到「运行时该用的那一份定义」，再替换卡池，
-        /// 最后才播动画（动画拿的就是新旧两份，播的是同一个事实）。</para>
-        ///
-        /// <para><b>⚠ 现在是「改配方」而不是「造一张新卡资产」</b>（2026-10-02 多轴强化）：
-        /// 强化记成 <c>PlayerData.upgrades</c> 里的一张牌 + 一笔
-        /// （<see cref="UpgradeBook.Append"/>），强化版由
-        /// <see cref="UpgradeBook.BuildCatalog"/> 读的时候合成。
-        /// 这样同一张牌能同时叠力量 / 冷却 / 词条三轴，也不会出现「A 存档强化过、
-        /// B 存档也看到」这种全局副作用。</para>
-        ///
-        /// <para><b>本节点给的方向 = 力量 +2</b>（用户 2026-09-30 口径，没变）。
-        /// 冷却轴 / 词条轴的能力已经在 Core 里（<see cref="CardUpgradeMod.Cooldown"/> /
-        /// <see cref="CardUpgradeMod.Effect"/>），**换方向只需要换构造的这一笔 mod** ——
-        /// 多方向强化的接入口就在这里。</para>
+        /// <para><b>⚠ 第 2 步不能在 <c>Confirmed</c> 里当场开</b>（理由见
+        /// <see cref="_pendingSacrifice"/>）—— 这里只记标记，等 <see cref="OnPickerClosed"/>。</para>
         /// </summary>
         private void OnUpgradeConfirmed(CardDef card)
         {
@@ -354,9 +422,53 @@ namespace MagicBrawl.App
                 return;
             }
 
-            string baseId = CardUpgrade.BaseIdOf(card.Id);
-            CardUpgradeMod mod = CardUpgradeMod.Power(CardUpgrade.PowerStep);
+            if (_target == null)
+            {
+                // 第 1 步：记下要强化的牌。
+                _target = card;
+                _pendingSacrifice = true;
+                Debug.Log("[UpgradeSceneEntry] 第 1 步选定：《" + card.Name + "》"
+                          + "（力量 " + card.Power + " → " + CardUpgrade.UpgradedPower(card) + "）"
+                          + "，接着选祭品。");
+                return;
+            }
 
+            // 第 2 步：祭品定了 → 干活。
+            _sacrifice = card;
+            DoUpgrade();
+        }
+
+        /// <summary>
+        /// 真正落地这一笔：<b>祭品从卡池消失 + 目标的力量 +2</b>。
+        ///
+        /// <para><b>⚠ 顺序不能换</b>：先落盘（拿到「运行时该用的那一份定义」），
+        /// 再改内存里的卡池 / 目录，最后才播动画 —— 动画拿的就是新旧两份，播的是同一个事实。</para>
+        ///
+        /// <para><b>⚠ 落盘只走一次写</b>：<see cref="SaveStore.TryConsumeAndUpgrade"/>
+        /// 一次写完「消耗掉祭品 + 给目标追加一笔配方」。分两次写会留下
+        /// 「牌已经吃掉、力量却没加上」的存档（见那个方法的注释）。</para>
+        ///
+        /// <para><b>⚠ 仍然是「改配方」而不是「造一张新卡资产」</b>（2026-10-02 多轴强化）：
+        /// 强化记成 <c>PlayerData.upgrades</c> 里的一张牌 + 一笔
+        /// （<see cref="UpgradeBook.Append"/>），强化版由 <see cref="UpgradeBook.BuildCatalog"/>
+        /// 读的时候合成 —— 这样同一张牌能同时叠力量 / 冷却 / 词条三轴，
+        /// 也不会出现「A 存档强化过、B 存档也看到」这种全局副作用。</para>
+        ///
+        /// <para><b>本节点给的方向 = 力量 +2</b>，笔的构造在
+        /// <see cref="AltarRite.BuildMod"/>。冷却轴 / 词条轴的能力已经在 Core 里
+        /// （<see cref="CardUpgradeMod.Cooldown"/> / <see cref="CardUpgradeMod.Effect"/>），
+        /// <b>换方向只需要换 Core 里那一笔 mod</b> —— 多方向强化的接入口只在那里。</para>
+        /// </summary>
+        private void DoUpgrade()
+        {
+            CardDef sacrifice = _sacrifice;
+            CardDef target = _target;
+            if (sacrifice == null || target == null)
+            {
+                return;
+            }
+
+            string baseId = CardUpgrade.BaseIdOf(target.Id);
             CardUpgradeRecord existing;
             if (!_upgrades.TryGet(baseId, out existing))
             {
@@ -364,39 +476,59 @@ namespace MagicBrawl.App
             }
 
             string reason;
-            if (!CardUpgrade.CanApply(card, mod, existing, out reason))
+            if (!AltarRite.CanConfirm(sacrifice, target, existing, out reason))
             {
                 // 双保险：弹窗里不可选的格子本来就点不动，这里再挡一次。
-                Debug.LogWarning("[UpgradeSceneEntry] 这张牌不能强化：" + card.Name + " —— " + reason);
+                Debug.LogWarning("[UpgradeSceneEntry] 这一步强化不成立：" + reason);
+                _view.ClosePicker();
+                _view.SetHint(reason);
+                _view.SetHintVisible(true);
+                ResetPick();
                 return;
             }
 
+            CardUpgradeMod mod = AltarRite.BuildMod();
             CardDef upgraded;
             string note;
 
             if (_loadedFromMainSave)
             {
                 string error;
-                if (!SaveStore.TryAppendUpgrade(SaveSlot.Main, baseId, mod, out error))
+                if (!SaveStore.TryConsumeAndUpgrade(SlotInUse, sacrifice.Id, baseId, mod, out error))
                 {
                     Debug.LogWarning("[UpgradeSceneEntry] 强化没能写回主存档：" + error);
+                    _view.ClosePicker();
+                    ResetPick();
                     return;
                 }
 
                 _upgrades = _upgrades.Append(baseId, mod);
                 _catalog = SaveStore.WithUpgrades(ResolveCatalog(), _upgrades);
                 upgraded = _catalog.Get(CardUpgrade.UpgradedIdOf(baseId));
-                note = "已写回 " + SaveStore.FilePathFor(SaveSlot.Main);
+                note = "已写回 " + SaveStore.FilePathFor(SlotInUse);
             }
             else
             {
                 // 调试覆盖（Inspector 填了 _cardIds / _pool）：只在本局内存里生效，不碰存档
                 // —— 拿调试数据去覆盖真实存档是另一种事故（与商店 / 女巫同口径）。
-                upgraded = CardUpgrade.Apply(card, 20000 + _cards.Count);
+                upgraded = CardUpgrade.Apply(target, mod, 20000 + _cards.Count);
                 note = "调试覆盖：强化只在本局内存里生效，没有写存档";
             }
 
-            int at = _cards.IndexOf(card);
+            // 卡池：祭品消失，目标就地换成强化版（顺序无关，但先删后换更好读）。
+            int sacrificeAt = _cards.IndexOf(sacrifice);
+            if (sacrificeAt >= 0)
+            {
+                _cards.RemoveAt(sacrificeAt);
+            }
+
+            int sacrificeIdAt = _ids.IndexOf(sacrifice.Id);
+            if (sacrificeIdAt >= 0)
+            {
+                _ids.RemoveAt(sacrificeIdAt);
+            }
+
+            int at = _cards.IndexOf(target);
             if (at < 0)
             {
                 _cards.Add(upgraded);
@@ -406,7 +538,7 @@ namespace MagicBrawl.App
                 _cards[at] = upgraded;
             }
 
-            int idAt = _ids.IndexOf(card.Id);
+            int idAt = _ids.IndexOf(target.Id);
             if (idAt < 0)
             {
                 _ids.Add(upgraded.Id);
@@ -416,24 +548,52 @@ namespace MagicBrawl.App
                 _ids[idAt] = upgraded.Id;
             }
 
+            ResetPick();
             _busy = true;
-            _view.PlayUpgradeFx(card, upgraded);
+            _view.ClosePicker();
+            _view.PlayUpgradeFx(target, upgraded);
 
-            Debug.Log("[UpgradeSceneEntry] 强化《" + card.Name + "》" + mod.Describe()
-                      + "（力量 " + card.Power + " → " + upgraded.Power
-                      + " · 冷却 " + card.Cooldown + " → " + upgraded.Cooldown
-                      + " · " + note + "）");
+            Debug.Log("[UpgradeSceneEntry] " + AltarRite.ConfirmSummary(sacrifice, target, upgraded)
+                      + "（力量 " + target.Power + " → " + upgraded.Power
+                      + " · 冷却 " + target.Cooldown + " → " + upgraded.Cooldown
+                      + " · 卡池剩 " + _cards.Count + " 张 · " + note + "）");
         }
 
+        /// <summary>把「这两步的选择」清掉（确认完 / 中途放弃都走它）。</summary>
+        private void ResetPick()
+        {
+            _target = null;
+            _sacrifice = null;
+            _pendingSacrifice = false;
+        }
+
+        /// <summary>
+        /// 弹窗关掉了（确认或取消都会发）。<b>第 2 步就在这里开</b>：
+        /// 第 1 步刚确认时 <see cref="_pendingSacrifice"/> 为真，此刻第 1 个弹窗
+        /// 已经真的关掉了，再 <c>Show</c> 不会被它后面的 <c>Hide</c> 按灭。
+        /// </summary>
         private void OnPickerClosed()
         {
             // 已经结束 / 正在播动画时不要把引导文字放回来 ——
             // 否则会出现「节点都结束了、屏幕上还写着『点击台面强化』」。
             if (_ended || _busy)
             {
+                ResetPick();
                 return;
             }
 
+            if (_pendingSacrifice && _target != null)
+            {
+                _pendingSacrifice = false;
+                _view.OpenPicker(BuildSacrificeEntries(),
+                    "强化卡牌 · 第 2 步：选择祭品（会被消耗）",
+                    UpgradePickerView.Mode.Sacrifice,
+                    AltarRite.Preview(null, _target));
+                return;
+            }
+
+            // 中途取消 / 直接关掉：把这半截选择丢掉，别让下一次点击踩着上次的目标。
+            ResetPick();
             _view.SetHintVisible(true);
         }
 

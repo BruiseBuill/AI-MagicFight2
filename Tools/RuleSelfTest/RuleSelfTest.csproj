@@ -42,10 +42,14 @@
     <Compile Include="CardUpgradeScenario.cs" />
     <Compile Include="UpgradeBookScenario.cs" />
     <Compile Include="WitchWorkshopScenario.cs" />
+    <Compile Include="AltarRiteScenario.cs" />
     <Compile Include="NewCardsScenario.cs" />
     <Compile Include="MapScenario.cs" />
     <Compile Include="HeuristicAgentScenario.cs" />
     <Compile Include="MonsterScenario.cs" />
+    <Compile Include="CardAcquisitionScenario.cs" />
+    <Compile Include="SigilScenario.cs" />
+    <Compile Include="CardPriorityScenario.cs" />
     <!-- Core 源码（链接，不复制） -->
     <Compile Include="../../Assets/Scripts/Core/**/*.cs" />
   </ItemGroup>

@@ -34,6 +34,20 @@ namespace MagicBrawl.App
         [SerializeField] private GameObject _badge;
         [SerializeField] private TMP_Text _badgeText;
 
+        /// <summary>
+        /// 翻面之后显示的<b>组成式卡面</b>（唯一那份 <c>CardView_Hand.prefab</c> 的实例），
+        /// 默认失活 —— 2026-10-05 加。
+        ///
+        /// <para><b>它补的是哪个洞</b>：在这之前翻面只是把 <see cref="_face"/> 的 sprite
+        /// 换成插画（<c>CardArtLibrary.GetIllustration</c>）—— 而 2026-09-30 起工程里
+        /// <b>只剩插画这一份美术</b>（成品整图整族已删），于是玩家翻开牌只看到一张光图，
+        /// 没有卡名 / 力量 / 冷却 / 效果文字（用户 2026-10-05 报的现象：「只显示插画，不显示卡面」）。</para>
+        ///
+        /// <para>牌背仍然走 <see cref="_face"/>（它要显示 <c>Peek_CardBack</c>）——
+        /// 两者互斥：翻面前 Face 亮、CardFace 灭；翻面后反过来。</para>
+        /// </summary>
+        [SerializeField] private CardView _cardFace;
+
         /// <summary>被点了。参数是自己，方便上层直接看是哪一格。</summary>
         public event Action<PeekCardSlot> Clicked;
 
@@ -49,6 +63,12 @@ namespace MagicBrawl.App
         public Image Face
         {
             get { return _face; }
+        }
+
+        /// <summary>翻面后显示的组成式卡面（见字段说明）。可能为 null（老 Prefab 没跑过补丁）。</summary>
+        public CardView CardFace
+        {
+            get { return _cardFace; }
         }
 
         public GameObject Badge

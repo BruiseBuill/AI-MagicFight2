@@ -15,6 +15,10 @@ namespace MagicBrawl.App
     /// （本工程在「已持有卡」上已经定过这条口径：补集与背包必须是同一份）。
     /// 现在三份都是这个资产类型的实例，各场景读自己那份，<b>卡池分离</b>但不重复定义。</para>
     ///
+    /// <para><b>它还带一处「AI 怎么打」</b>（2026-10-08）：<see cref="useManualPriority"/> +
+    /// <see cref="priorities"/> —— 手写的出牌优先级。它是这份卡池<b>唯一</b>的规则外信息，
+    /// 放这里的理由很直接：这只怪能打哪些牌（卡池）与它先打哪张，是同一个策划问题。</para>
+    ///
     /// <para><b>⚠ 它不是 <see cref="CardPool"/></b>：那个是 Core 里的运行期对象
     /// （持有 <c>ICardCatalog</c>，能 Resolve 成 <c>CardDef</c>）；这个是编辑器里编辑的
     /// <b>资产</b>，只存 ID 清单，运行时由 <see cref="CreatePool"/> 转成 <see cref="CardPool"/>。
@@ -70,10 +74,158 @@ namespace MagicBrawl.App
         /// </summary>
         public bool preferUpgraded = true;
 
+        /// <summary>
+        /// <b>出牌优先级改成手写</b>（2026-10-08 · 用户口径：「应当格外设置一个选项，开启选项之后，
+        /// 我可以自己在编辑器当中写入不同卡的使用优先级，而不会被自动计算给覆盖掉」）。
+        ///
+        /// <para>勾上之后，这份卡池的出牌顺序<b>完全</b>由 <see cref="priorities"/> 决定 ——
+        /// AI 不再给任何卡算档位（连「回血卡永远最低 / 可回血时最高」那条全局覆盖也让位），
+        /// 没登记在表里的卡一律并列最低。不勾 = 老行为（四流派自动档位 + 怪物子类的偏爱）。</para>
+        ///
+        /// <para>⚠ 它只影响<b>出牌选择</b>（AI 打哪张）：防御口径、流派判定、光环用法、
+        /// 禁用某张牌（那是 AI 档案的事）都不动。</para>
+        ///
+        /// <para>⚠ <b>不要只填一半</b>：既然勾了开关就请把这张卡池里<b>在意顺序的卡</b>都写上 ——
+        /// 没写的会掉到最后（这是刻意的二选一，不做「手写值 / 自动档位混着比」那种没人算得清的折衷）。</para>
+        /// </summary>
+        [Tooltip("勾上 = 出牌顺序完全用下面那张手写表，不再被自动计算覆盖（没登记的卡排最后）。")]
+        public bool useManualPriority;
+
+        /// <summary>
+        /// 手写的出牌优先级表（<see cref="useManualPriority"/> 勾上才生效）。
+        ///
+        /// <para>一行 = 一张卡：<c>cardId</c> 填<b>基础 ID</b>（<c>a</c>，不是 <c>a+</c>）、
+        /// <c>priority</c> <b>越小越先打出</b>（与代码里的档位同方向：0 号位最先出）。
+        /// 允许重复数值（并列时取引擎给的候选顺序里靠前的那张）。</para>
+        ///
+        /// <para>⚠ 这份表<b>不参与</b>卡池的内容（不在池子里的 ID 也能写，只是永远不会被打出）
+        /// —— 它是「顺序」不是「清单」，内容仍然只看 <see cref="cardIds"/> / <see cref="useAllCards"/>。
+        /// 编辑器面板会在下面把每行的中文名 / 无效 ID 列出来核对。</para>
+        /// </summary>
+        [Tooltip("手写优先级：cardId 填基础 ID（a），priority 越小越先打。只在本开关勾上时生效。")]
+        public CardPriorityEntry[] priorities = new CardPriorityEntry[0];
+
         /// <summary>这份卡池里有几个 ID（<see cref="useAllCards"/> 时无法离线得知，返回 −1）。</summary>
         public int DeclaredCount
         {
             get { return useAllCards ? -1 : (cardIds == null ? 0 : cardIds.Length); }
+        }
+
+        /// <summary>
+        /// <b>与 <see cref="cardIds"/> 逐位对应的中文卡名</b>（2026-10-07）——
+        /// 只读派生，**不落盘**。
+        ///
+        /// <para>用途只有一个：把资产里那串字母 ID（<c>a</c> / <c>ao</c> / <c>au</c>…）
+        /// 在编辑器 / 日志 / 调试面板里显示成人看得懂的中文名。规则侧一律不读它，
+        /// 卡表才是唯一事实源（<see cref="CardLibrary"/>）。</para>
+        ///
+        /// <para>⚠ 它是**读时按当前卡表翻译**的，所以卡名改了这里自动跟着变 ——
+        /// 这正是它比「往资产里塞一份 string[] 快照」好的地方：那种写法一旦忘了同步，
+        /// 界面上会长期挂着一个对不上号的旧名字，而且零报错。</para>
+        ///
+        /// <para>⚠ 与 <see cref="ResolveIds"/> 的区别：那个会**去重 + 只留强化版**，
+        /// 所以它的下标与 <see cref="cardIds"/> 不再一一对应。要让「第 i 个名字 = 第 i 个 ID」
+        /// 成立，就必须逐位翻译原始清单，不能拿 ResolveIds 的结果来查。</para>
+        ///
+        /// <para>认不出来的 ID（打错字 / 找不到的强化版）原样回填 ID 而不是空串 ——
+        /// 空串在界面上是「一片空白」，看不出是这个 ID 有问题。</para>
+        /// </summary>
+        public IReadOnlyList<string> CardNames
+        {
+            get { return NameOf(cardIds); }
+        }
+
+        /// <summary>
+        /// 把任意一串卡 ID 翻译成中文名（逐位对应，长度与入参一致）。
+        ///
+        /// <para><see cref="CardNames"/> 就是拿 <see cref="cardIds"/> 调它；
+        /// 单独暴露出来是为了让调用方翻别的清单（比如运行时 <c>CardPool</c> 里的 ID）
+        /// 而不必先写回资产。</para>
+        /// </summary>
+        public static IReadOnlyList<string> NameOf(IReadOnlyList<string> ids, ICardCatalog catalog = null)
+        {
+            var names = new List<string>();
+            if (ids == null)
+            {
+                return names.AsReadOnly();
+            }
+
+            ICardCatalog source = catalog ?? CardCatalog.Builtin();
+            for (int i = 0; i < ids.Count; i++)
+            {
+                string id = ids[i];
+                CardDef def = null;
+                // ⚠ catalog.Get 在找不到 ID 时会**抛异常**（ICardCatalog 的契约），
+                //   而这个属性是给界面 / 日志用的：一个手滑打错的 ID
+                //   不该把整个 Inspector 或整帧界面打崩 —— 所以这里必须兜住。
+                //   （CardLibrary 确实有个 TryGet，但它是静态类上的；
+                //     ICardCatalog / CardCatalog 都没有，走不了。）
+                if (!string.IsNullOrEmpty(id))
+                {
+                    try
+                    {
+                        def = source.Get(id);
+                    }
+                    catch (ArgumentException)
+                    {
+                        def = null;
+                    }
+                }
+
+                names.Add(def != null ? def.Name : (id ?? string.Empty));
+            }
+
+            return names.AsReadOnly();
+        }
+
+        /// <summary>
+        /// <b>中文名清单的整条字符串</b>（2026-10-07）—— 逗号分隔，例：
+        /// <c>暴风雪, 冰风暴, 凝固</c>。给日志 / 调试打印用；
+        /// 要和 ID 配对看的时候用 <see cref="CardNamesWithIds"/>。
+        /// </summary>
+        public string NamesText
+        {
+            get
+            {
+                IReadOnlyList<string> names = CardNames;
+                if (names.Count == 0)
+                {
+                    return string.Empty;
+                }
+
+                var parts = new string[names.Count];
+                for (int i = 0; i < names.Count; i++)
+                {
+                    parts[i] = names[i];
+                }
+
+                return string.Join(", ", parts);
+            }
+        }
+
+        /// <summary>
+        /// <b>「ID = 中文名」配对字符串</b>（2026-10-07），例：
+        /// <c>a = 暴风雪, b = 冰风暴, au = 海啸</c>。
+        /// 排查「资产里这个字母到底是哪张牌」时用它最直接。
+        /// </summary>
+        public string CardNamesWithIds
+        {
+            get
+            {
+                if (cardIds == null || cardIds.Length == 0)
+                {
+                    return string.Empty;
+                }
+
+                IReadOnlyList<string> names = CardNames;
+                var parts = new List<string>(cardIds.Length);
+                for (int i = 0; i < cardIds.Length; i++)
+                {
+                    parts.Add(cardIds[i] + " = " + names[i]);
+                }
+
+                return string.Join(", ", parts.ToArray());
+            }
         }
 
         /// <summary>这个 ID 在不在池子里。</summary>
@@ -170,6 +322,50 @@ namespace MagicBrawl.App
             }
 
             return list.AsReadOnly();
+        }
+
+        /// <summary>
+        /// <b>手写优先级表</b>（没勾开关 / 一列都没填 → <c>null</c>，表示「不插手，按自动算」）。
+        ///
+        /// <para><see cref="CharacterConfig.CreateDefinition"/> 把它交给
+        /// <see cref="CharacterDefinition"/>，再经 <c>MonsterAgentFactory</c> 落到 AI 身上 ——
+        /// 也就是「卡池资产上写的顺序，跟这只怪一起走」。</para>
+        /// </summary>
+        public CardPriorityTable BuildPriorityTable()
+        {
+            return useManualPriority ? CardPriorityTable.From(priorities) : null;
+        }
+
+        /// <summary>
+        /// 手写表里 <b>不在本卡池</b> 的 ID（编辑器核对用；返回空表 = 都对得上）。
+        ///
+        /// <para>⚠ 只报「写了但用不到」的那些。<see cref="useAllCards"/> 时不判
+        /// （那时池子就是整张卡表，没有「不在池里」这回事）。</para>
+        /// </summary>
+        public System.Collections.Generic.List<string> PriorityIdsOutsidePool()
+        {
+            var list = new System.Collections.Generic.List<string>();
+            if (useAllCards || priorities == null)
+            {
+                return list;
+            }
+
+            for (int i = 0; i < priorities.Length; i++)
+            {
+                CardPriorityEntry entry = priorities[i];
+                if (entry == null || string.IsNullOrEmpty(entry.cardId))
+                {
+                    continue;
+                }
+
+                if (!Contains(CardUpgrade.BaseIdOf(entry.cardId))
+                    && !list.Contains(entry.cardId))
+                {
+                    list.Add(entry.cardId);
+                }
+            }
+
+            return list;
         }
 
         /// <summary>转成运行期的 <see cref="CardPool"/>（可以喂给 <see cref="CharacterDefinition"/>）。</summary>

@@ -133,7 +133,10 @@ namespace MagicBrawl.App
                 //   卡面纹丝不动」，而且零报错）。这里每次绑定都按当前常量重申一次。
                 _card.SetFaceWidth(UiLayout.ShopCardWidth);
 
-                _card.SetInteractable(false);        // 商店里的卡不参与出牌，点击由货位自己接
+                // ⚠ 必须是 SetReadOnly 而不是 SetInteractable(false)：后者会顺手把卡面压暗
+                //   （用户 2026-10-05：「商店界面的卡牌莫名其妙被加暗了」），而这一格
+                //   自己的「买不起」压暗纱是另一回事（见 _dim）。
+                _card.SetReadOnly();                 // 商店里的卡不参与出牌，点击由货位自己接
             }
 
             if (_pricePlate != null)

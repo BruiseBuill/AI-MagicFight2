@@ -37,6 +37,32 @@ namespace MagicBrawl.App
         /// </summary>
         public List<MagicBrawl.Core.CardUpgradeRecord> upgrades
             = new List<MagicBrawl.Core.CardUpgradeRecord>();
+
+        /// <summary>
+        /// <b>曾经获得过的卡</b>（2026-10-05 · 卡牌获取池）：基础 ID 清单，<b>只增不减</b>。
+        ///
+        /// <para><b>为什么不能只用 <see cref="cardIds"/></b>：那张单子表达的是「<b>现在</b>持有」——
+        /// 女巫工坊献祭掉一张牌之后它会少一项。而获取池的规则是
+        /// 「<b>获得过</b>的牌永远不再出现（<b>包括获得之后又把它消耗掉的情况</b>）」，
+        /// 所以「曾经拿到过」必须单独记一笔，否则同一张牌被消耗掉之后又会在奖励 / 商店里刷出来。</para>
+        ///
+        /// <para>语义上它是 <see cref="cardIds"/> 的<b>超集</b>（持有的一定获得过）——
+        /// <c>SaveStore.Normalize</c> 每次读 / 写都会用 <see cref="cardIds"/> 把它补齐，
+        /// 所以旧存档（v2 及以前）没有这个字段也能自动获得正确的语义。</para>
+        /// </summary>
+        public List<string> everOwnedIds = new List<string>();
+
+        /// <summary>
+        /// <b>曾经展示过、但没被获得</b>的卡（2026-10-05 · 卡牌获取池）：基础 ID 清单。
+        ///
+        /// <para>这些卡下次出现在战斗奖励 / 商店货架上的概率<b>减半</b>（固定减半一次，不累积）。
+        /// 一旦被获得，就从这张单子里移出去（它进了 <see cref="everOwnedIds"/>，概率归零，
+        /// 两种状态不会同时成立）。</para>
+        ///
+        /// <para>「展示过」= 它作为候选真的被摆到玩家眼前那一刻（奖励界面的三张 / 商店货架的四个位），
+        /// 而不是「进过随机池」。玩家看了没拿，才算「展示过而没获得」。</para>
+        /// </summary>
+        public List<string> offeredIds = new List<string>();
     }
 
     /// <summary>

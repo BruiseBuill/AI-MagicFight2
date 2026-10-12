@@ -80,17 +80,28 @@ namespace MagicBrawl.App
         private int _selectedUid = -1;
 
         /// <summary>
-        /// 「已经选定、等着凑成一对」的那张牌（双发防御用，2026-09-23）。
+        /// 双发防御这一拍的「已选」集合（2026-10-08 改；原先是单个 <c>_pinnedUid</c>）。
         ///
-        /// <para>双发要求交出<b>两张</b>够挡的牌，而本作的手势是「拖一张进判定区、松手即出牌」——
-        /// 一次拖拽只表达得了一张。所以这一拍改成两段：第一次拖进来的牌只「钉住」
-        /// （辉光保持、留在手牌里等），第二次拖进来的牌才与它凑成一对一起提交
-        /// （配对与提交都在 <c>BattleUi.OnHandCardDropped</c>，本视图不判断任何规则）。</para>
+        /// <para>双发要求交出<b>两张</b>够挡的牌，所以这一拍必须能<b>同时</b>盯住两张。原来的写法
+        /// 是「第一张钉住、第二张拖进来配对」—— 钉住的那张不认点击，玩家点第一张（亮）再点第二张，
+        /// 第一张的辉光会被单选逻辑换掉，看着像「只选了一张」；而且一旦拖拽失败，
+        /// 已选的也留不住。现在改成一份集合：<b>点一下加一张、再点一下取消</b>，
+        /// <b>拖进判定区的那张也并进来</b>（见 <see cref="AddPick"/>），最多两张。</para>
         ///
-        /// <para>⚠ 为什么不复用 <see cref="_selectedUid"/>：那是「点一下」的残留，
-        /// 拖拽一开始就被清掉（见 <see cref="BeginDrag"/>）—— 而钉住的那张必须活过第二次拖拽。</para>
+        /// <para>⚠ 本视图仍然<b>不判断任何规则</b>：这两张能不能配成一对、能不能挡住这次双发，
+        /// 只有引擎给的 <c>DecisionSnapshot.Options</c> 说了算（<see cref="BattleUi"/> 在那里面
+        /// <b>找</b>组合，找不到就什么都不提交）。</para>
+        ///
+        /// <para>⚠ <b>顺序有意义</b>：满两张后再加会顶掉<b>最早</b>那张 —— 后点 / 后拖的优先，
+        /// 保证「玩家刚表达的那张」永远在集合里。</para>
         /// </summary>
-        private int _pinnedUid = -1;
+        private readonly List<int> _picked = new List<int>();
+
+        /// <summary>这一拍最多能标记几张（双发 = 两张）。</summary>
+        private const int MaxPicked = 2;
+
+        /// <summary>是否处于「点击累积标记」模式（<see cref="SetAccumulatePick"/>）。</summary>
+        private bool _accumulatePick;
 
         /// <summary>多选模式：选中不再互斥，可以同时标好几张（发牌替换用）。</summary>
         private bool _multiMode;
@@ -393,6 +404,13 @@ namespace MagicBrawl.App
             {
                 _multi.RemoveWhere(u => IndexOfUid(u) < 0);
             }
+
+            // 双发的「已选」同理：换手牌之后被换掉的那张已经不在手上，标记要跟着丢掉，
+            // 否则它会一直占着「已选 N」的名额，而屏幕上根本找不到那张牌。
+            if (_picked.Count > 0)
+            {
+                _picked.RemoveAll(u => IndexOfUid(u) < 0);
+            }
         }
 
         /// <summary>哪些牌当前可以点（Uid 集合）。传 null = 不限制；传空集 = 一张都不允许点。</summary>
@@ -425,14 +443,73 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 钉住 / 取消钉住某张牌（<c>-1</c> = 取消）。双发防御的「已选第一张」。
+        /// 切到 / 切出「点击累积标记」模式（双发防御这一拍，2026-10-08）。
         ///
-        /// <para>与 <see cref="SetSelectedUid"/> 的区别：钉住的辉光<b>不会被下一次拖拽清掉</b>
-        /// （<see cref="BeginDrag"/> 会清掉点击残留，而钉住的那张必须活到第二次拖拽）。</para>
+        /// <para>开启后：「点一下」不再走单选框（<see cref="_selectedUid"/>，点第二张就把第一张换掉），
+        /// 改成加减 <see cref="_picked"/> 里的标记；拖拽<b>只</b>会往里加（<see cref="BeginDrag"/>
+        /// 清的仍然是点击残留），所以「凑不够两张、牌弹回来」也不会把玩家已选的牌取消掉 ——
+        /// 这正是用户 2026-10-08 要的「防御失败、弹回去，但并不取消这张牌的选择」。</para>
         /// </summary>
-        public void SetPinnedUid(int uid)
+        public void SetAccumulatePick(bool on)
         {
-            _pinnedUid = uid;
+            _accumulatePick = on;
+
+            if (!on)
+            {
+                _picked.Clear();
+            }
+        }
+
+        /// <summary>这一拍已经标记了几张。</summary>
+        public int PickCount
+        {
+            get { return _picked.Count; }
+        }
+
+        /// <summary>这一拍标记的牌（顺序 = 标记的先后，最多 <see cref="MaxPicked"/> 张）。</summary>
+        public IReadOnlyList<int> PickedUids
+        {
+            get { return _picked.AsReadOnly(); }
+        }
+
+        /// <summary>点一下：加一张 / 取消那一张（满两张后加新的会顶掉最早那张）。</summary>
+        public void TogglePick(int uid)
+        {
+            if (uid < 0)
+            {
+                return;
+            }
+
+            if (_picked.Remove(uid))
+            {
+                return;
+            }
+
+            AddPick(uid);
+        }
+
+        /// <summary>
+        /// 把一张牌并进「已选」（拖进判定区的那张走这里）。已经在集合里就什么都不做。
+        /// </summary>
+        public void AddPick(int uid)
+        {
+            if (uid < 0 || _picked.Contains(uid))
+            {
+                return;
+            }
+
+            while (_picked.Count >= MaxPicked)
+            {
+                _picked.RemoveAt(0);
+            }
+
+            _picked.Add(uid);
+        }
+
+        /// <summary>清空这一拍的「已选」（提交 / 换拍 / 收尾）。</summary>
+        public void ClearPick()
+        {
+            _picked.Clear();
         }
 
         /// <summary>
@@ -495,7 +572,7 @@ namespace MagicBrawl.App
         public void ClearSelection()
         {
             _selectedUid = -1;
-            _pinnedUid = -1;
+            _picked.Clear();
             _multi.Clear();
             HidePeek();
         }
@@ -594,11 +671,12 @@ namespace MagicBrawl.App
                         targetScale = UiLayout.HandHoverScale;
                     }
 
-                    // 单选模式看 _selectedUid，多选模式看 _multi（M9 替换可同时标多张）；
-                    // _pinnedUid 是双发「已选第一张」，与单选模式并存（两者都亮）。
+                    // 单选模式看 _selectedUid（普通进攻 / 防御拍，一次只亮一张）；
+                    // 多选模式看 _multi（M9 替换可同时标多张）；
+                    // _picked 是双发防御那一拍的「已选」（点两张都亮，见 SetAccumulatePick）。
                     bool marked = _multiMode
                         ? _multi.Contains(v.Card.Uid)
-                        : v.Card.Uid == _selectedUid || v.Card.Uid == _pinnedUid;
+                        : v.Card.Uid == _selectedUid || _picked.Contains(v.Card.Uid);
 
                     if (marked)
                     {
@@ -865,6 +943,21 @@ namespace MagicBrawl.App
             return index < 0 ? null : _shown[index];
         }
 
+        /// <summary>
+        /// 按实例号取一张手牌的 <see cref="RectTransform"/>（找不到 → false）。
+        ///
+        /// <para><b>谁在用</b>：<see cref="PeekEyeView"/> —— AI 用雷云 / 狂躁蘑菇偷看玩家手牌时
+        /// （<c>HandRevealedEvent.OwnerSeat</c> = 本地座位），要在「被看的那张牌」上方亮一只眼睛。
+        /// 事件里给的是引擎的 <c>Card</c>，表现层不该为了配一次对去持有它，所以只认实例号
+        /// <c>Uid</c> —— 比下标可靠：玩家拖拽可以改手牌的<b>显示</b>顺序。</para>
+        /// </summary>
+        public bool TryGetCardRect(int uid, out RectTransform rect)
+        {
+            CardView view = FindCard(uid);
+            rect = view == null ? null : (RectTransform)view.transform;
+            return rect != null;
+        }
+
         public void ResetOrder()
         {
             _order.Clear();
@@ -1018,7 +1111,17 @@ namespace MagicBrawl.App
                 return;
             }
 
-            _selectedUid = card.Card.Uid;
+            // 双发这一拍：点一下 = 加减标记（见 SetAccumulatePick），**不**走单选辉光 ——
+            // 单选辉光每点一张就换地方，玩家没法看出自己到底选了哪两张。
+            // ⚠ 两条路互斥：否则「点已选的牌取消标记」会被单选辉光重新点亮，看着像没取消。
+            if (_accumulatePick)
+            {
+                TogglePick(card.Card.Uid);
+            }
+            else
+            {
+                _selectedUid = card.Card.Uid;
+            }
 
             if (CardClicked != null)
             {

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace MagicBrawl.Core
 {
@@ -14,7 +14,8 @@ namespace MagicBrawl.Core
     /// <item><b>开局判定一次流派</b>并固定（用户 2026-10-03 口径；见
     /// <see cref="SelectArchetype"/>）—— 判定发生在它第一次轮到自己出牌时，
     /// 用那一刻的手牌（= 开局手牌 + 替换结果，第 1 回合不补牌）。</item>
-    /// <item>每次出牌按所属流派的优先级取最高的一张（<see cref="PriorityOf"/>）；</item>
+    /// <item>每次出牌按所属流派的优先级取最高的一张（<see cref="PriorityOf"/>；
+    /// 若配了手写优先级表则以它为准，见 <see cref="PriorityFor"/>）；</item>
     /// <item>全局覆盖：回血卡永远最低，但当「生命上限 − 当前生命 ≥ 2」时强制最高。</item>
     /// </list>
     ///
@@ -57,6 +58,34 @@ namespace MagicBrawl.Core
         /// <summary>是否把流派判定结果打进 <see cref="BattleLog"/>（调试用，默认关）。</summary>
         public bool LogArchetype { get; set; }
 
+        /// <summary>
+        /// 双发「行动修正」的掷骰种子（2026-10-06）。
+        ///
+        /// <para><b>为什么要一个独立种子</b>：Core 里所有随机都必须可复现（<see cref="Rng"/>），
+        /// 而「这次要不要防」是一个<em>规则外</em>的概率决策 —— 必须能从种子推出来，
+        /// 否则「同种子 → 同对局」这条前提就断了。它与 <see cref="BlindPickSeed"/>
+        /// （查看对方手牌那类的盲选）<b>分开</b>：混用一条随机流会让两边互相扰动，
+        /// 多一次防御决策就改变后面所有盲选的结果。</para>
+        /// </summary>
+        public int DoubleDefendSeed { get; set; }
+
+        /// <summary>
+        /// <b>手写的出牌优先级表</b>（2026-10-08）—— 来自卡池资产的
+        /// <see cref="CardPriorityTable"/>。非空且非空表时，本 AI 的<b>出牌优先级完全由它决定</b>：
+        /// 见 <see cref="PriorityFor"/>。
+        ///
+        /// <para><b>⚠ 「完全」是字面意思</b>（用户 2026-10-08 口径：「一旦启用了手动，
+        /// 代码当中就不能再对卡的优先级再赋值」）：登记过的卡用表里的数、没登记的一律并列最低
+        /// （<see cref="CardPriorityTable.UnlistedTier"/>），四流派档位、
+        /// 回血卡的全局覆盖、怪物子类的「最爱卡」全部让位 —— 否则「我写好的顺序」会被
+        /// 悄悄改掉几处，而卡面上什么也看不出来。</para>
+        ///
+        /// <para>默认 <c>null</c>（= 老行为：全部按自动档位）。谁填它：
+        /// <c>MonsterAgentFactory.Create</c>（从 <c>CharacterDefinition.CardPriorities</c> 来，
+        /// 而那份来自 <c>CardPoolConfig</c>）。</para>
+        /// </summary>
+        public CardPriorityTable ManualPriorities { get; set; }
+
         // ══════════════════════════════════════════════════════
         //  状态
         // ══════════════════════════════════════════════════════
@@ -75,6 +104,7 @@ namespace MagicBrawl.Core
             ReplaceWeakCards = true;
             MaxCoolHandCards = 1;
             BlindPickSeed = 20261003;
+            DoubleDefendSeed = 20261006;
         }
 
         /// <summary>本局判定的流派（尚未判定时返回 <see cref="BattleArchetype.HighPower"/>）。</summary>
@@ -90,7 +120,7 @@ namespace MagicBrawl.Core
         }
 
         /// <summary>上一次判定的完整明细（调试 / 日志用；未判定时为 null）。</summary>
-        public ArchetypeAnalysis LastAnalysis { get; private set; }
+        public ArchetypeAnalysis LastAnalysis { get; protected set; }
 
         // ══════════════════════════════════════════════════════
         //  入口
@@ -209,7 +239,7 @@ namespace MagicBrawl.Core
                     continue;
                 }
 
-                CardPriority priority = PriorityOf(o.Card, req.Seat, _archetype);
+                CardPriority priority = PriorityFor(o.Card, req.Seat, _archetype);
                 if (best == null || Better(priority, bestPriority))
                 {
                     best = o;
@@ -247,6 +277,37 @@ namespace MagicBrawl.Core
         protected virtual CardPriority PriorityOf(CardInstance card, int seat, BattleArchetype archetype)
         {
             return DefaultPriority(card, seat, archetype);
+        }
+
+        /// <summary>
+        /// <b>出牌优先级的唯一入口</b>（2026-10-08）—— 手写表优先，没开表才问
+        /// <see cref="PriorityOf"/>（自动档位 / 子类覆写）。
+        ///
+        /// <para><b>为什么要有这一层，而不是把判断塞进 <see cref="PriorityOf"/> 或
+        /// <see cref="DefaultPriority"/></b>：那两个都是<b>子类可以整体覆写</b>的
+        /// （<c>BerserkerAgent.PriorityOf</c> 就把「陨石」提到最前，并且是<b>先</b>判自己的
+        /// 最爱、<b>后</b>才调 base）。把手写表写在被覆写的那一端，「怪物子类的偏爱」就会盖掉
+        /// 玩家写进卡池的顺序 —— 而用户要的恰恰是<b>我写的不能被代码覆盖</b>。
+        /// 所以门开在更外面一层：两个取档位的地方（<see cref="DecideAttack"/> /
+        /// <see cref="PredictNextAttack"/>）都只走这里。</para>
+        ///
+        /// <para>⚠ <b>预测与实战必须同源</b>（本工程的老口径）：<see cref="PredictNextAttack"/>
+        /// 也走这一个方法，所以「玩家点怪物看到的元素」与「它真打出来的那张」不会因为
+        /// 手写表而分叉。</para>
+        /// </summary>
+        protected CardPriority PriorityFor(CardInstance card, int seat, BattleArchetype archetype)
+        {
+            CardPriorityTable table = ManualPriorities;
+            if (table != null && !table.IsEmpty)
+            {
+                // 登记过 → 用它写的数（小者先打）；没登记 → 一律并列最低。
+                // 刻意**不**回落 PriorityOf：那正是「代码又给卡赋值」。
+                int tier;
+                table.TryGet(card.Def.Id, out tier);
+                return new CardPriority { Tier = tier, Sub = 0 };
+            }
+
+            return PriorityOf(card, seat, archetype);
         }
 
         /// <summary>是否允许打出这张牌（返回 false = 永不打出）。怪物子类用它禁用某张牌。</summary>
@@ -543,7 +604,7 @@ namespace MagicBrawl.Core
                     continue;
                 }
 
-                CardPriority priority = PriorityOf(c, seat, archetype);
+                CardPriority priority = PriorityFor(c, seat, archetype);
                 if (best == null || Better(priority, bestPriority))
                 {
                     best = c;
@@ -568,12 +629,209 @@ namespace MagicBrawl.Core
             AvoidComboAndZone = 1,
         }
 
+        // ══════════════════════════════════════════════════════
+        //  防御 · 双发「行动修正」（2026-10-06 · 用户口径）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>「能挡住该双发的牌」达到这个张数 → 一定防（用户口径：「4 张卡及以上则一定防」）。</summary>
+        public const int DoubleDefendAlwaysCount = 4;
+
+        /// <summary>恰好 3 张能挡时的防御概率（%）。</summary>
+        public const int DoubleDefendChanceAtThree = 80;
+
+        /// <summary>恰好 2 张能挡时的防御概率（%）。</summary>
+        public const int DoubleDefendChanceAtTwo = 40;
+
+        private Rng _gambleRng;
+        private int _gambleKey = int.MinValue;
+        private bool _gambleValue;
+
+        /// <summary>
+        /// <b>面对双发的「行动修正」</b>（用户 2026-10-06 口径原文）：
+        /// <i>「面对带有双发的效果时，需要检查自身能防御住该双发的卡的数量（如果有防御光环，
+        /// 则也要考虑到防御光环的加成），如果恰好只有两张卡能防御住，那进行行动修正，
+        /// 只有 40% 的概率会进行防御；如果恰好只有三张卡能防御住，则 80% 的概率会进行防御；
+        /// 4 张卡及以上则一定防。」</i>
+        ///
+        /// <para><b>为什么要有这条</b>：双发要交两张牌才挡得住，而「能挡就挡」的最优 AI
+        /// 会让双发永远打不穿 —— 玩家侧表现为「双发卡毫无威胁」，AI 对 AI 侧表现为
+        /// 双方都能一直补值挡住、只能靠 100 回合上限收场（见
+        /// `Docs/implementation/2026-10-03-AI四流派重构.md` §10）。这条修正让
+        /// 「挡得住、但挡得很勉强」的局面变成一次赌博。</para>
+        ///
+        /// <para><b>「能防御住该双发的卡」的判据</b>（<see cref="CountDoubleDefenders"/>）：
+        /// 手牌里<b>单张</b>就能吃下这次进攻力量的牌 ——
+        /// <see cref="DefenseResolver.HasGuard"/>（守护无视力量差）<b>或</b>
+        /// <see cref="CardRole.DefensePotential"/> ≥ 进攻力量。
+        /// 「防御光环的加成」按<b>卡自带的那部分</b>算，与流派判定
+        /// （`ArchetypeJudge` 的「防御力量 ≥8，包括防御光环的数值在内」）<b>同一口径</b>
+        /// —— 见 `Docs/implementation/2026-10-06-AI双发防御修正与四流派敌人.md` §8 歧义 1。</para>
+        ///
+        /// <para><b>张数 → 概率</b>：≥4 张 = 100%（不消耗掷骰）；3 张 = 80%；2 张 = 40%；
+        /// ≤1 张 = 0%（凑不出两张，本来也挡不住）。量的是「张数」不是「组合数」——
+        /// 双发必须交两张牌，所以「有几张能挡」直接等于「能不能凑出一对」。</para>
+        ///
+        /// <para><b>⚠ 结果按「本次进攻」缓存</b>（`_gambleKey`）：防御那两拍
+        /// （报备光环 → 引擎按新预算重发 → 再提交）里引擎会<b>再问一次</b>
+        /// <see cref="DecideDefense"/>。不缓存的话第二次掷骰可能翻盘，表现为
+        /// 「报备完光环又放弃」—— 白白烧掉一批光环。键 = 回合号 + 座位 + 力量 + 张数 +
+        /// 手牌内容，所以同一拍必然命中缓存、新的一次进攻必然重新掷骰。</para>
+        ///
+        /// <para><b>⚠ 它排在「不用光环就能挡住」那条分支之前</b>：否则能挡住时永远 100% 防，
+        /// 这条修正就形同虚设。</para>
+        ///
+        /// <para><b>例外 · 有可用的免疫光环 → 恒防</b>（2026-10-06 用户追加口径）：
+        /// 免疫光环一发就把<b>整次攻击（含双发）</b>免掉、而且<b>不需要交牌</b> ——
+        /// 那是白拿的手段，没有理由把它赌掉。判据 = 本拍选项里存在免疫类光环，
+        /// 且这一局真的会用它（见 <see cref="HasImmuneAuraOption"/>）。</para>
+        /// </summary>
+        protected virtual bool ShouldDefendDouble(DecisionRequest req)
+        {
+            // 拿不到对局状态 → 数不出手牌 → 退回加这条规则之前的旧口径（能挡就挡）。
+            // 宁可「照旧会防」，也不要因为改规则把没传 state 的调用点悄悄变成「必被破」。
+            if (State == null)
+            {
+                return true;
+            }
+
+            DefenseStyle style = DefenseStyleOf(req.Seat);
+
+            // ★ 例外：手上有**可用的免疫光环**时不再掷骰。
+            //   免疫不交牌、直接免掉整次攻击（含双发），是白拿的手段 —— 赌掉它没有道理。
+            //   ⚠ 判据必须与「管线真的会用掉它」一致，所以带上 UseAuras 与防御口径：
+            //     ① UseAuras = false 的调用点根本不会消耗光环；
+            //     ② 连击流派（AvoidComboAndZone）在管线里于「用免疫」那一支 **之前** 就放弃防御了
+            //        （它刻意不动用任何光环）—— 那种情况下这里返回 true 也会被拦下，
+            //        与其制造「闸门放行、管线却放弃」的自相矛盾，不如让它照常走张数规则。
+            if (UseAuras && style != DefenseStyle.AvoidComboAndZone && HasImmuneAuraOption(req))
+            {
+                return true;
+            }
+
+            int blockers = CountDoubleDefenders(req.Seat, req.ContextPower, style);
+
+            int key = GambleKey(req.Seat, req.ContextPower, blockers);
+            if (key == _gambleKey)
+            {
+                return _gambleValue;
+            }
+
+            _gambleKey = key;
+
+            if (blockers < 2)
+            {
+                _gambleValue = false;
+            }
+            else if (blockers >= DoubleDefendAlwaysCount)
+            {
+                _gambleValue = true;
+            }
+            else
+            {
+                int chance = blockers == 3 ? DoubleDefendChanceAtThree : DoubleDefendChanceAtTwo;
+                if (_gambleRng == null)
+                {
+                    _gambleRng = new Rng(DoubleDefendSeed);
+                }
+
+                _gambleValue = _gambleRng.Next(100) < chance;
+            }
+
+            return _gambleValue;
+        }
+
+        /// <summary>
+        /// 本拍有没有<b>可用的免疫光环选项</b>（石化 ak / 石盾 al 那类 —— 它们覆盖整次攻击、含双发）。
+        ///
+        /// <para>复用 <see cref="FirstAuraIndex"/>（与管线 <c>DecideDefense</c> 第 ③ 步同一个判据），
+        /// 所以「闸门说恒防」与「管线真的会用掉那枚免疫」永远是同一件事 ——
+        /// 判据各写一份的下场是「闸门放行、管线却放弃」这种自相矛盾的行为。</para>
+        /// </summary>
+        protected static bool HasImmuneAuraOption(DecisionRequest req)
+        {
+            return FirstAuraIndex(req, true) >= 0;
+        }
+
+        /// <summary>
+        /// 手牌里有几张<b>单张</b>就能挡住 <paramref name="attackPower"/> 的牌。
+        ///
+        /// <para>口径见 <see cref="ShouldDefendDouble"/>；<paramref name="style"/> 为
+        /// <see cref="DefenseStyle.AvoidComboAndZone"/> 时同样排除连击 / 区域加速卡
+        /// —— 否则连击流派会「先数出 3 张、按 80% 决定要防，再去挑牌时只剩 1 张」，
+        /// 表现是概率对了但行为自相矛盾。</para>
+        /// </summary>
+        protected virtual int CountDoubleDefenders(int seat, int attackPower, DefenseStyle style)
+        {
+            IReadOnlyList<CardInstance> hand = HandOf(seat);
+            int count = 0;
+
+            for (int i = 0; i < hand.Count; i++)
+            {
+                CardInstance card = hand[i];
+                if (card == null)
+                {
+                    continue;
+                }
+
+                if (style == DefenseStyle.AvoidComboAndZone)
+                {
+                    CardDef def = card.Def;
+                    if (CardRole.IsComboCard(def) || CardRole.IsHasteZoneCard(def))
+                    {
+                        continue;
+                    }
+                }
+
+                if (DefenseResolver.HasGuard(card) || CardRole.DefensePotential(card) >= attackPower)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>这次掷骰的键（同一次进攻必须得到同一个结果，见 <see cref="ShouldDefendDouble"/>）。</summary>
+        private int GambleKey(int seat, int attackPower, int blockers)
+        {
+            unchecked
+            {
+                int h = 17;
+                h = h * 31 + (State == null ? 0 : State.TurnNumber);
+                h = h * 31 + seat;
+                h = h * 31 + attackPower;
+                h = h * 31 + blockers;
+
+                IReadOnlyList<CardInstance> hand = HandOf(seat);
+                h = h * 31 + hand.Count;
+                for (int i = 0; i < hand.Count; i++)
+                {
+                    CardInstance card = hand[i];
+                    h = h * 31 + card.Def.Power;
+                    h = h * 31 + card.EffectivePower;
+                    string id = card.Def.Id;
+                    for (int k = 0; k < id.Length; k++)
+                    {
+                        h = h * 31 + id[k];
+                    }
+                }
+
+                return h;
+            }
+        }
+
         /// <summary>
         /// 防御：见类注释。流派 3（连击）自动切到 <see cref="DefenseStyle.AvoidComboAndZone"/>，
         /// 其余流派走 <see cref="DefenseStyle.Cheapest"/>。
         /// </summary>
         protected virtual DecisionResponse DecideDefense(DecisionRequest req)
         {
+            // ★ 双发「行动修正」（2026-10-06）：先算手里有几张挡得住，再决定要不要真的交牌。
+            if (req.ContextDouble && !ShouldDefendDouble(req))
+            {
+                return Of(req, req.SkipOption);
+            }
+
             if (!UseAuras)
             {
                 return Of(req, PickCheapestDefense(req, DefenseStyle.Cheapest, true));

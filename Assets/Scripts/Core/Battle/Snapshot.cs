@@ -27,6 +27,25 @@ namespace MagicBrawl.Core
     }
 
     /// <summary>
+    /// 一条<b>已点亮的刻印</b>的只读快照（2026-10-07）。
+    ///
+    /// <para><b>为什么不需要 Kind / Value</b>（光环那边要）：刻印<b>不可被玩家使用</b>
+    /// —— 它没有「哪一拍能用」这个状态，也没有数值要画在图标角上（数值是每次触发时才产生的）。
+    /// 界面只需要「这牌亮着一条刻印」+ 长按能看到它写的是什么。</para>
+    /// </summary>
+    public struct SigilSnapshot
+    {
+        /// <summary>刻印效果的卡面说明原文（如「刻印：每回合开始时获得光环：进攻力量 +2」）。</summary>
+        public string Text;
+
+        /// <summary>触发时机（TurnStart / AttackEnd）。</summary>
+        public SigilTiming Timing;
+
+        /// <summary>提供这条刻印的卡名。</summary>
+        public string CardName;
+    }
+
+    /// <summary>
     /// 卡牌的<strong>只读快照</strong> —— 表现层唯一能看到的东西。
     ///
     /// 为什么不直接把 <see cref="CardInstance"/> 交给 UI：铁律第 2 条「依赖只能向下，
@@ -79,6 +98,21 @@ namespace MagicBrawl.Core
         /// <summary>光环是否已激活（进入冷却区之后才为真）。</summary>
         public bool AuraLive;
 
+        /// <summary>
+        /// 本牌身上<b>已点亮的刻印</b>明细（长度 = 点亮的条数；没有就是空数组）。
+        ///
+        /// <para>表现层拿它画「刻印」标记 —— 落在<b>与光环同一排</b>（HudBuff）里、用同一个图标，
+        /// 但<b>拖不动</b>：刻印是自动触发的，玩家没有「使用」这个动作
+        /// （用户 2026-10-07 口径：「类似于光环，只不过无法像光环一样拖动使用」）。</para>
+        /// </summary>
+        public SigilSnapshot[] Sigils;
+
+        /// <summary>本牌身上是否有<b>点亮的刻印</b>（= <see cref="Sigils"/> 非空）。</summary>
+        public bool SigilLive
+        {
+            get { return Sigils != null && Sigils.Length > 0; }
+        }
+
         /// <summary>是否在冷却区。</summary>
         public bool InCoolingZone;
 
@@ -96,6 +130,9 @@ namespace MagicBrawl.Core
 
         /// <summary>无光环时共用的空明细（省掉每次快照都新建一个空数组）。</summary>
         private static readonly AuraTokenSnapshot[] EmptyAuras = new AuraTokenSnapshot[0];
+
+        /// <summary>没有点亮刻印时共用的空明细。</summary>
+        private static readonly SigilSnapshot[] EmptySigils = new SigilSnapshot[0];
 
         public static CardSnapshot From(CardInstance card)
         {
@@ -121,6 +158,7 @@ namespace MagicBrawl.Core
                 AuraTokenMax = card.Def.AuraTokenCount,
                 AuraTokensDetail = AuraDetail(card),
                 AuraLive = card.AuraLive,
+                Sigils = SigilDetail(card),
                 InCoolingZone = card.Zone == CardZone.Cooling,
                 Uid = card.Uid,
                 OwnerSeat = card.OwnerSeat,
@@ -151,6 +189,31 @@ namespace MagicBrawl.Core
             return list.ToArray();
         }
 
+        /// <summary>
+        /// 已点亮刻印的明细。顺序 = 点亮顺序（= 卡面效果顺序），供 HudBuff 一枚一枚地建图标。
+        /// </summary>
+        private static SigilSnapshot[] SigilDetail(CardInstance card)
+        {
+            if (card == null || card.LitSigils.Count == 0)
+            {
+                return EmptySigils;
+            }
+
+            var list = new System.Collections.Generic.List<SigilSnapshot>();
+            for (int i = 0; i < card.LitSigils.Count; i++)
+            {
+                EffectDef effect = card.LitSigils[i];
+                list.Add(new SigilSnapshot
+                {
+                    Text = effect.Text,
+                    Timing = effect.Sigil,
+                    CardName = card.Def.Name,
+                });
+            }
+
+            return list.ToArray();
+        }
+
         /// <summary>只给 UI 预览用的便捷构造（取卡表静态数值，不涉及对局状态）。</summary>
         public static CardSnapshot FromDef(CardDef def, int ownerSeat, int remainingCooldown)
         {
@@ -169,6 +232,7 @@ namespace MagicBrawl.Core
                 AuraTokenMax = def.AuraTokenCount,
                 AuraTokensDetail = EmptyAuras,
                 AuraLive = false,
+                Sigils = EmptySigils,
                 InCoolingZone = remainingCooldown > 0,
                 Uid = 0,
                 OwnerSeat = ownerSeat,

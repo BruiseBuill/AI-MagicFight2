@@ -315,10 +315,34 @@ namespace MagicBrawl.SelfTest
                 Probe.MultiSelectExpected = multiOk;
                 Probe.TitleIsCardName = LooksLikeCardName(req.Title);
 
-                int expectMax = multiOk ? candidates : 1;
-                int expectMin = multiOk ? 0 : 1;
+                // ⚠ 源头认不出来时不给「应该是什么」的结论（2026-10-07 补）：
+                //   典型是**模仿（x）复制了磁暴 / 充能** —— 这一拍的选牌效果其实来自被复制的那张牌，
+                //   而 <c>_lastAttack</c> 记的是模仿自己（它卡面上没有 CoolHand 算子）。
+                //   这时只要求这一拍**自洽**：多选 = 上限等于候选数、单选 = 1/1，
+                //   两者引擎都合法（真实的上限由被复制那一条效果决定）。
+                bool unknownSource = op == EffectOp.None;
 
-                if (req.MaxSelect != expectMax)
+                int expectMax = unknownSource ? req.MaxSelect : (multiOk ? candidates : 1);
+                int expectMin = unknownSource ? req.MinSelect : (multiOk ? 0 : 1);
+
+                if (unknownSource)
+                {
+                    Probe.MultiSelectExpected = req.MaxSelect == candidates && candidates > 1;
+
+                    if ((req.MinSelect != 0 || req.MaxSelect != candidates)
+                        && (req.MinSelect != 1 || req.MaxSelect != 1))
+                    {
+                        Probe._shapeOk = false;
+                        Probe.Why = "认不出源头（进攻牌 " + (def != null ? def.Name : "?")
+                                    + "，多半是模仿复制）且这一拍不自洽：MinSelect = " + req.MinSelect
+                                    + " / MaxSelect = " + req.MaxSelect + " / 候选 " + candidates;
+                    }
+                    else
+                    {
+                        Probe._shapeOk = true;
+                    }
+                }
+                else if (req.MaxSelect != expectMax)
                 {
                     Probe._shapeOk = false;
                     Probe.Why = "MaxSelect = " + req.MaxSelect + "，按「每张结算一次」应当是候选数 "

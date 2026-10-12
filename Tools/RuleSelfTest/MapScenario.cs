@@ -316,6 +316,8 @@ namespace MagicBrawl.SelfTest
             int shopMissing = 0;
             int witchMissing = 0;
             int altarMissing = 0;
+            int treasureMissing = 0;
+            int restMissing = 0;
             int firstLayerNotBattle = 0;
             var counts = new Dictionary<MapNodeType, int>();
 
@@ -327,6 +329,8 @@ namespace MagicBrawl.SelfTest
                 bool hasShop = false;
                 bool hasWitch = false;
                 bool hasAltar = false;
+                bool hasTreasure = false;
+                bool hasRest = false;
 
                 for (int k = 0; k < g.Nodes.Count; k++)
                 {
@@ -348,6 +352,19 @@ namespace MagicBrawl.SelfTest
                     if (n.Type == MapNodeType.Altar)
                     {
                         hasAltar = true;
+                    }
+
+                    // 2026-10-09：宝箱是第 4 项保底（地图图标是用户专门做的，
+                    // 随机到一个都不出就等于那一整局看不到它）。
+                    if (n.Type == MapNodeType.Treasure)
+                    {
+                        hasTreasure = true;
+                    }
+
+                    // 2026-10-09：休息是第 5 项保底（同上 —— 图标是用户专门做的）。
+                    if (n.Type == MapNodeType.Rest)
+                    {
+                        hasRest = true;
                     }
 
                     if (n.Layer == 1 && n.Type != MapNodeType.Battle)
@@ -380,6 +397,16 @@ namespace MagicBrawl.SelfTest
                 {
                     altarMissing++;
                 }
+
+                if (!hasTreasure)
+                {
+                    treasureMissing++;
+                }
+
+                if (!hasRest)
+                {
+                    restMissing++;
+                }
             }
 
             if (firstLayerNotBattle > 0)
@@ -402,6 +429,16 @@ namespace MagicBrawl.SelfTest
                 bad.Add(altarMissing + " 张图里一个石台都没有（保底失效）");
             }
 
+            if (treasureMissing > 0)
+            {
+                bad.Add(treasureMissing + " 张图里一个宝箱都没有（保底失效）");
+            }
+
+            if (restMissing > 0)
+            {
+                bad.Add(restMissing + " 张图里一个休息点都没有（保底失效）");
+            }
+
             if (bad.Count == 0)
             {
                 var sb = new StringBuilder();
@@ -416,7 +453,7 @@ namespace MagicBrawl.SelfTest
                 }
 
                 notes.Add("类型分布（" + SeedCount + " 张图合计）：" + sb
-                          + " · 三项保底全中 · 第 1 层固定战斗");
+                          + " · 五项保底全中 · 第 1 层固定战斗");
             }
         }
 

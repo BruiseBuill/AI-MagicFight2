@@ -263,7 +263,9 @@ namespace MagicBrawl.Core
     ///
     /// <para><b>它现在管三件事</b>：</para>
     /// <list type="number">
-    /// <item>判定：某个轴还能不能强化（力量封顶 9 / 冷却下限 1 / 词条不重复且不与卡面冲突）；</item>
+    /// <item>判定：某个轴还能不能强化（<b>已经强化过的牌一律拒绝</b> —— 见
+    ///   <see cref="AlreadyUpgradedReason"/>；此外还有力量封顶 9 / 冷却下限 1 /
+    ///   词条不重复且不与卡面冲突）；</item>
     /// <item>合成：把「基础卡 + 配方」合成出一份<b>新的不可变 <see cref="CardDef"/></b>；</item>
     /// <item>同一性：卡面 ID / 卡名挂 <c>+</c>，而 <see cref="BaseIdOf"/> 永远能还原成原牌。</item>
     /// </list>
@@ -302,6 +304,18 @@ namespace MagicBrawl.Core
 
         /// <summary>强化卡的 ID / 卡名后缀。</summary>
         public const string Suffix = "+";
+
+        /// <summary>
+        /// 已经强化过的牌被再次强化时给玩家看的那句话（2026-10-08 · 用户口径：
+        /// <b>「进行任何一种强化后的牌，都不能再次进行强化」</b>）。
+        ///
+        /// <para><b>为什么是「任何一种」</b>：力量 +2、冷却 −1、追加词条、女巫那边搬来一条效果，
+        /// 四条轴产生的都是<b>同一张</b> <c>a+</c>（后缀不叠加，见 <see cref="UpgradedId"/>）——
+        /// 也就是说「强化过几次」「朝哪个方向强化过」在卡面上早已看不出来。允许在它身上再来一次，
+        /// 玩家看到的就是「一张 6 点的暴风雪+ 又变成了 9 点」，而中间那一步没有任何痕迹。
+        /// 所以这一条<b>不分轴</b>：只要 <see cref="IsUpgraded"/> 为真，四个轴一律拒绝。</para>
+        /// </summary>
+        public const string AlreadyUpgradedReason = "已经是强化过的牌，不能再次强化";
 
         /// <summary>同一个后缀的字符形式（<c>TrimEnd</c> 只吃字符）。</summary>
         public const char SuffixChar = '+';
@@ -372,8 +386,10 @@ namespace MagicBrawl.Core
         /// 这张牌<b>力量轴</b>能不能再强化。<paramref name="reason"/> 在返回 <c>false</c> 时
         /// 给出**给玩家看的原因**（界面直接在不可选的卡上写它）。
         ///
-        /// <para><b>三条拒绝规则</b>（都用卡表里的既有事实判，<b>不写死卡 ID</b>）：</para>
+        /// <para><b>四条拒绝规则</b>（都用卡表里的既有事实判，<b>不写死卡 ID</b>）：</para>
         /// <list type="number">
+        /// <item><b>已经强化过</b>（<see cref="IsUpgraded"/>，2026-10-08 加）——
+        ///   「任何一种强化后的牌都不能再次强化」；</item>
         /// <item><see cref="CardDef.HiddenPower"/> —— 卡面力量显示为 <c>X</c>（模仿 <c>x</c>）；</item>
         /// <item><see cref="CardDef.ForbidsAtkBuff"/> —— 卡面带「此法术的进攻力量不能增加」（沉重打击 <c>h</c>）；</item>
         /// <item>力量已到 <see cref="PowerCap"/>。</item>
@@ -384,6 +400,12 @@ namespace MagicBrawl.Core
             if (def == null)
             {
                 reason = "没有这张牌";
+                return false;
+            }
+
+            if (IsUpgraded(def))
+            {
+                reason = AlreadyUpgradedReason;
                 return false;
             }
 
@@ -421,7 +443,8 @@ namespace MagicBrawl.Core
         /// <summary>
         /// 这张牌<b>冷却轴</b>能不能强化（<b>加速</b>方向）。
         ///
-        /// <para>拒绝条件只有一条：冷却已在下限 <see cref="CooldownFloor"/>。
+        /// <para>拒绝条件有两条：<b>已经强化过</b>（<see cref="AlreadyUpgradedReason"/>，
+        /// 2026-10-08 加）与冷却已在下限 <see cref="CooldownFloor"/>。
         /// <b>刻意不设 ≤1 的「本来就很短所以不许加速」这类额外条件</b> ——
         /// 那是平衡口径，不是规则；真要卡，加在节点发放侧（哪个节点给哪个方向）。</para>
         /// </summary>
@@ -430,6 +453,12 @@ namespace MagicBrawl.Core
             if (def == null)
             {
                 reason = "没有这张牌";
+                return false;
+            }
+
+            if (IsUpgraded(def))
+            {
+                reason = AlreadyUpgradedReason;
                 return false;
             }
 
@@ -449,14 +478,24 @@ namespace MagicBrawl.Core
         /// </summary>
         public static bool CanApplyEffect(CardDef def, string trait, CardUpgradeRecord existing, out string reason)
         {
+            // 「已经强化过的牌不能再次强化」这道门在这里也要有 —— 词条轴走的是
+            // UpgradeTraits.CanApply（那里只知道「这个词条本身能不能加」），
+            // 少了这一条就会出现「力量轴拒绝、词条轴照加」这种一半生效的强化。
+            if (def != null && IsUpgraded(def))
+            {
+                reason = AlreadyUpgradedReason;
+                return false;
+            }
+
             return UpgradeTraits.CanApply(trait, def, existing, out reason);
         }
 
         /// <summary>
         /// 这张牌能不能接收一条搬来的效果（转移轴）。
         ///
-        /// <para><b>三条拒绝</b>：</para>
+        /// <para><b>四条拒绝</b>：</para>
         /// <list type="number">
+        /// <item><b>已经强化过</b>（<see cref="AlreadyUpgradedReason"/>，2026-10-08 加）；</item>
         /// <item>效果是空的（没得搬）；</item>
         /// <item>力量为 X 的牌（<see cref="CardDef.HiddenPower"/>，模仿）—— 它的力量由
         ///   <see cref="EffectOp.Copy"/> 临时接管、卡面恒定「未复制时视为 1」，
@@ -476,6 +515,12 @@ namespace MagicBrawl.Core
             if (spec == null || string.IsNullOrEmpty(spec.handlerId))
             {
                 reason = "没有可转移的效果";
+                return false;
+            }
+
+            if (IsUpgraded(def))
+            {
+                reason = AlreadyUpgradedReason;
                 return false;
             }
 

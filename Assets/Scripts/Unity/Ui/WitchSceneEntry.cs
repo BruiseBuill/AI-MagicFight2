@@ -42,6 +42,15 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class WitchSceneEntry : MonoBehaviour
     {
+        /// <summary>
+        /// 本场景读写哪个档 = <b>玩家在主菜单选的那个</b>（没选过就 <c>Main</c>，单场景调试不受影响）。
+        /// 与 <c>ShopSceneEntry.SlotInUse</c> 同一口径，见那里的说明。
+        /// </summary>
+        private static SaveSlot SlotInUse
+        {
+            get { return SaveSlots.Active(SaveSlot.Main); }
+        }
+
         // ── 调试参数（正式接入后由地图层 / 存档给）────────────────────
 
         [Header("调试 · 卡池")]
@@ -228,7 +237,7 @@ namespace MagicBrawl.App
 
             // ⚠ 目录要叠上主存档的强化册（2026-10-02），口径同商店 / 战斗：
             //   强化版是读的时候合成出来的，目录里没有它，卡池与浏览层都查不到。
-            _catalog = SaveStore.WithSavedUpgrades(SaveSlot.Main, ResolveCatalog());
+            _catalog = SaveStore.WithSavedUpgrades(SlotInUse, ResolveCatalog());
             ResolveIds();
             ResolveCards();
 
@@ -297,7 +306,7 @@ namespace MagicBrawl.App
             // 正式来源：主存档的玩家卡池
             PlayerData player;
             string error;
-            if (!SaveStore.TryLoadPlayer(SaveSlot.Main, out player, out error))
+            if (!SaveStore.TryLoadPlayer(SlotInUse, out player, out error))
             {
                 Debug.LogWarning("[WitchSceneEntry] 读主存档失败，本局卡池为空：" + error);
                 return;
@@ -656,13 +665,13 @@ namespace MagicBrawl.App
             }
 
             string error;
-            if (!SaveStore.TryConsumeAndUpgrade(SaveSlot.Main, sacrifice.Id, target.Id, mod, out error))
+            if (!SaveStore.TryConsumeAndUpgrade(SlotInUse, sacrifice.Id, target.Id, mod, out error))
             {
                 Debug.LogWarning("[WitchSceneEntry] 消耗与转移没能写回主存档：" + error);
                 return "· ⚠ 写回失败：" + error;
             }
 
-            return "· 已写回 " + SaveStore.FilePathFor(SaveSlot.Main);
+            return "· 已写回 " + SaveStore.FilePathFor(SlotInUse);
         }
 
         private void OnLayerClosed()

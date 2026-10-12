@@ -326,6 +326,9 @@ namespace MagicBrawl.Core
             card.RemainingCooldown = cd;
             card.AuraLive = false;
             card.AuraTokens = 0;
+            // 刻印与光环指示物同一批清空点：这张牌是「重新」进冷却区的，这一趟还没点亮过刻印
+            //（点亮发生在第 ⑤ 步，也就是本方法之后）。
+            card.ClearSigils();
             // ⚠ 走 ResetEffectivePower 而不是 EffectivePower = Def.Power ——
             //   水之形（aq）的 BattlePowerBonus 成长要陪着这张牌一起进冷却区 / 回手。
             card.ResetEffectivePower();
@@ -358,6 +361,7 @@ namespace MagicBrawl.Core
             card.RemainingCooldown = 0;
             card.AuraTokens = 0;
             card.AuraLive = false;
+            card.ClearSigils();
             return true;
         }
 

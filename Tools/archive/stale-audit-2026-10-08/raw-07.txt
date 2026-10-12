@@ -1,0 +1,112 @@
+Assets 资产数（.meta 计）=901
+扫描引用源文件数=729
+
+=== 字体（SDF 资产 / 源 ttf）引用情况 ===
+  引用1        8.01 MB  Assets/Art/Fonts/Black/Google-Normal SDF.asset
+  引用2        7.95 MB  Assets/Art/Fonts/Black/Google-Normal.otf
+  引用347      8.21 MB  Assets/Art/Fonts/Black/Google-Regular.asset
+  引用2       10.07 MB  Assets/Art/Fonts/Black/Google-Regular.ttf
+  引用2        1.01 MB  Assets/Art/Fonts/Black/Lxgw975GoSC-400W SDF.asset
+  引用2        8.29 MB  Assets/Art/Fonts/Black/Lxgw975GoSC-400W.ttf
+  **0**      4.01 MB  Assets/Art/Fonts/BlackLike/字体圈伟君黑-W1 SDF.asset
+  引用2        1.52 MB  Assets/Art/Fonts/BlackLike/字体圈伟君黑-W1.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/BlackLike/爱点风雅黑 SDF.asset
+  引用2        3.94 MB  Assets/Art/Fonts/BlackLike/爱点风雅黑.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W02 SDF.asset
+  引用2        1.50 MB  Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W02.ttf
+  引用268      8.17 MB  Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset
+  引用2        1.49 MB  Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03.ttf
+  **0**      0.26 MB  Assets/Art/Fonts/English-Handwriting-Italy/ZCOOL Addict Italic 02 SDF.asset
+  引用2        0.05 MB  Assets/Art/Fonts/English-Handwriting-Italy/ZCOOL Addict Italic 02.ttf
+  **0**     32.01 MB  Assets/Art/Fonts/HandWriting/HappyZcool-2016.asset
+  引用2        1.56 MB  Assets/Art/Fonts/HandWriting/HappyZcool-2016.ttf
+  **0**      0.51 MB  Assets/Art/Fonts/HandWriting/XiaolaiMonoSC-Regular SDF.asset
+  引用2       20.84 MB  Assets/Art/Fonts/HandWriting/XiaolaiMonoSC-Regular.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/HandWriting/XiaolaiSC-Regular SDF.asset
+  引用2       20.84 MB  Assets/Art/Fonts/HandWriting/XiaolaiSC-Regular.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/HandWriting/cjkFonts_allseto_v1.11 SDF.asset
+  引用2       29.89 MB  Assets/Art/Fonts/HandWriting/cjkFonts_allseto_v1.11.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/HandWriting/也字工厂小石头 SDF.asset
+  引用2        3.61 MB  Assets/Art/Fonts/HandWriting/也字工厂小石头.ttf
+  引用12       2.01 MB  Assets/Art/Fonts/HandWriting/千图马克手写体 SDF.asset
+  引用2       23.92 MB  Assets/Art/Fonts/HandWriting/千图马克手写体.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/HandWriting/摄图摩登小方体(免费商用) SDF.asset
+  引用2        1.52 MB  Assets/Art/Fonts/HandWriting/摄图摩登小方体(免费商用).ttf
+  **0**      2.01 MB  Assets/Art/Fonts/HandWriting/清松手写体1 SDF.asset
+  引用2        8.51 MB  Assets/Art/Fonts/HandWriting/清松手写体1.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/HandWriting/站酷快乐体（开源版）推荐 SDF.asset
+  引用2        1.45 MB  Assets/Art/Fonts/HandWriting/站酷快乐体（开源版）推荐.ttf
+  **0**      2.01 MB  Assets/Art/Fonts/HandWriting/素材集市康康体3.0 SDF.asset
+  引用2        4.37 MB  Assets/Art/Fonts/HandWriting/素材集市康康体3.0.ttf
+
+=== /Art/CardArt/_Draft/ ===
+  **0**      1.64 MB  Assets/Art/CardArt/_Draft/Draft_Fire_蒸汽锅炉.png
+  **0**      0.11 MB  Assets/Art/CardArt/_Draft/Draft_Fire_鬼火.jpg
+  **0**      0.95 MB  Assets/Art/CardArt/_Draft/Draft_Grass_剧毒种子.png
+  **0**      1.66 MB  Assets/Art/CardArt/_Draft/Draft_Grass_果实.png
+  **0**      1.60 MB  Assets/Art/CardArt/_Draft/Draft_Grass_虚弱花粉.png
+  **0**      1.65 MB  Assets/Art/CardArt/_Draft/Draft_Lightning_蓄电攻击_v1.png
+  **0**      1.81 MB  Assets/Art/CardArt/_Draft/Draft_Lightning_雷霆释放攻击_v1.png
+  **0**      0.17 MB  Assets/Art/CardArt/_Draft/Draft_Sound_共振.jpg
+  **0**      0.18 MB  Assets/Art/CardArt/_Draft/Draft_Sound_振荡.jpg
+  **0**      0.10 MB  Assets/Art/CardArt/_Draft/Draft_Sound_次声波.jpg
+  **0**      1.58 MB  Assets/Art/CardArt/_Draft/Draft_Water_海啸_v4.png
+  **0**      0.13 MB  Assets/Art/CardArt/_Draft/Draft_Water_雾隐.jpg
+  小计 11.6 MB
+
+=== /Art/_Reference/ ===
+  **0**      1.89 MB  Assets/Art/_Reference/Reference-2.png
+  **0**      1.87 MB  Assets/Art/_Reference/Reference-3.png
+  **0**      1.76 MB  Assets/Art/_Reference/Reference-4.png
+  **0**      2.01 MB  Assets/Art/_Reference/Reference.png
+  小计 7.5 MB
+
+=== /Art/Chars/_Source/ ===
+  **0**      1.44 MB  Assets/Art/Chars/_Source/2049a678-64d5-46e6-a342-87eaf3f37435.png
+  **0**      1.73 MB  Assets/Art/Chars/_Source/6e093879-16be-4326-b9e9-c90a767cb587.png
+  **0**      1.02 MB  Assets/Art/Chars/_Source/Hero_Anim_Attack.png
+  **0**      0.85 MB  Assets/Art/Chars/_Source/Hero_Anim_Attack_NewMage_AlphaProof_v1.png
+  **0**      0.86 MB  Assets/Art/Chars/_Source/Hero_Anim_Attack_NewMage_v1.png
+  **0**      1.40 MB  Assets/Art/Chars/_Source/Hero_Anim_BeHit.png
+  **0**      1.37 MB  Assets/Art/Chars/_Source/Hero_Anim_Death.png
+  **0**      1.41 MB  Assets/Art/Chars/_Source/Hero_Anim_Defend.png
+  **0**      1.15 MB  Assets/Art/Chars/_Source/Hero_Anim_Defend_NewMage_AlphaProof_v1.png
+  **0**      1.15 MB  Assets/Art/Chars/_Source/Hero_Anim_Defend_NewMage_v1.png
+  **0**      1.12 MB  Assets/Art/Chars/_Source/Hero_Anim_Idle.png
+  **0**      1.38 MB  Assets/Art/Chars/_Source/Hero_Anim_Idle_NewMage_AlphaProof_v1.png
+  **0**      1.42 MB  Assets/Art/Chars/_Source/Hero_Anim_Idle_NewMage_v1.png
+  小计 16.3 MB
+
+=== /Art/Ui/_Source/ ===
+  **0**      0.80 MB  Assets/Art/Ui/_Source/148cae8c-29e8-457e-82ec-40f8088a71a2.png
+  **0**      1.67 MB  Assets/Art/Ui/_Source/542f45c2-5d2c-4803-bcbd-2cafa10226fc.png
+  **0**      1.50 MB  Assets/Art/Ui/_Source/661ca76a-c73d-4618-b6e5-918c75968b58.png
+  **0**      2.39 MB  Assets/Art/Ui/_Source/ae67a6sgshbf-bef42ae582f4 (realesrgan-x4plus x3).png
+  **0**      1.39 MB  Assets/Art/Ui/_Source/d30f41c7-1d35-43f6-9755-ca54cc6f4a6a.png
+  小计 7.8 MB
+
+=== /Art/Icons/_Source/ ===
+  **0**      1.21 MB  Assets/Art/Icons/_Source/IconSheet_盾剑特殊_三合一.png
+  **0**      2.06 MB  Assets/Art/Icons/_Source/Icon_效果七合一.png
+  **0**      1.82 MB  Assets/Art/Icons/_Source/Type.png
+  小计 5.1 MB
+
+=== /Art/Map/_Source/ ===
+  **0**      1.29 MB  Assets/Art/Map/_Source/Player_Source.png
+  小计 1.3 MB
+
+=== /Art/Ui/_backup/ ===
+  **0**      0.07 MB  Assets/Art/Ui/_backup/Hud_Bar_beforeHeartErase.png
+  小计 0.1 MB
+
+=== Assets/Screenshots 被「文本」点名的情况 ===
+  [被引用 1] v2_home.png
+  [被引用 1] v2_home3.png
+  [被引用 1] v2_map.png
+  [被引用 1] v3_battle.png
+  [被引用 1] v3_shop.png
+  被引用 5 张 / 无引用 19 张
+  无引用总体积 95.5 MB
+
+=== Captures 被「文本」点名的情况 ===
+  被引用 115 张 / 无引用 74 张（无引用 270.6 MB）

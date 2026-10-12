@@ -33,6 +33,23 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class UpgradePickerView : MonoBehaviour
     {
+        /// <summary>
+        /// 这一次弹出来是<b>选什么</b>（2026-10-06 石台改成「先选目标、再选祭品」之后加的）。
+        ///
+        /// <para>它<b>只影响两行文案</b>（底部那行计数与选中预览）与「可点」的判据来源 ——
+        /// 判据本身仍然是上层给的 <see cref="Entry.Upgradable"/>，弹窗不判规则。
+        /// 之所以要分：同一步里「卡池 N 张 · 可强化 M 张」与「可献祭 M 张」是两回事，
+        /// 写错会让玩家以为「这张牌不能强化」而当不了祭品。</para>
+        /// </summary>
+        public enum Mode
+        {
+            /// <summary>选「要强化的牌」（石台第 1 步 / 旧版唯一的一步）。</summary>
+            Upgrade = 0,
+
+            /// <summary>选「祭品」（会被消耗掉的那张，石台第 2 步）。</summary>
+            Sacrifice = 1,
+        }
+
         /// <summary>一格要显示的东西（纯数据，UI 不认识它从哪来）。</summary>
         public struct Entry
         {
@@ -65,7 +82,7 @@ namespace MagicBrawl.App
         /// <summary>「卡池 N 张 · 可强化 M 张」那一行。</summary>
         [SerializeField] private TMP_Text _count;
 
-        /// <summary>选中预览（「暴风雪+　力量 4 → 6」）；没选时是空串。</summary>
+        /// <summary>选中预览（「暴风雪+　力量 4 → 6」）；没选时显示这次的点拨语。</summary>
         [SerializeField] private TMP_Text _preview;
 
         /// <summary>一张牌都没有时的提示（默认隐藏）。</summary>
@@ -86,6 +103,12 @@ namespace MagicBrawl.App
         private readonly List<Entry> _entries = new List<Entry>();
 
         private int _selected = -1;
+
+        /// <summary>这一次弹出来是选什么（见 <see cref="Mode"/>）。</summary>
+        private Mode _mode = Mode.Upgrade;
+
+        /// <summary>上一次 <see cref="Show(IList{Entry}, string, Mode, string)"/> 给的点拨语。</summary>
+        private string _hint;
 
         private bool _open;
 
@@ -113,7 +136,11 @@ namespace MagicBrawl.App
             }
         }
 
-        /// <summary>这次卡池里可强化的张数。</summary>
+        /// <summary>
+        /// 这次卡池里**可操作**的张数（<see cref="Mode.Upgrade"/> = 可强化 /
+        /// <see cref="Mode.Sacrifice"/> = 可献祭 —— 两个位置的可点判据是上层给的，
+        /// 这里只数 <see cref="Entry.Upgradable"/>）。
+        /// </summary>
         public int UpgradableCount
         {
             get
@@ -179,6 +206,20 @@ namespace MagicBrawl.App
         /// <param name="title">面板标题。</param>
         public void Show(IList<Entry> entries, string title)
         {
+            Show(entries, title, Mode.Upgrade, null);
+        }
+
+        /// <param name="entries">这一格要显示什么（null / 空表 = 显示「卡池里还没有牌」）。</param>
+        /// <param name="title">面板标题。</param>
+        /// <param name="mode">这一步选的是「要强化的牌」还是「祭品」（只影响文案）。</param>
+        /// <param name="hint">
+        /// 还没选牌时底部那行点拨语（历史参数；留空则按 <paramref name="mode"/> 给默认那句）。
+        /// 石台用它把「确认之后会发生什么」提前交代掉 —— 玩家在**这一步**就该知道代价。
+        /// </param>
+        public void Show(IList<Entry> entries, string title, Mode mode, string hint)
+        {
+            _mode = mode;
+            _hint = hint;
             _entries.Clear();
             if (entries != null)
             {
@@ -283,19 +324,36 @@ namespace MagicBrawl.App
             }
 
             int upgradable = UpgradableCount;
+            bool sacrificeMode = _mode == Mode.Sacrifice;
 
             if (_count != null)
             {
-                _count.text = "卡池 " + _entries.Count + " 张 · 可强化 " + upgradable + " 张";
+                _count.text = "卡池 " + _entries.Count + " 张 · "
+                              + (sacrificeMode ? "可献祭 " : "可强化 ") + upgradable + " 张";
             }
 
             CardDef card = SelectedCard;
             if (_preview != null)
             {
-                _preview.text = card == null
-                    ? (upgradable == 0 ? "卡池里没有可强化的牌" : "点一张牌，看它强化后的样子")
-                    : "选中 " + CardUpgrade.UpgradedName(card)
-                      + "　力量 " + card.Power + " → " + CardUpgrade.UpgradedPower(card);
+                if (card == null)
+                {
+                    string fallback = sacrificeMode
+                        ? (upgradable == 0 ? "卡池里没有可当祭品的牌" : "点一张牌当祭品，它会从卡池里消失")
+                        : (upgradable == 0 ? "卡池里没有可强化的牌" : "点一张牌，看它强化后的样子");
+
+                    // 上层给了点拨语就优先用它（石台会把「确认之后会发生什么」写在这里）。
+                    _preview.text = string.IsNullOrEmpty(_hint) ? fallback : _hint;
+                }
+                else if (sacrificeMode)
+                {
+                    _preview.text = "选中《" + card.Name + "》· 确认后它会被消耗掉（力量 "
+                                    + card.Power + " · 冷却 " + card.Cooldown + "）";
+                }
+                else
+                {
+                    _preview.text = "选中 " + CardUpgrade.UpgradedName(card)
+                                    + "　力量 " + card.Power + " → " + CardUpgrade.UpgradedPower(card);
+                }
             }
 
             ApplyConfirmState(card != null);

@@ -165,6 +165,13 @@ namespace MagicBrawl.SelfTest
             ok &= WitchWorkshopScenario.Run(report);
             Prune(report);
 
+            // 2026-10-06：石台强化改成「**必须献祭一张牌**才能力量 +2」（用户口径，
+            // 对齐女巫）。它同样完全在战斗之外，万局统计一个缺陷也抓不到；失效方式
+            // 无声：门槛写反 → 只剩 1 张牌也能开工；「两张不能相同」只按卡面 ID 比
+            // → 同一张牌的 a 与 a+ 填进两个位置，确认后牌没了、力量没加。
+            ok &= AltarRiteScenario.Run(report);
+            Prune(report);
+
             // 2026-10-01：三张新卡（水之形 aq / 闪电球 ar / 冷冻核心 as）。
             // 水之形带进内核里**第一处写在牌实例上、跨回合不消失**的力量改动
             // （BattlePowerBonus）—— 最典型的错法是直接改 EffectivePower，
@@ -202,6 +209,26 @@ namespace MagicBrawl.SelfTest
             // 而「主动不出牌」若走成规则 §3 的「手上无牌 → 掉 1 点」，两个都对局照跑、
             // 只有多掉的那 1 点不同。所以逐条数事件。
             ok &= MonsterScenario.Run(report);
+            Prune(report);
+
+            // 2026-10-05：卡牌获取池（已获得 = 0 / 曾展示 = 减半 / 其余等概率）。
+            // 概率写错永远是无声的 —— 只有把「几千次抽样的频率比值」钉住才抓得到。
+            ok &= CardAcquisitionScenario.Run(report);
+            Prune(report);
+
+            // 2026-10-07：**刻印**（Sigil）+ 两张新卡（火炬 at / 海啸 au）。
+            // 刻印由三件互不相干的事拼起来（打出去那一拍只**点亮** / 之后按 SigilTiming
+            // 反复触发 / 回手熄灭），缺哪一件都**不报错**：漏了点亮 = 永远不触发；
+            // 漏了「不当拍结算」= 打出去当拍白拿一次（只表现为强度偏高）；
+            // 漏了触发点 = 亮了但不生效。万局统计里一个都抓不到，只能脚本化钉住。
+            ok &= SigilScenario.Run(report);
+            Prune(report);
+
+            // 2026-10-08：**手写出牌优先级**（卡池 SO 上的 useManualPriority + priorities）。
+            // 它的失效方式全是无声的：方向写反只表现为「怪打得不合我写的顺序」；
+            // 「未登记的卡回落到自动档位」会让四流派那套档位悄悄插进玩家写的顺序里。
+            // 万局统计跑的是 SimpleAiAgent，这条路径一次都走不到。
+            ok &= CardPriorityScenario.Run(report);
             Prune(report);
 
             Console.WriteLine();

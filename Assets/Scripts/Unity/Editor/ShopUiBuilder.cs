@@ -274,7 +274,7 @@ namespace MagicBrawl.App.EditorTools
         }
 
         /// <summary>
-        /// 背景按 <b>cover</b> 铺（与战斗场景 <c>Bg_Dungeon</c> 同一套算法，见
+        /// 背景按 <b>cover</b> 铺（与战斗场景 <c>Bg_Stage</c> 同一套算法，见
         /// <see cref="UiLayout.ShopBgCoverSize"/>）。直接 Stretch 会把 1664×928（1.7931）
         /// 拉成 16:9（1.7778），横向被压 0.86%，虽然肉眼看不太出来，
         /// 但**版式是照着这张图量的**，压过的图会让量与实物对不上。

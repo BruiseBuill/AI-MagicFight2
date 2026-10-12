@@ -30,7 +30,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 34a3cd7b628dc624b8495914a24ea768, type: 3}
   - {fileID: 21300000, guid: 2fe3a15ffaee0de479e0cb37f7b4453b, type: 3}
   - {fileID: 21300000, guid: 8ca8bd1f000d3bc4c902c137ad1b5fd3, type: 3}
-  _background: {fileID: 21300000, guid: 03e2adf222ca88449aaf61aec5cd913d, type: 3}
+  _background: {fileID: 21300000, guid: 5eeb729bfcae4344b9ec5a579997ba49, type: 3}
   _energyOrb: {fileID: 21300000, guid: a2315eead346bec4d920a067f9e79b2d, type: 3}
   _hero:
     Name: Hero
@@ -38,9 +38,24 @@ MonoBehaviour:
     Idle:
       Frames:
       - {fileID: 21300000, guid: e11ce30f09834ee4b8d9be6f57e2c587, type: 3}
+      - {fileID: 21300000, guid: 4e06912cdadca56418a8eac7c765b7c6, type: 3}
+      - {fileID: 21300000, guid: 3200fb2360d07f04399d9ac7f65ae55d, type: 3}
+      - {fileID: 21300000, guid: 83cf5db4ab65b234e9c2c352e001451a, type: 3}
+      - {fileID: 21300000, guid: 552b454ea9ee83143a2c56f01313fe31, type: 3}
+      - {fileID: 21300000, guid: cd3817385feeb7c4bb74b73b48478467, type: 3}
+      - {fileID: 21300000, guid: 34e11f3ff0ad9e44388b34abfc28bf52, type: 3}
+      - {fileID: 21300000, guid: eabd0cedad129a6488f2ec098410dd5c, type: 3}
+      - {fileID: 21300000, guid: 191a2426323f0174aafb2406337a7566, type: 3}
+      - {fileID: 21300000, guid: df4ea554a7866c645820d4ca339b56f5, type: 3}
+      - {fileID: 21300000, guid: 8e6e166be52e0644791f560692a3bdaf, type: 3}
+      - {fileID: 21300000, guid: 830768c7c57387a42bcfc63b68fb4963, type: 3}
+      - {fileID: 21300000, guid: c78d215a67c8cdf41b9cc5ae982b7901, type: 3}
+      - {fileID: 21300000, guid: 7ab1b2657bcfdb44f80c63a4b472e5b8, type: 3}
+      - {fileID: 21300000, guid: 61fc97ad56363574ea5225695ad33193, type: 3}
+      - {fileID: 21300000, guid: 36f3632c3a695eb4587b170db393cb92, type: 3}
       Fps: 10
-      Size: {x: 188, y: 185}
-      Pivot: {x: 0.5, y: 0.037837837}
+      Size: {x: 272, y: 331}
+      Pivot: {x: 0.5, y: 0.021148037}
     Attack:
       Frames:
       - {fileID: 21300000, guid: fd2dc3ae17f44ad4996a5d87f69ae03b, type: 3}
@@ -56,8 +71,8 @@ MonoBehaviour:
       - {fileID: 21300000, guid: 1eccb3e74c0662c41987ce551b77bfdb, type: 3}
       - {fileID: 21300000, guid: c2747096d7222044e830d86be9d714d7, type: 3}
       Fps: 14
-      Size: {x: 554, y: 256}
-      Pivot: {x: 0.37184116, y: 0.02734375}
+      Size: {x: 392, y: 322}
+      Pivot: {x: 0.35459185, y: 0.02173913}
     Defend:
       Frames:
       - {fileID: 21300000, guid: 7d415585288d4f94e9667dbce1e54b35, type: 3}
@@ -73,8 +88,8 @@ MonoBehaviour:
       - {fileID: 21300000, guid: 18a179dcc4693924db9171ba396a7a59, type: 3}
       - {fileID: 21300000, guid: 46ba157fc386a524f9433bdfcbd034f3, type: 3}
       Fps: 14
-      Size: {x: 388, y: 256}
-      Pivot: {x: 0.47938144, y: 0.02734375}
+      Size: {x: 350, y: 319}
+      Pivot: {x: 0.46571428, y: 0.021943573}
     BeHit:
       Frames:
       - {fileID: 21300000, guid: e675844187e6f1e48a6784f3f65d26cb, type: 3}
@@ -89,9 +104,13 @@ MonoBehaviour:
       - {fileID: 21300000, guid: 060e8e5102888de409f647ca65be319d, type: 3}
       - {fileID: 21300000, guid: f83e78a54d8254946917f10a35b6c0ca, type: 3}
       - {fileID: 21300000, guid: 140f68283005a314083165da794b6136, type: 3}
+      - {fileID: 21300000, guid: 1f6bdfd3722d901448012b80e9375fe4, type: 3}
+      - {fileID: 21300000, guid: 93c0e40f0c9ccc54b8700e10cbb95a90, type: 3}
+      - {fileID: 21300000, guid: e9f58d33a122fdb459d24934dfae8d92, type: 3}
+      - {fileID: 21300000, guid: d133ad7dd5bd34648ae09a1411caefd2, type: 3}
       Fps: 18
-      Size: {x: 289, y: 272}
-      Pivot: {x: 0.4982699, y: 0.025735294}
+      Size: {x: 272, y: 331}
+      Pivot: {x: 0.5, y: 0.021148037}
     Death:
       Frames:
       - {fileID: 21300000, guid: 97093d0b555a863478398fbe0236a274, type: 3}
@@ -106,9 +125,13 @@ MonoBehaviour:
       - {fileID: 21300000, guid: 85dd2777f0aa66f42bf9191e884acf52, type: 3}
       - {fileID: 21300000, guid: daa0fb4d7ee7d624e94281cf58632ed0, type: 3}
       - {fileID: 21300000, guid: 941f11529e1274547ae02866392904d2, type: 3}
+      - {fileID: 21300000, guid: 3c6d5703a9d6b7c46ad46143f86418df, type: 3}
+      - {fileID: 21300000, guid: def7c48f20546ec43803d6a822c5d2f9, type: 3}
+      - {fileID: 21300000, guid: 355ada5463a8bb34e9723adbe958c54c, type: 3}
+      - {fileID: 21300000, guid: 97d4f3241c1e87b499fb4e87c82162a7, type: 3}
       Fps: 9
-      Size: {x: 325, y: 254}
-      Pivot: {x: 0.49846154, y: 0.027559055}
+      Size: {x: 272, y: 331}
+      Pivot: {x: 0.5, y: 0.021148037}
   _monster:
     Name: Monster
     Portrait: {fileID: 0}

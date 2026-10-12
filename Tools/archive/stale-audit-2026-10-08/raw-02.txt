@@ -1,0 +1,597 @@
+扫描: 901 个资产有 guid, 其中 326 个被引用
+
+# ===== A. 孤儿资产 (guid 无任何引用) : 575 个 =====
+  按类型: .png=271, .cs=105, =94, .asset=27, .txt=14, .shader=10, .mat=7, .jpg=6, .mdb=6, .xml=6, .prefab=5, .ttf=4, .dll=4, .unity=4, .asmdef=4, .cginc=4, .otf=1, .scenetemplate=1, .pdf=1, .json=1
+
+  --- 工程自有（排除 Plugins/TextMeshPro/ThirdParty） ---
+           Assets/Art
+           Assets/Art/Backgrounds
+           Assets/Art/CardArt
+           Assets/Art/CardArt/_Draft
+           Assets/Art/Chars
+           Assets/Art/Chars/Hero
+           Assets/Art/Chars/Hero/attack
+           Assets/Art/Chars/Hero/attack_newmage_v1
+           Assets/Art/Chars/Hero/behit
+           Assets/Art/Chars/Hero/death
+           Assets/Art/Chars/Hero/defend
+           Assets/Art/Chars/Hero/defend_newmage_v1
+           Assets/Art/Chars/Hero/idle
+           Assets/Art/Chars/Hero/idle_newmage_v1
+           Assets/Art/Chars/Map
+           Assets/Art/Chars/Monster
+           Assets/Art/Chars/Monster/attack
+           Assets/Art/Chars/Monster/defend
+           Assets/Art/Chars/Monster/idle
+           Assets/Art/Chars/_Source
+           Assets/Art/Fonts
+           Assets/Art/Fonts/Black
+           Assets/Art/Fonts/BlackLike
+           Assets/Art/Fonts/English-Handwriting-Italy
+           Assets/Art/Fonts/HandWriting
+           Assets/Art/Fx
+           Assets/Art/Icons
+           Assets/Art/Icons/Elements
+           Assets/Art/Icons/_Source
+           Assets/Art/Map
+           Assets/Art/Map/_Source
+           Assets/Art/Ui
+           Assets/Art/Ui/_Source
+           Assets/Art/Ui/_backup
+           Assets/Art/_Reference
+           Assets/Plugins
+           Assets/Prefabs
+           Assets/Prefabs/Ui
+           Assets/Resources
+           Assets/Resources/Characters
+           Assets/Resources/Elements
+           Assets/Resources/Monsters
+           Assets/Resources/Pools
+           Assets/Scenes
+           Assets/Screenshots
+           Assets/Scripts
+           Assets/Scripts/Core
+           Assets/Scripts/Core/Ai
+           Assets/Scripts/Core/Battle
+           Assets/Scripts/Core/Battle/Effects
+           Assets/Scripts/Core/Battle/Resolvers
+           Assets/Scripts/Core/Cards
+           Assets/Scripts/Core/Characters
+           Assets/Scripts/Core/Map
+           Assets/Scripts/Core/Util
+           Assets/Scripts/Unity
+           Assets/Scripts/Unity/Configuration
+           Assets/Scripts/Unity/Editor
+           Assets/Scripts/Unity/Ui
+           Assets/Settings
+           Assets/Settings/Scenes
+           Assets/Tests
+           Assets/Tests/EditMode
+           Assets/TextMesh Pro
+           Assets/ThirdParty
+  .asmdef  Assets/Scripts/Core/MagicBrawl.Core.asmdef
+  .asmdef  Assets/Scripts/Unity/Editor/MagicBrawl.App.Editor.asmdef
+  .asmdef  Assets/Scripts/Unity/MagicBrawl.App.asmdef
+  .asmdef  Assets/Tests/EditMode/MagicBrawl.Tests.asmdef
+  .asset   Assets/Art/Fonts/Black/Google-Normal SDF.asset
+  .asset   Assets/Art/Fonts/BlackLike/字体圈伟君黑-W1 SDF.asset
+  .asset   Assets/Art/Fonts/BlackLike/爱点风雅黑 SDF.asset
+  .asset   Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W02 SDF.asset
+  .asset   Assets/Art/Fonts/English-Handwriting-Italy/ZCOOL Addict Italic 02 SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/HappyZcool-2016.asset
+  .asset   Assets/Art/Fonts/HandWriting/XiaolaiMonoSC-Regular SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/XiaolaiSC-Regular SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/cjkFonts_allseto_v1.11 SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/也字工厂小石头 SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/摄图摩登小方体(免费商用) SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/清松手写体1 SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/站酷快乐体（开源版）推荐 SDF.asset
+  .asset   Assets/Art/Fonts/HandWriting/素材集市康康体3.0 SDF.asset
+  .asset   Assets/Resources/BattleArtLibrary.asset
+  .asset   Assets/Resources/CardArtLibrary.asset
+  .asset   Assets/Resources/CardCatalog.asset
+  .asset   Assets/Resources/DOTweenSettings.asset
+  .asset   Assets/Resources/Monsters/Monster_Basic.asset
+  .asset   Assets/Resources/Monsters/Monster_Combo.asset
+  .asset   Assets/Resources/Monsters/Monster_Double.asset
+  .asset   Assets/Resources/Monsters/Monster_Power.asset
+  .asset   Assets/Resources/Monsters/Monster_Slow.asset
+  .asset   Assets/Resources/Pools/ShopPool.asset
+  .asset   Assets/Resources/Pools/UpgradePool.asset
+  .asset   Assets/Resources/TriggerIconLibrary.asset
+  .cs      Assets/Scripts/Core/Ai/AttackForecast.cs
+  .cs      Assets/Scripts/Core/Ai/BattleArchetype.cs
+  .cs      Assets/Scripts/Core/Ai/CardRole.cs
+  .cs      Assets/Scripts/Core/Ai/HeuristicAgent.cs
+  .cs      Assets/Scripts/Core/Ai/IAgent.cs
+  .cs      Assets/Scripts/Core/Ai/IParticipantController.cs
+  .cs      Assets/Scripts/Core/Ai/MonsterAgents.cs
+  .cs      Assets/Scripts/Core/Ai/SimpleAiAgent.cs
+  .cs      Assets/Scripts/Core/Battle/BattleEngine.Effects.cs
+  .cs      Assets/Scripts/Core/Battle/BattleEngine.cs
+  .cs      Assets/Scripts/Core/Battle/BattleLog.cs
+  .cs      Assets/Scripts/Core/Battle/BattleSetup.cs
+  .cs      Assets/Scripts/Core/Battle/BattleState.cs
+  .cs      Assets/Scripts/Core/Battle/CooldownOps.cs
+  .cs      Assets/Scripts/Core/Battle/Decision.cs
+  .cs      Assets/Scripts/Core/Battle/Effects/BuiltinEffects.cs
+  .cs      Assets/Scripts/Core/Battle/Effects/EffectContext.cs
+  .cs      Assets/Scripts/Core/Battle/Effects/EffectRegistry.cs
+  .cs      Assets/Scripts/Core/Battle/Effects/EffectWindow.cs
+  .cs      Assets/Scripts/Core/Battle/PlayerState.cs
+  .cs      Assets/Scripts/Core/Battle/Resolvers/AttackContext.cs
+  .cs      Assets/Scripts/Core/Battle/Resolvers/AuraResolver.cs
+  .cs      Assets/Scripts/Core/Battle/Resolvers/DefenseResolver.cs
+  .cs      Assets/Scripts/Core/Battle/Snapshot.cs
+  .cs      Assets/Scripts/Core/Cards/AltarRite.cs
+  .cs      Assets/Scripts/Core/Cards/CardAcquisition.cs
+  .cs      Assets/Scripts/Core/Cards/CardCatalog.cs
+  .cs      Assets/Scripts/Core/Cards/CardDef.cs
+  .cs      Assets/Scripts/Core/Cards/CardElement.cs
+  .cs      Assets/Scripts/Core/Cards/CardInstance.cs
+  .cs      Assets/Scripts/Core/Cards/CardLibrary.cs
+  .cs      Assets/Scripts/Core/Cards/CardUpgrade.cs
+  .cs      Assets/Scripts/Core/Cards/DealPolicy.cs
+  .cs      Assets/Scripts/Core/Cards/DealProfile.cs
+  .cs      Assets/Scripts/Core/Cards/EffectDef.cs
+  .cs      Assets/Scripts/Core/Cards/EffectSpec.cs
+  .cs      Assets/Scripts/Core/Cards/UpgradeBook.cs
+  .cs      Assets/Scripts/Core/Cards/UpgradeTraits.cs
+  .cs      Assets/Scripts/Core/Cards/WitchWorkshop.cs
+  .cs      Assets/Scripts/Core/Characters/CharacterAbility.cs
+  .cs      Assets/Scripts/Core/Characters/CharacterDefinition.cs
+  .cs      Assets/Scripts/Core/Map/MapGenerator.cs
+  .cs      Assets/Scripts/Core/Map/MapGraph.cs
+  .cs      Assets/Scripts/Core/Map/MapNode.cs
+  .cs      Assets/Scripts/Core/Map/MapNodeType.cs
+  .cs      Assets/Scripts/Core/Util/Rng.cs
+  .cs      Assets/Scripts/Unity/BattleBootstrap.cs
+  .cs      Assets/Scripts/Unity/Configuration/CardDefinitionAsset.cs
+  .cs      Assets/Scripts/Unity/Configuration/CardUpgradeWriter.cs
+  .cs      Assets/Scripts/Unity/Configuration/GameSession.cs
+  .cs      Assets/Scripts/Unity/Configuration/SaveData.cs
+  .cs      Assets/Scripts/Unity/Configuration/SaveSlot.cs
+  .cs      Assets/Scripts/Unity/Configuration/SaveStore.cs
+  .cs      Assets/Scripts/Unity/Editor/ArtImportBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/ArtOnboarding.cs
+  .cs      Assets/Scripts/Unity/Editor/BattleArtLayerBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/BattleUiBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/CardPoolBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/CardPoolConfigInspector.cs
+  .cs      Assets/Scripts/Unity/Editor/EditorFontAtlasRepair.cs
+  .cs      Assets/Scripts/Unity/Editor/GeneratedCardAssetUtility.cs
+  .cs      Assets/Scripts/Unity/Editor/GeneratedUpgradeCardUtility.cs
+  .cs      Assets/Scripts/Unity/Editor/GlobalOverlayBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/HomeUiBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/M40SettingsBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/M43SettingsRevealToggle.cs
+  .cs      Assets/Scripts/Unity/Editor/M45DevUnlockBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/MapUiBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/MonsterBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/P0BatchFix.cs
+  .cs      Assets/Scripts/Unity/Editor/SettingsUiBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/ShopUiBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/TriggerIconBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/TriggerSpriteAssetBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/UiKitBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/UpgradeDebugMenu.cs
+  .cs      Assets/Scripts/Unity/Editor/UpgradeUiBuilder.cs
+  .cs      Assets/Scripts/Unity/Editor/WitchUiBuilder.cs
+  .cs      Assets/Scripts/Unity/Ui/CardPoolEntryView.cs
+  .cs      Assets/Scripts/Unity/Ui/ElementIconLibrary.cs
+  .cs      Assets/Scripts/Unity/Ui/MapRoutes.cs
+  .cs      Assets/Scripts/Unity/Ui/MapRun.cs
+  .cs      Assets/Scripts/Unity/Ui/SettingsView.cs
+  .cs      Assets/Scripts/Unity/Ui/TriggerSpriteLibrary.cs
+  .cs      Assets/Scripts/Unity/Ui/UiLayout.cs
+  .cs      Assets/Scripts/Unity/Ui/UiTheme.cs
+  .cs      Assets/Scripts/Unity/Ui/UiTween.cs
+  .cs      Assets/Scripts/Unity/Ui/ZoneSlotClickCatcher.cs
+  .cs      Assets/Tests/EditMode/AuraInteractionTests.cs
+  .cs      Assets/Tests/EditMode/CoreSmokeTests.cs
+  .jpg     Assets/Art/CardArt/_Draft/Draft_Fire_鬼火.jpg
+  .jpg     Assets/Art/CardArt/_Draft/Draft_Sound_共振.jpg
+  .jpg     Assets/Art/CardArt/_Draft/Draft_Sound_振荡.jpg
+  .jpg     Assets/Art/CardArt/_Draft/Draft_Sound_次声波.jpg
+  .jpg     Assets/Art/CardArt/_Draft/Draft_Water_雾隐.jpg
+  .otf     Assets/Art/Fonts/Black/Google-Normal.otf
+  .png     Assets/Art/Backgrounds/Bg_Dungeon.png
+  .png     Assets/Art/CardArt/_Draft/Draft_Fire_蒸汽锅炉.png
+  .png     Assets/Art/CardArt/_Draft/Draft_Grass_剧毒种子.png
+  .png     Assets/Art/CardArt/_Draft/Draft_Grass_果实.png
+  .png     Assets/Art/CardArt/_Draft/Draft_Grass_虚弱花粉.png
+  .png     Assets/Art/CardArt/_Draft/Draft_Lightning_蓄电攻击_v1.png
+  .png     Assets/Art/CardArt/_Draft/Draft_Lightning_雷霆释放攻击_v1.png
+  .png     Assets/Art/CardArt/_Draft/Draft_Water_海啸_v4.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_01.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_02.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_03.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_04.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_05.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_06.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_07.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_08.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_09.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_10.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_11.png
+  .png     Assets/Art/Chars/Hero/attack_newmage_v1/Hero_attack_newmage_12.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_01.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_02.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_03.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_04.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_05.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_06.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_07.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_08.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_09.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_10.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_11.png
+  .png     Assets/Art/Chars/Hero/defend_newmage_v1/Hero_defend_newmage_12.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_01.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_02.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_03.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_04.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_05.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_06.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_07.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_08.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_09.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_10.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_11.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_12.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_13.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_14.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_15.png
+  .png     Assets/Art/Chars/Hero/idle_newmage_v1/Hero_idle_newmage_16.png
+  .png     Assets/Art/Chars/_Source/2049a678-64d5-46e6-a342-87eaf3f37435.png
+  .png     Assets/Art/Chars/_Source/6e093879-16be-4326-b9e9-c90a767cb587.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Attack.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Attack_NewMage_AlphaProof_v1.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Attack_NewMage_v1.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_BeHit.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Death.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Defend.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Defend_NewMage_AlphaProof_v1.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Defend_NewMage_v1.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Idle.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Idle_NewMage_AlphaProof_v1.png
+  .png     Assets/Art/Chars/_Source/Hero_Anim_Idle_NewMage_v1.png
+  .png     Assets/Art/Icons/Icon_04_atkplus_力量增加.png
+  .png     Assets/Art/Icons/Icon_05_defplus_防御增加.png
+  .png     Assets/Art/Icons/Icon_06_combo_连击.png
+  .png     Assets/Art/Icons/Icon_07_immune_免疫.png
+  .png     Assets/Art/Icons/Icon_08_weak_虚弱.png
+  .png     Assets/Art/Icons/Icon_09_fragile_脆弱.png
+  .png     Assets/Art/Icons/Icon_10_haste_加速.png
+  .png     Assets/Art/Icons/_Source/IconSheet_盾剑特殊_三合一.png
+  .png     Assets/Art/Icons/_Source/Icon_效果七合一.png
+  .png     Assets/Art/Icons/_Source/Type.png
+  .png     Assets/Art/Map/_Source/Player_Source.png
+  .png     Assets/Art/Reference-5.png
+  .png     Assets/Art/Ui/Hud_Bar_Raw.png
+  .png     Assets/Art/Ui/Orb_Energy_Raw.png
+  .png     Assets/Art/Ui/SlotR_CD1_Raw.png
+  .png     Assets/Art/Ui/_Source/148cae8c-29e8-457e-82ec-40f8088a71a2.png
+  .png     Assets/Art/Ui/_Source/542f45c2-5d2c-4803-bcbd-2cafa10226fc.png
+  .png     Assets/Art/Ui/_Source/661ca76a-c73d-4618-b6e5-918c75968b58.png
+  .png     Assets/Art/Ui/_Source/ae67a6sgshbf-bef42ae582f4 (realesrgan-x4plus x3).png
+  .png     Assets/Art/Ui/_Source/d30f41c7-1d35-43f6-9755-ca54cc6f4a6a.png
+  .png     Assets/Art/Ui/_backup/Hud_Bar_beforeHeartErase.png
+  .png     Assets/Art/_Reference/Reference-2.png
+  .png     Assets/Art/_Reference/Reference-3.png
+  .png     Assets/Art/_Reference/Reference-4.png
+  .png     Assets/Art/_Reference/Reference.png
+  .png     Assets/Resources/Elements/Element_01_Ice.png
+  .png     Assets/Resources/Elements/Element_02_Water.png
+  .png     Assets/Resources/Elements/Element_03_Electric.png
+  .png     Assets/Resources/Elements/Element_04_Fire.png
+  .png     Assets/Resources/Elements/Element_05_Grass.png
+  .png     Assets/Resources/Elements/Element_06_Stone.png
+  .png     Assets/Resources/Elements/Element_07_Curse.png
+  .png     Assets/Screenshots/altar_fx_20261006.png
+  .png     Assets/Screenshots/altar_step1_20261006.png
+  .png     Assets/Screenshots/altar_step2_20261006.png
+  .png     Assets/Screenshots/altar_step2_fixed_20261006.png
+  .png     Assets/Screenshots/battle_after.png
+  .png     Assets/Screenshots/cur_map.png
+  .png     Assets/Screenshots/cur_shop.png
+  .png     Assets/Screenshots/full_settings.png
+  .png     Assets/Screenshots/handpick_cardface.png
+  .png     Assets/Screenshots/map_after_heart.png
+  .png     Assets/Screenshots/map_after_layout.png
+  .png     Assets/Screenshots/map_hex_20261006.png
+  .png     Assets/Screenshots/peek_cardface.png
+  .png     Assets/Screenshots/pool_edit.png
+  .png     Assets/Screenshots/screenshot-20261006-091713.png
+  .png     Assets/Screenshots/screenshot-20261008-085700.png
+  .png     Assets/Screenshots/screenshot-20261008-085748.png
+  .png     Assets/Screenshots/screenshot-20261008-085913.png
+  .png     Assets/Screenshots/shop_after_dim.png
+  .png     Assets/Screenshots/v2_home.png
+  .png     Assets/Screenshots/v2_home3.png
+  .png     Assets/Screenshots/v2_map.png
+  .png     Assets/Screenshots/v3_battle.png
+  .png     Assets/Screenshots/v3_shop.png
+  .prefab  Assets/Prefabs/Ui/HomeCanvas.prefab
+  .prefab  Assets/Prefabs/Ui/MapCanvas.prefab
+  .prefab  Assets/Prefabs/Ui/ShopCanvas.prefab
+  .prefab  Assets/Prefabs/Ui/UpgradeCanvas.prefab
+  .prefab  Assets/Prefabs/Ui/WitchCanvas.prefab
+  .scenetemplate Assets/Settings/Lit2DSceneTemplate.scenetemplate
+  .ttf     Assets/Art/Fonts/Black/Google-Regular.ttf
+  .ttf     Assets/Art/Fonts/BlackLike/字体圈伟君黑-W1.ttf
+  .ttf     Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03.ttf
+  .ttf     Assets/Art/Fonts/HandWriting/HappyZcool-2016.ttf
+  .txt     Assets/Art/Chars/Hero/attack/_meta.txt
+  .txt     Assets/Art/Chars/Hero/behit/_meta.txt
+  .txt     Assets/Art/Chars/Hero/death/_meta.txt
+  .txt     Assets/Art/Chars/Hero/defend/_meta.txt
+  .txt     Assets/Art/Chars/Hero/idle/_meta.txt
+  .txt     Assets/Art/Chars/Monster/attack/_meta.txt
+  .txt     Assets/Art/Chars/Monster/defend/_meta.txt
+  .txt     Assets/Art/Chars/Monster/idle/_meta.txt
+  .txt     Assets/Art/Chars/anim_frames.txt
+  .unity   Assets/Settings/Scenes/URP2DSceneTemplate.unity
+
+  --- 包/第三方（可能是噪声，仅计数） ---
+           Assets/Plugins/Demigiant
+           Assets/Plugins/Demigiant/DOTween
+           Assets/Plugins/Demigiant/DOTween/Editor
+           Assets/Plugins/Demigiant/DOTween/Editor/Imgs
+           Assets/Plugins/Demigiant/DOTween/Modules
+           Assets/Plugins/Demigiant/DOTweenPro
+           Assets/Plugins/Demigiant/DOTweenPro Examples
+           Assets/Plugins/Demigiant/DOTweenPro Examples/Examples Assets
+           Assets/Plugins/Demigiant/DOTweenPro/Editor
+           Assets/Plugins/Demigiant/DemiLib
+           Assets/Plugins/Demigiant/DemiLib/Core
+           Assets/Plugins/Demigiant/DemiLib/Core/Editor
+           Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs
+           Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project
+           Assets/TextMesh Pro/Documentation
+           Assets/TextMesh Pro/Fonts
+           Assets/TextMesh Pro/Resources
+           Assets/TextMesh Pro/Resources/Fonts & Materials
+           Assets/TextMesh Pro/Resources/Sprite Assets
+           Assets/TextMesh Pro/Resources/Style Sheets
+           Assets/TextMesh Pro/Shaders
+           Assets/TextMesh Pro/Sprites
+           Assets/ThirdParty/MagicCardKit
+           Assets/ThirdParty/MagicCardKit/Materials
+           Assets/ThirdParty/MagicCardKit/Prefabs
+           Assets/ThirdParty/MagicCardKit/Shaders
+           Assets/ThirdParty/PolySprite
+           Assets/ThirdParty/PolySprite/Graph
+           Assets/ThirdParty/PolySprite/Poly
+  .asset   Assets/TextMesh Pro/Resources/TMP Settings.asset
+  .cginc   Assets/TextMesh Pro/Shaders/TMPro.cginc
+  .cginc   Assets/TextMesh Pro/Shaders/TMPro_Mobile.cginc
+  .cginc   Assets/TextMesh Pro/Shaders/TMPro_Properties.cginc
+  .cginc   Assets/TextMesh Pro/Shaders/TMPro_Surface.cginc
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleAudio.cs
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleEPOOutline.cs
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModulePhysics.cs
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModulePhysics2D.cs
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleSprite.cs
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUI.cs
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUnityVersion.cs
+  .cs      Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUtils.cs
+  .cs      Assets/Plugins/Demigiant/DOTweenPro/DOTweenDeAudio.cs
+  .cs      Assets/Plugins/Demigiant/DOTweenPro/DOTweenDeUnityExtended.cs
+  .cs      Assets/Plugins/Demigiant/DOTweenPro/DOTweenProShortcuts.cs
+  .cs      Assets/Plugins/Demigiant/DOTweenPro/DOTweenTextMeshPro.cs
+  .cs      Assets/Plugins/Demigiant/DOTweenPro/DOTweenTk2d.cs
+  .cs      Assets/Plugins/Demigiant/DOTweenPro/Editor/DOTweenAnimationInspector.cs
+  .cs      Assets/Plugins/Demigiant/DOTweenPro/Editor/DOTweenPreviewManager.cs
+  .dll     Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.dll
+  .dll     Assets/Plugins/Demigiant/DOTweenPro/Editor/DOTweenProEditor.dll
+  .dll     Assets/Plugins/Demigiant/DemiLib/Core/DemiLib.dll
+  .dll     Assets/Plugins/Demigiant/DemiLib/Core/Editor/DemiEditor.dll
+  .jpg     Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Header.jpg
+  .json    Assets/TextMesh Pro/Sprites/EmojiOne.json
+  .mat     Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Drop Shadow.mat
+  .mat     Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Outline.mat
+  .mat     Assets/ThirdParty/MagicCardKit/Materials/BGCircle.mat
+  .mat     Assets/ThirdParty/MagicCardKit/Materials/Box.mat
+  .mat     Assets/ThirdParty/MagicCardKit/Materials/EdgeEnhance.mat
+  .mat     Assets/ThirdParty/MagicCardKit/Materials/EdgeEnhance_alt.mat
+  .mat     Assets/ThirdParty/MagicCardKit/Materials/EdgeFade.mat
+  .mdb     Assets/Plugins/Demigiant/DOTween/DOTween.dll.mdb
+  .mdb     Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.dll.mdb
+  .mdb     Assets/Plugins/Demigiant/DOTweenPro/DOTweenPro.dll.mdb
+  .mdb     Assets/Plugins/Demigiant/DOTweenPro/Editor/DOTweenProEditor.dll.mdb
+  .mdb     Assets/Plugins/Demigiant/DemiLib/Core/DemiLib.dll.mdb
+  .mdb     Assets/Plugins/Demigiant/DemiLib/Core/Editor/DemiEditor.dll.mdb
+  .pdf     Assets/TextMesh Pro/Documentation/TextMesh Pro User Guide 2016.pdf
+  .png     Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenIcon.png
+  .png     Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenMiniIcon.png
+  .png     Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer.png
+  .png     Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer_dark.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/blackSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/blackSquareAlpha10.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/blackSquareAlpha15.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/blackSquareAlpha25.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/blackSquareAlpha50.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/blackSquareAlpha80.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/blueSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/circle.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/circle_dashedBorderEmpty.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/greenSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/grid_bright.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/grid_dark.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alert.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignB.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignBC.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignBL.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignBR.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignCC.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignCL.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignCR.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignHC.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignL.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignR.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignT.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignTC.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignTL.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignTR.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_alignVC.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_camera.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_camera_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_cog.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_cog_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_comment.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_comment_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_delete.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_demigiant.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_distributeHAlignT.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_distributeVAlignL.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_end.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_flipV.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_foldout_closed.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_foldout_open.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_heart.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_heart_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_light.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_light_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_lock.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_lock_open.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_nodeArrow.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_ok.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_optionsDropdown.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_play.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_play_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_skull.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_skull_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_star.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_star_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_ui.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_ui_border.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_visibility.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/ico_visibility_off.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/orangeSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_atlas.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_audio.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_bundle.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_cog.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_cross.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_demigiant.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_folder.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_fonts.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_heart.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_materials.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_models.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_particles.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_play.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_prefab.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_scripts.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_shaders.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_skull.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_star.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_terrains.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/project/ico_textures.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/purpleSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/redSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorder.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderAlpha15.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurved.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurved02.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurved02_darkBorders.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurvedAlpha.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurvedEmpty.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurvedEmpty02.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurvedEmptyThick.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurved_darkBorders.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderCurved_darkBordersAlpha.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderEmpty.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderEmpty01.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderEmpty02.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderEmpty03.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderThickEmpty.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareBorderThickerEmpty.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareCorners03.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/squareCornersEmpty02.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/tileBars_empty.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/tileBars_slanted.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/tileBars_slanted_alpha.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/transparentSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteDot.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteDot_darkBorder.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteDot_whiteBorderAlpha.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquare.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquareAlpha10.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquareAlpha15.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquareAlpha25.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquareAlpha50.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquareAlpha80.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquareCurved.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquareCurved02.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/whiteSquare_fadeOut_bt.png
+  .png     Assets/Plugins/Demigiant/DemiLib/Core/Editor/Imgs/yellowSquare.png
+  .png     Assets/ThirdParty/PolySprite/Arc.png
+  .png     Assets/ThirdParty/PolySprite/Arrow.png
+  .png     Assets/ThirdParty/PolySprite/BoxLine.png
+  .png     Assets/ThirdParty/PolySprite/Capsule.png
+  .png     Assets/ThirdParty/PolySprite/Doted_Line.png
+  .png     Assets/ThirdParty/PolySprite/Graph/Arrow_Hor.png
+  .png     Assets/ThirdParty/PolySprite/Hex_Hollow.png
+  .png     Assets/ThirdParty/PolySprite/Hex_Hor.png
+  .png     Assets/ThirdParty/PolySprite/Hoop.png
+  .png     Assets/ThirdParty/PolySprite/Hoop2.png
+  .png     Assets/ThirdParty/PolySprite/Line.png
+  .png     Assets/ThirdParty/PolySprite/Line_Ver.png
+  .png     Assets/ThirdParty/PolySprite/Logo.png
+  .png     Assets/ThirdParty/PolySprite/Oval_Hor.png
+  .png     Assets/ThirdParty/PolySprite/Oval_Ver.png
+  .png     Assets/ThirdParty/PolySprite/Poly/Box.png
+  .png     Assets/ThirdParty/PolySprite/Poly/Cube.png
+  .png     Assets/ThirdParty/PolySprite/Poly/CubeLine.png
+  .png     Assets/ThirdParty/PolySprite/Poly/DashLine_Hor(2-1).png
+  .png     Assets/ThirdParty/PolySprite/Poly/DashLine_Hor(3-1).png
+  .png     Assets/ThirdParty/PolySprite/Poly/DashLine_Hor(5-2).png
+  .png     Assets/ThirdParty/PolySprite/Poly/DashLine_Ver(2-1).png
+  .png     Assets/ThirdParty/PolySprite/Poly/DashLine_Ver(3-1).png
+  .png     Assets/ThirdParty/PolySprite/Poly/DashLine_Ver(5-2).png
+  .png     Assets/ThirdParty/PolySprite/Poly/Line_Hor.png
+  .png     Assets/ThirdParty/PolySprite/Pyramid.png
+  .png     Assets/ThirdParty/PolySprite/Rectangle.png
+  .png     Assets/ThirdParty/PolySprite/Star.png
+  .png     Assets/ThirdParty/PolySprite/Sun.png
+  .png     Assets/ThirdParty/PolySprite/Virus.png
+  .shader  Assets/TextMesh Pro/Shaders/TMP_Bitmap-Custom-Atlas.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_Bitmap-Mobile.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_Bitmap.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_SDF Overlay.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_SDF SSD.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Masking.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile SSD.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_SDF-Surface-Mobile.shader
+  .shader  Assets/TextMesh Pro/Shaders/TMP_SDF-Surface.shader
+  .txt     Assets/Plugins/Demigiant/DOTween/readme.txt
+  .txt     Assets/Plugins/Demigiant/DOTweenPro/readme.txt
+  .txt     Assets/Plugins/Demigiant/readme_DOTweenPro.txt
+  .txt     Assets/TextMesh Pro/Fonts/LiberationSans - OFL.txt
+  .txt     Assets/TextMesh Pro/Sprites/EmojiOne Attribution.txt
+  .unity   Assets/Plugins/Demigiant/DOTweenPro Examples/DOTweenAnimation_Advanced.unity
+  .unity   Assets/Plugins/Demigiant/DOTweenPro Examples/DOTweenAnimation_Basics.unity
+  .unity   Assets/Plugins/Demigiant/DOTweenPro Examples/DOTweenPath.unity
+  .xml     Assets/Plugins/Demigiant/DOTween/DOTween.XML
+  .xml     Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.XML
+  .xml     Assets/Plugins/Demigiant/DOTweenPro/DOTweenPro.XML
+  .xml     Assets/Plugins/Demigiant/DOTweenPro/Editor/DOTweenProEditor.XML
+  .xml     Assets/Plugins/Demigiant/DemiLib/Core/DemiLib.xml
+  .xml     Assets/Plugins/Demigiant/DemiLib/Core/Editor/DemiEditor.xml
+
+# ===== B. MonoBehaviour 脚本：未挂在任何 prefab/scene 上 =====
+   （不一定是死代码 —— 可能运行时 AddComponent / 由构建器生成）
+  Assets/Scripts/Unity/BattleBootstrap.cs
+  Assets/Scripts/Unity/Ui/CardPoolEntryView.cs
+  Assets/Scripts/Unity/Ui/SettingsView.cs
+  Assets/Scripts/Unity/Ui/UiTween.cs
+  Assets/Scripts/Unity/Ui/ZoneSlotClickCatcher.cs
+
+# ===== C. 空目录 =====
+  Assets/Art/Icons/Elements
+
+# ===== D. 内容完全相同的重复文件 (>=100KB) =====
+  可省: 0.0 MB

@@ -203,7 +203,7 @@ namespace MagicBrawl.App
             CardSnapshot snap = CardSnapshot.FromDef(def, 0, def.Cooldown);
             _card.Bind(snap, CardView.ViewMode.Hand, 0);
             _card.SetFaceWidth(UiLayout.UpgradeFxCardWidth);
-            _card.SetInteractable(false);
+            _card.SetReadOnly();
             _card.SetSelected(false);
             _card.SetDimmed(false);
             _card.SetPresentationHidden(false);

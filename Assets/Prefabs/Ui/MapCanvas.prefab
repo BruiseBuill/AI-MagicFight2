@@ -1445,7 +1445,7 @@ RectTransform:
   - {fileID: 6598160368473037610}
   - {fileID: 2673168072216535953}
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -1536,7 +1536,7 @@ MonoBehaviour:
   _playerImage: {fileID: 4018605200255102987}
   _title: {fileID: 3452348544926427832}
   _hint: {fileID: 9077448363302296162}
-  _progressText: {fileID: 7013873797000938823}
+  _hpText: {fileID: 7013873797000938823}
   _goldText: {fileID: 4342471394970162302}
   _endLayer: {fileID: 4672476402560100197}
   _endTitle: {fileID: 8797669572981124448}
@@ -1551,6 +1551,8 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 7dc585ef233a5e545800ec964ea2c40c, type: 3}
   - {fileID: 21300000, guid: 87b3f6785d4450f49a296fac431aa6e0, type: 3}
   - {fileID: 21300000, guid: b9f699cfac0a7934d8cb9e3d59f68f44, type: 3}
+  - {fileID: 21300000, guid: 683c6cbab341f7c418b1809b35710019, type: 3}
+  - {fileID: 21300000, guid: 585bd1638f4c46143aeea18f2e77eccd, type: 3}
 --- !u!1 &7295931398760517063
 GameObject:
   m_ObjectHideFlags: 0
@@ -1586,7 +1588,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 244, y: 98}
+  m_AnchoredPosition: {x: 224, y: 174}
   m_SizeDelta: {x: 59.73798, y: 116}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &7500207507597143771
@@ -1774,7 +1776,7 @@ GameObject:
   - component: {fileID: 5025045778025985185}
   - component: {fileID: 7013873797000938823}
   m_Layer: 0
-  m_Name: ProgressNumber
+  m_Name: HpNumber
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1828,7 +1830,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u8FDB\u5EA6 0 / 8"
+  m_text: "\u751F\u547D  4 / 4"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: d57b81d579adab34cb59753a61e931b5, type: 2}
   m_sharedMaterial: {fileID: 3540835558465367509, guid: d57b81d579adab34cb59753a61e931b5, type: 2}

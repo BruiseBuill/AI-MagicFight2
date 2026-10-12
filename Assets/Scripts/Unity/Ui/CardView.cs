@@ -271,6 +271,28 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
+        /// <b>只读展示</b>：这张卡不参与出牌、不接点击，但<b>绝不压暗</b>（2026-10-05 加）。
+        ///
+        /// <para><b>它补的是哪个洞</b>：商店货位 / 卡池面板 / 背包面板这些地方要的是
+        /// 「把这张卡原样画出来」，用的却是 <see cref="SetInteractable"/>(false) ——
+        /// 而那个方法的后半句是「不可点就压暗」。于是那些界面里的卡<b>全都被盖上黑纱</b>
+        /// （用户 2026-10-05：「商店界面的卡牌莫名其妙被加暗了」）——
+        /// 而且商店货位<b>自己</b>还有一层「买不起才亮」的压暗纱，两层叠在一起，
+        /// 一眼看上去像是背景层级错了。</para>
+        ///
+        /// <para>两件事由此拆开：<b>能不能点</b>（<see cref="SetInteractable"/>，会压暗）
+        /// 与 <b>是不是纯展示</b>（本方法，不压暗）。战斗手牌那套要的正是前者
+        /// （打不出的牌该暗），所以那里不改。</para>
+        /// </summary>
+        public void SetReadOnly()
+        {
+            _interactable = false;
+            _gestureHold = true;      // 直接停掉 Button 组件：卡面不再吃任何点击
+            ApplyButtonState();
+            SetDimmed(false);
+        }
+
+        /// <summary>
         /// <b>临时</b>吃掉点击（M12 拖拽 / 长按用）。
         ///
         /// <para>实现方式是<b>停用 Button 组件</b>而不是把它设成 <c>interactable = false</c>：
@@ -314,6 +336,16 @@ namespace MagicBrawl.App
             {
                 _dim.SetActive(dimmed);
             }
+        }
+
+        /// <summary>
+        /// 这张卡面当前是不是压暗态。<b>只读探针</b>（M44 给卡池面板的验收用）：
+        /// <see cref="SetDimmed"/> 是幂等的写入口，验收时需要一个能读回来的判据 ——
+        /// 否则只能去数子节点的 activeSelf，写一次探针就要临时打开 Prefab 查节点名。
+        /// </summary>
+        public bool IsDimmed
+        {
+            get { return _dim != null && _dim.activeSelf; }
         }
 
         public void SetAlpha(float alpha)

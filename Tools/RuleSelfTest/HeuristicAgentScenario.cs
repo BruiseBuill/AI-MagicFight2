@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using MagicBrawl.Core;
 
@@ -29,6 +29,7 @@ namespace MagicBrawl.SelfTest
 
             ok &= CheckRoleClassification(report);
             ok &= CheckArchetypeScoring(report);
+            ok &= CheckDoubleDefenseCorrection(report);
             ok &= CheckMassGames(report, 300);
 
             return ok;
@@ -399,6 +400,307 @@ namespace MagicBrawl.SelfTest
             }
 
             return true;
+        }
+
+        // ── ④ 双发「行动修正」（2026-10-06）──────────────────────
+
+        /// <summary>
+        /// 双发「行动修正」自测：<b>张数 → 概率</b> + <b>同一次进攻只掷一次骰</b>。
+        ///
+        /// <para><b>为什么必须在这里钉</b>：这条规则是<b>概率</b>的 —— 写错了（把 40% 与 80%
+        /// 弄反、张数阈值判错）不会报错、不会崩，只会让 AI「手感不对」；
+        /// 而万局自测跑的是 <see cref="SimpleAiAgent"/>，一次都走不到这段代码。</para>
+        ///
+        /// <para><b>怎么在没有真实进攻的情况下测</b>：直接造一份
+        /// <see cref="DecisionRequest"/>（<c>ChooseDefense</c> + <c>ContextDouble</c>）——
+        /// 引擎发本拍时填的就是这几个字段（见 <c>BattleEngine.IssueDefense</c>），
+        /// 选项也走同一份 <see cref="DefenseResolver.BuildOptions"/>。手牌由
+        /// <see cref="FillHand"/> 直接写进 <c>PlayerState.Hand</c>，想摆几张挡牌就摆几张。</para>
+        ///
+        /// <para><b>怎么分辨「闸门放行」与「闸门拦下」</b>：统计用的挡牌一律选<b>真挡牌</b>
+        /// （自身防御力量就 ≥ 进攻力量，不依赖光环补值）—— 这样闸门放行时必然挑得出两张、
+        /// 回填里一定有牌；拦下时只剩 Skip。若用「靠自带防御光环才达标」的牌，
+        /// 闸门放行后管线仍可能找不到合法组合，两种结果都返回 Skip 就分不开了。
+        /// 「自带防御光环算不算数」由第 ① 条纯函数断言单独覆盖。</para>
+        /// </summary>
+        private static bool CheckDoubleDefenseCorrection(List<string> report)
+        {
+            bool ok = true;
+            const int AttackPower = 8;
+
+            BattleEngine engine = MakeEngine(4300);
+
+            // ① 纯函数：手牌里「单张就能挡住该双发」的牌有几张。
+            //    g(9) / f(9) 力量达标；af(5 + 自带防御光环 4 = 9) 靠光环达标；
+            //    ak(6) 靠「守护」无条件挡；c(3) / t(3) 两张不算 ⇒ 共 5 张。
+            FillHand(engine.State, 1, "g", "f", "af", "ak", "c", "t");
+            var probe = new DefenseProbe(engine.State);
+            int blockers = probe.CountBlockers(1, AttackPower);
+            ok &= Check(report, blockers == 4,
+                "挡牌数 = 防御力量达标(g/f) + 自带防御光环(af) + 守护(ak)，共 4 张（实际 " + blockers + "）");
+
+            // 对照：把「靠光环达标」的 af 换成 c(3) ⇒ 应少一张。
+            FillHand(engine.State, 1, "g", "f", "c", "ak", "t");
+            blockers = probe.CountBlockers(1, AttackPower);
+            ok &= Check(report, blockers == 3,
+                "去掉靠光环达标的 af → 挡牌数落到 3（实际 " + blockers + "）");
+
+            // ② 张数 → 概率。四组手牌只差挡牌张数，其余都是凑数的弱牌。
+            ok &= CheckDefenseRate(report, engine, AttackPower,
+                new[] { "g", "c", "k", "t", "l", "m" }, 1, 0);
+            ok &= CheckDefenseRate(report, engine, AttackPower,
+                new[] { "g", "f", "c", "k", "t", "l" }, 2, HeuristicAgent.DoubleDefendChanceAtTwo);
+            ok &= CheckDefenseRate(report, engine, AttackPower,
+                new[] { "g", "f", "i", "c", "k", "t", "l" }, 3, HeuristicAgent.DoubleDefendChanceAtThree);
+            ok &= CheckDefenseRate(report, engine, AttackPower,
+                new[] { "g", "f", "i", "j", "c", "k", "t", "l" }, 4, 100);
+
+            // ③ 同一次进攻只掷一次骰：引擎因「报备光环」重发本拍时会再问一次，
+            //    两次必须给出同一个答案 —— 否则表现是「报备完光环又放弃」。
+            //    这里对同一份 request 连问两次，覆盖两个会掷骰的档位。
+            int flips = 0;
+            var hands = new[]
+            {
+                new[] { "g", "f", "c", "k", "t", "l" },
+                new[] { "g", "f", "i", "c", "k", "t", "l" },
+            };
+
+            for (int h = 0; h < hands.Length; h++)
+            {
+                for (int k = 0; k < 200; k++)
+                {
+                    FillHand(engine.State, 1, hands[h]);
+                    var once = new DefenseProbe(engine.State) { DoubleDefendSeed = 900001 + k * 104729 };
+                    DecisionRequest req = MakeDoubleRequest(engine, 1, AttackPower);
+                    if (Defended(req, once.Decide(req)) != Defended(req, once.Decide(req)))
+                    {
+                        flips++;
+                    }
+                }
+            }
+
+            ok &= Check(report, flips == 0, "同一次进攻重发本拍不翻盘（实际翻盘 " + flips + " 次）");
+
+            // ④ 不是双发 → 这条修正完全不介入（挡住就交牌）。
+            int notDoubleSkips = 0;
+            for (int k = 0; k < 100; k++)
+            {
+                FillHand(engine.State, 1, "g", "f", "i", "c", "k", "t", "l");
+                var plain = new DefenseProbe(engine.State) { DoubleDefendSeed = 300001 + k * 65537 };
+                DecisionRequest req = MakeDoubleRequest(engine, 1, AttackPower);
+                req.ContextDouble = false;
+                if (!Defended(req, plain.Decide(req)))
+                {
+                    notDoubleSkips++;
+                }
+            }
+
+            ok &= Check(report, notDoubleSkips == 0,
+                "非双发的防御不受影响（100 次全部照旧交牌，实际放弃 " + notDoubleSkips + " 次）");
+
+            // ⑤ 例外：手上有**可用的免疫光环** → 不掷骰、恒防（且管线真的把那枚免疫交出去）。
+            //    手牌只摆 1 张真挡牌 ⇒ 按张数规则该 0% 防，所以「恒防」只可能来自免疫例外。
+            int immuneSkipped = 0;
+            int immuneUsed = 0;
+            for (int k = 0; k < 200; k++)
+            {
+                FillHand(engine.State, 1, "g", "c", "k", "t", "l", "m");
+                var withImmune = new DefenseProbe(engine.State) { DoubleDefendSeed = 770001 + k * 7919 };
+                DecisionRequest req = MakeDoubleRequest(engine, 1, AttackPower);
+                Option immune = AddImmuneAuraOption(engine, req, 1, "ak");
+
+                DecisionResponse resp = withImmune.Decide(req);
+                bool usedImmune = resp != null && resp.AuraOptionIndices != null
+                                  && resp.AuraOptionIndices.Length == 1
+                                  && resp.AuraOptionIndices[0] == immune.Index;
+
+                if (usedImmune)
+                {
+                    immuneUsed++;
+                }
+                else if (!Defended(req, resp))
+                {
+                    immuneSkipped++;
+                }
+            }
+
+            ok &= Check(report, immuneSkipped == 0 && immuneUsed == 200,
+                "有可用免疫光环 → 恒防且真的交出它（200 次：交出 " + immuneUsed
+                + " 次、放弃 " + immuneSkipped + " 次）");
+
+            // 对照：把免疫选项拿掉，同一份手牌（只 1 张挡牌）回到「必被破」。
+            int plainSkips = 0;
+            for (int k = 0; k < 100; k++)
+            {
+                FillHand(engine.State, 1, "g", "c", "k", "t", "l", "m");
+                var plain = new DefenseProbe(engine.State) { DoubleDefendSeed = 770001 + k * 7919 };
+                DecisionRequest req = MakeDoubleRequest(engine, 1, AttackPower);
+                if (!Defended(req, plain.Decide(req)))
+                {
+                    plainSkips++;
+                }
+            }
+
+            ok &= Check(report, plainSkips == 100,
+                "对照组：同一份手牌没有免疫光环时 100 次全部放弃（实际放弃 " + plainSkips + " 次）");
+
+            return ok;
+        }
+
+        /// <summary>
+        /// 统计 <paramref name="expectedBlockers"/> 张挡牌下的防御率，与
+        /// <paramref name="expectedPercent"/>（%）比对。
+        ///
+        /// <para>每个样本换一个 <see cref="HeuristicAgent.DoubleDefendSeed"/> ——
+        /// 「同一次进攻只掷一次」靠 <c>_gambleKey</c> 缓存实现，所以同一个 agent 不可能在
+        /// 同一个局面上给出两个答案；要拿分布只能换种子。</para>
+        ///
+        /// <para>容差 ±8%：500 个样本下 p = 0.4 的 3σ ≈ ±6.6%、p = 0.8 的 3σ ≈ ±5.4%。
+        /// 它是<b>统计</b>断言，不是精确值；只要不把 40 / 80 弄反就不会误报。</para>
+        /// </summary>
+        private static bool CheckDefenseRate(List<string> report, BattleEngine engine, int attackPower,
+            string[] hand, int expectedBlockers, int expectedPercent)
+        {
+            const int Samples = 500;
+            int defended = 0;
+            int wrongCount = 0;
+
+            for (int k = 0; k < Samples; k++)
+            {
+                FillHand(engine.State, 1, hand);
+                var probe = new DefenseProbe(engine.State) { DoubleDefendSeed = 600001 + k * 7919 };
+                if (probe.CountBlockers(1, attackPower) != expectedBlockers)
+                {
+                    wrongCount++;
+                }
+
+                DecisionRequest req = MakeDoubleRequest(engine, 1, attackPower);
+                if (Defended(req, probe.Decide(req)))
+                {
+                    defended++;
+                }
+            }
+
+            double percent = defended * 100.0 / Samples;
+            bool ok = wrongCount == 0 && Math.Abs(percent - expectedPercent) <= 8.0;
+
+            report.Add((ok ? "  [PASS] " : "  [FAIL] ")
+                       + "挡牌 " + expectedBlockers + " 张 → 防御率 " + percent.ToString("F1") + "%"
+                       + "（期望 " + expectedPercent + "%，±8%）"
+                       + (wrongCount > 0 ? "，另有 " + wrongCount + " 个样本的挡牌数算错" : string.Empty));
+            return ok;
+        }
+
+        /// <summary>
+        /// 回填是否「真的交牌防御了」（而不是放弃）。
+        ///
+        /// <para><b>⚠ 不能只看 <c>OptionIndices.Length &gt; 0</c></b>：放弃防御就是回填
+        /// <b>Skip 选项的序号</b>，长度同样是 1 —— 那样写会让「放弃」与「交牌」都算成防住，
+        /// 每条概率断言都会 PASS（本场景第一版就是这么写的，实测 0%/40%/80% 三档全部 100%）。</para>
+        /// </summary>
+        private static bool Defended(DecisionRequest req, DecisionResponse resp)
+        {
+            if (resp == null || resp.OptionIndices == null || resp.OptionIndices.Length == 0)
+            {
+                return false;
+            }
+
+            Option picked = req.Get(resp.OptionIndices[0]);
+            return picked != null && !picked.IsSkip;
+        }
+
+        /// <summary>
+        /// 往请求的选项表里塞一枚<b>免疫光环</b>选项（石化 ak 的 α 光环：免疫力量 ≥6 的攻击，含双发）。
+        ///
+        /// <para><b>为什么自测要自己造它</b>：那类选项由 <c>BattleEngine.BuildDefenseAuras</c>
+        /// 生成 —— 它挂在冷却区里、且要按本次攻击力量过滤区间（区间不含就不给）。
+        /// 直接造一份 state + 冷却区也能做，但那是另一条路径；这里只要一个「选项表里确实有可用免疫」
+        /// 的局面，就按同一形状手工加一项。</para>
+        ///
+        /// <para>返回加进去的那一项（调用方按 <c>Index</c> 核回填）。</para>
+        /// </summary>
+        private static Option AddImmuneAuraOption(BattleEngine engine, DecisionRequest req,
+            int seat, string sourceCardId)
+        {
+            var source = new CardInstance(CardLibrary.Get(sourceCardId), seat);
+            source.ToHand();
+
+            var list = new List<Option>();
+            for (int i = 0; i < req.Options.Count; i++)
+            {
+                list.Add(req.Options[i]);
+            }
+
+            var option = new Option
+            {
+                Index = list.Count,
+                Kind = OptionKind.UseAura,
+                Seat = seat,
+                Card = source,
+                AuraSource = source,
+                AuraKind = AuraKind.ImmuneHigh,
+                Value = 6,
+                Label = "免疫力量 ≥6 的攻击",
+            };
+
+            list.Add(option);
+            req.Options = list;
+            return option;
+        }
+
+        /// <summary>造一个「双发防御」的决策请求（字段与 <c>BattleEngine.IssueDefense</c> 同口径）。</summary>
+        private static DecisionRequest MakeDoubleRequest(BattleEngine engine, int seat, int attackPower)
+        {
+            return new DecisionRequest
+            {
+                Seat = seat,
+                Kind = RequestKind.ChooseDefense,
+                MinSelect = 0,
+                MaxSelect = 1,
+                ContextPower = attackPower,
+                ContextDouble = true,
+                Options = DefenseResolver.BuildOptions(engine.State, seat, attackPower, true),
+            };
+        }
+
+        /// <summary>建一个跑起来（发过牌）的引擎；后续只用它的 <see cref="BattleState"/> 当容器。</summary>
+        private static BattleEngine MakeEngine(int seed)
+        {
+            BattleEngine engine = BattleEngine.Create(seed);
+            engine.Start();
+            return engine;
+        }
+
+        /// <summary>
+        /// 直接改写某个座位的手牌（自测专用）。
+        ///
+        /// <para><b>⚠ 必须走 <see cref="CardInstance.ToHand"/></b>：不调它的话
+        /// <c>EffectivePower</c> 是 0，所有牌都会被数成「挡不住」——
+        /// 断言会以「全部不防」的形式失败，看不出是这里的问题。</para>
+        /// </summary>
+        private static void FillHand(BattleState state, int seat, params string[] ids)
+        {
+            PlayerState player = state.Of(seat);
+            player.Hand.Clear();
+            for (int i = 0; i < ids.Length; i++)
+            {
+                var card = new CardInstance(CardLibrary.Get(ids[i]), seat);
+                card.ToHand();
+                player.Hand.Add(card);
+            }
+        }
+
+        /// <summary>把 <c>protected</c> 的「数挡牌」暴露出来供断言（不改任何规则）。</summary>
+        private sealed class DefenseProbe : HeuristicAgent
+        {
+            public DefenseProbe(BattleState state) : base(state)
+            {
+            }
+
+            public int CountBlockers(int seat, int attackPower)
+            {
+                return CountDoubleDefenders(seat, attackPower, DefenseStyle.Cheapest);
+            }
         }
 
         private static bool Check(List<string> report, bool ok, string label)

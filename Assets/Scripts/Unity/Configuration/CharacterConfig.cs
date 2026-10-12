@@ -148,8 +148,13 @@ namespace MagicBrawl.App
             CardPool pool = cardPool != null
                 ? cardPool.CreatePool(effective)
                 : (useAllCards ? CardPool.AllCards(effective) : new CardPool(cardIds, effective));
+
+            // 手写出牌优先级（2026-10-08）：只认卡池资产上那一份（旧的 useAllCards / cardIds
+            // 单字段写法没有这张表 —— 与「卡池只认一处来源」同口径，不另开第二个入口）。
+            CardPriorityTable priorities = cardPool == null ? null : cardPool.BuildPriorityTable();
+
             return new CharacterDefinition(characterId, displayName, kind, initialHp, maxHp,
-                minimumCardCount, pool, definitions, aiProfile, CreateDealProfile());
+                minimumCardCount, pool, definitions, aiProfile, CreateDealProfile(), priorities);
         }
 
         /// <summary>

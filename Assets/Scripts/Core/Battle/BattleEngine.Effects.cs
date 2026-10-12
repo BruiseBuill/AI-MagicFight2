@@ -52,11 +52,24 @@ namespace MagicBrawl.Core
             int absorbedHaste = 0;
             if (absorbHaste)
                 foreach (EffectDef effect in effects)
-                    if (effect.Trigger == trigger && effect.Op == EffectOp.Haste) absorbedHaste += effect.Arg("count", 1);
+                    // ⚠ 刻印不参与「充能吸收加速」：它不当场结算（见下面那段 continue），
+                    //   吸进来会变成凭空多给的加速次数。
+                    if (effect.Trigger == trigger && effect.Op == EffectOp.Haste
+                        && effect.Sigil == SigilTiming.None)
+                    {
+                        absorbedHaste += effect.Arg("count", 1);
+                    }
 
             foreach (EffectDef effect in effects)
             {
                 if (effect.Trigger != trigger) continue;
+
+                // 刻印（2026-10-07）：**打出去这一刻不结算**。它只被「点亮」，
+                // 真正的效果要等 SigilTiming 那一刻由 BattleEngine.PublishSigils 重放
+                // （点亮在 DoStage5 → LightSigils）。若在这里也入队，同一条效果会
+                // 「当拍白拿一次 + 以后每回合再拿一次」= 多算一次，且不报任何错。
+                if (effect.Sigil != SigilTiming.None) continue;
+
                 if (absorbHaste && effect.Op == EffectOp.Haste) continue;
                 if (absorbHaste && effect.Op == EffectOp.CoolHandForHaste && absorbedHaste > 0)
                 {

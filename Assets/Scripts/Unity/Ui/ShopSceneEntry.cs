@@ -38,6 +38,18 @@ namespace MagicBrawl.App
     [DisallowMultipleComponent]
     public sealed class ShopSceneEntry : MonoBehaviour
     {
+        /// <summary>
+        /// 本场景读写哪个档 = <b>玩家在主菜单选的那个</b>（没选过就 <c>Main</c>，单场景调试不受影响）。
+        ///
+        /// <para>2026-10-05 之前这里写死 <c>SaveSlot.Main</c>：只有一个玩家档位时看不出来，
+        /// 有了多存档位之后会变成「在存档 3 里玩、商店把牌买进了存档 1」，且零报错。
+        /// 统一走 <see cref="SaveSlots.Active"/> —— 判据只有一处。</para>
+        /// </summary>
+        private static SaveSlot SlotInUse
+        {
+            get { return SaveSlots.Active(SaveSlot.Main); }
+        }
+
         // ── 调试参数（正式接入后由地图层 / 存档给）────────────────────
 
         [Header("调试 · 角色与资源")]
@@ -129,7 +141,7 @@ namespace MagicBrawl.App
             // ② 主存档（唯一的正式来源）
             PlayerData player;
             string error;
-            if (!SaveStore.TryLoadPlayer(SaveSlot.Main, out player, out error))
+            if (!SaveStore.TryLoadPlayer(SlotInUse, out player, out error))
             {
                 Debug.LogWarning("[ShopSceneEntry] 读主存档失败，本局按空卡池起步：" + error);
                 return;
@@ -148,7 +160,7 @@ namespace MagicBrawl.App
 
             _loadedFromMainSave = true;
             Debug.Log("[ShopSceneEntry] 主存档卡池 " + _owned.Count + " 张（"
-                      + SaveStore.FilePathFor(SaveSlot.Main) + "）");
+                      + SaveStore.FilePathFor(SlotInUse) + "）");
         }
 
         /// <summary>把一个 id 收进「已持有」（去重 + 查目录；不在目录里的跳过并报警）。</summary>
@@ -235,7 +247,7 @@ namespace MagicBrawl.App
 
             // ⚠ 目录要叠上主存档的强化册（2026-10-02）：否则强化过的牌（"a+"）不在目录里，
             //   背包会把它们当「不在目录里的 ID」跳过 —— 症状是「强化过的牌凭空消失」且零报错。
-            _catalog = SaveStore.WithSavedUpgrades(SaveSlot.Main, ResolveCatalog());
+            _catalog = SaveStore.WithSavedUpgrades(SlotInUse, ResolveCatalog());
 
             // 2026-10-02：这一趟是从地图走进来的话，金币用<b>冒险那本账</b>的余额
             //（地图顶栏显示的、上一家商店花剩下的），而不是本场景的调试默认值。
@@ -306,34 +318,25 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
 
         /// <summary>
-        /// 抽 4 张「玩家尚未持有」的卡，并用派生种子指定一个是特价。
+        /// 抽 4 张货、并用派生种子指定一个是特价。
         ///
         /// <para>规则见 <c>Docs/design/冒险事件架构.md</c> §5：货位 4 个（3 原价 20 + 1 特价 10）；
-        /// 商品只来自未持有池、<b>无放回</b>；不足 4 张时缺位读作「卖光了」。</para>
+        /// 商品只来自「未获得池」、<b>无放回</b>；不足 4 张时缺位读作「卖光了」。</para>
         ///
-        /// <para><b>⚠ 「未持有池」今天用的是「本局卡池里还没有的卡」</b>：
-        /// 正式流程里它应该是「这次冒险 run 里玩家已获得的卡」的补集；
-        /// 本类<b>没有 run</b>，所以退化成 <c>本局选择卡池的补集</c> —— 效果上就是
-        /// 「货架上不会出现你已经带在身上的牌」，与规则的口径一致，
-        /// 但来源是「本局卡池」而不是「冒险持有」，这一点在正式接入时要换掉。</para>
+        /// <para><b>「未获得池」的口径在 2026-10-05 收口到 <c>CardAcquisition</c></b>
+        /// （见 <see cref="DrawShelfCards"/>）：先前这里是「本局卡池的补集」——
+        /// 只挡得住「现在带在身上的」，挡不住「曾经拿到又消耗掉的」。现在两张都挡住了，
+        /// 并且多了「曾展示过减半」这条权重。</para>
         /// </summary>
         private void BuildShelf()
         {
             _shelf.Clear();
 
-            List<CardDef> pool = CollectUnshelvedPool();
-
-            // 用派生种子（与商店种子区分开）洗牌，这样「换存档种子」和「刷新货架」
-            // 不会碰巧给出同一个排列。
+            // 派生种子（与商店种子区分开）——「换存档种子」与「刷新货架」不会碰巧给出同一个排列。
             int seed = _rerollEveryTime ? UnityEngine.Random.Range(int.MinValue, int.MaxValue) : _seed;
-            var rng = new System.Random(seed ^ 0x5A17);
-            for (int i = pool.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                CardDef tmp = pool[i];
-                pool[i] = pool[j];
-                pool[j] = tmp;
-            }
+            var rng = new Rng(seed ^ 0x5A17);
+
+            List<CardDef> pool = DrawShelfCards(UiLayout.ShopSlotCount, rng);
 
             // 特价位：在「实际会摆出来的那几个」里选，否则牌少的时候特价会落在空位上。
             int shown = Mathf.Min(UiLayout.ShopSlotCount, pool.Count);
@@ -352,6 +355,81 @@ namespace MagicBrawl.App
                 }
 
                 _shelf.Add(entry);
+            }
+
+            RecordOffered(pool);
+        }
+
+        /// <summary>
+        /// 抽这一步货架要摆的牌（2026-10-05 · 卡牌获取池）。
+        ///
+        /// <para><b>正式口径</b>（读主存档成功时）：走 <see cref="CardAcquisition.Draw"/> ——
+        /// 已经获得过（含被消耗掉的）的牌<b>不出现</b>、曾展示过但没买的牌<b>概率减半</b>、
+        /// 其余等概率；抽完由 <see cref="RecordOffered"/> 把这几个货位记成「曾展示」。
+        /// 与战斗奖励读的是<b>同一份</b>状态（2026-10-05 起战斗默认档也指向主存档）。</para>
+        ///
+        /// <para><b>调试口径</b>（Inspector 里写了 <see cref="_ownedCardIds"/>，或主存档读不出来）：
+        /// <b>不碰存档</b> —— 只用「未持有」的等概率洗牌。这是独立场景调试契约 E1–E3 的要求：
+        /// 拿调试数据去污染真实存档是事故。</para>
+        /// </summary>
+        private List<CardDef> DrawShelfCards(int count, Rng rng)
+        {
+            if (!_loadedFromMainSave)
+            {
+                List<CardDef> fallback = CollectUnshelvedPool();
+                rng.Shuffle(fallback);
+                if (fallback.Count > count)
+                {
+                    fallback.RemoveRange(count, fallback.Count - count);
+                }
+
+                return fallback;
+            }
+
+            HashSet<string> acquired;
+            HashSet<string> offered;
+            string error;
+            if (!SaveStore.TryLoadAcquisition(SlotInUse, out acquired, out offered, out error))
+            {
+                Debug.LogWarning("[ShopSceneEntry] 读卡牌获取状态失败，本次货架不做排除：" + error);
+                acquired = new HashSet<string>(StringComparer.Ordinal);
+                offered = new HashSet<string>(StringComparer.Ordinal);
+            }
+
+            return CardAcquisition.Draw(CardCatalog.Builtin(), acquired, offered, count, rng);
+        }
+
+        /// <summary>
+        /// 把这一批货位记成「曾展示过」——下次它们出现的概率减半（2026-10-05）。
+        ///
+        /// <para>⚠ 只在<b>正式口径</b>（<see cref="_loadedFromMainSave"/>）下写：
+        /// 调试覆盖时写进去就是拿一次性数据改了玩家的获取记录。</para>
+        /// </summary>
+        private void RecordOffered(List<CardDef> shownCards)
+        {
+            if (!_loadedFromMainSave || shownCards == null || shownCards.Count == 0)
+            {
+                return;
+            }
+
+            var ids = new List<string>(shownCards.Count);
+            for (int i = 0; i < shownCards.Count; i++)
+            {
+                if (shownCards[i] != null)
+                {
+                    ids.Add(shownCards[i].Id);
+                }
+            }
+
+            if (ids.Count == 0)
+            {
+                return;
+            }
+
+            string error;
+            if (!SaveStore.TryRecordOffered(SlotInUse, ids, out error))
+            {
+                Debug.LogWarning("[ShopSceneEntry] 「曾展示」没能写进主存档：" + error);
             }
         }
 
@@ -428,7 +506,7 @@ namespace MagicBrawl.App
                 _owned.Add(entry.Card.Id);
             }
 
-            PersistOwned();
+            PersistGranted(entry.Card.Id);
 
             _shelf[index] = new ShopView.ShelfEntry { Index = entry.Index };
 
@@ -465,29 +543,35 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 把「当前持有」写回主存档（2026-10-01 起：买下的牌<b>真的落盘</b>）。
+        /// <b>把买下的一张牌真的落盘</b>（2026-10-01 起：买下的牌落盘；2026-10-05 起同时记「曾获得」）。
+        ///
+        /// <para>走 <see cref="SaveStore.TryGrantCard"/> —— 一次写完三件事：进卡池、进
+        /// <c>everOwnedIds</c>（<b>从此永远不再出现在奖励 / 货架上</b>，即使以后被女巫消耗掉）、
+        /// 从 <c>offeredIds</c> 移出（它不再是「展示过但没买」）。</para>
+        ///
+        /// <para><b>⚠ 为什么不用原来的「整份覆盖写」</b>（<c>TrySaveCardIds</c> 写 <c>_owned</c> 全量）：
+        /// 那样写会把「曾获得」这条事实漏掉 —— 玩家买过、后来又卖 / 消耗掉的牌会重新刷出来。
+        /// 而「追加式」的 <c>TryGrantCard</c> 与 <c>_owned</c> 在本场景里等价
+        ///（本场景唯一的卡池改动就是买牌），所以换掉是安全的。</para>
         ///
         /// <para>⚠ 只在 <see cref="_loadedFromMainSave"/> 为真时写 —— 调试覆盖与读档失败
         /// 两种情形都不该拿手上的数据去覆盖真实存档。</para>
-        ///
-        /// <para>归一成基础 ID 这一步在 <see cref="SaveStore.TrySaveCardIds"/> 里做，
-        /// 这里只管把手上这份清单交出去。</para>
         /// </summary>
-        private void PersistOwned()
+        private void PersistGranted(string cardId)
         {
-            if (!_loadedFromMainSave)
+            if (!_loadedFromMainSave || string.IsNullOrEmpty(cardId))
             {
                 return;
             }
 
             string error;
-            if (!SaveStore.TrySaveCardIds(SaveSlot.Main, _owned, out error))
+            if (!SaveStore.TryGrantCard(SlotInUse, cardId, out error))
             {
                 Debug.LogWarning("[ShopSceneEntry] 买下的牌没能写回主存档：" + error);
                 return;
             }
 
-            Debug.Log("[ShopSceneEntry] 主存档卡池已更新：" + _owned.Count + " 张");
+            Debug.Log("[ShopSceneEntry] 主存档卡池已更新（买下 " + cardId + "）：" + _owned.Count + " 张");
         }
 
         private void OnBagClicked()

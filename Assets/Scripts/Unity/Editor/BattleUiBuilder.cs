@@ -38,6 +38,10 @@ namespace MagicBrawl.App.EditorTools
             //   节点与 StageView._flash 一并移除（残留的旧节点会被 Cleanup 顺带清掉，
             //   但要先把名字留在下面这份列表里最后一趟，见 Cleanup 的说明）。
             "PromptBar", "PickerPanel", "DealPanel", "DetailPanel", "ResultRoot", "LogPanel",
+            // 2026-10-04：战斗胜利结算界面（顶徽记 + 横幅 + 三选一 + 金币 + 继续）
+            "ResultWinRoot",
+            // 2026-10-05：战斗失败结算界面（顶徽记 + 横幅 + 重试 / 退出）
+            "ResultLoseRoot",
             "PlayZone", "DropArrow", "AuraDropHint",
             // 2026-09-19：这三个原先由运行时 new 出来，改成这里预建
             //（光环标记条 / 飞牌层 / 中央行动提示）—— 用户在 Hierarchy 里能看见、能调。
@@ -48,6 +52,8 @@ namespace MagicBrawl.App.EditorTools
             "ThinkBubble",
             // M25：查看对方手牌弹窗（雷云 / 狂躁蘑菇的第 2 个 α 效果）
             "PeekLayer",
+            // M25b：AI 偷看手牌时的眼睛提示（2026-10-08）
+            "PeekEyeLayer",
             // M27：手牌选择弹窗（磁暴 / 充能 / 电弧）
             "HandPickLayer",
             // M28：按住怪物手牌数 → 查看它的手牌
@@ -58,6 +64,9 @@ namespace MagicBrawl.App.EditorTools
 
         /// <summary>Peek 面板九宫格图的路径。</summary>
         private const string PeekPanelPath = "Assets/Art/Ui/Peek_Panel.png";
+
+        /// <summary>M25b 眼睛图（256×160，近白灰阶 —— 三种状态靠 Image.color 乘出来）。</summary>
+        private const string PeekEyeSpritePath = "Assets/Art/Ui/Peek_Eye.png";
 
         // ══════════════════════════════════════════════════════
         //  菜单
@@ -160,21 +169,35 @@ namespace MagicBrawl.App.EditorTools
             ThinkBubbleView thinkBubble = BuildThinkBubble(canvas.transform);
             PreparedAuraView preparedBar = BuildPreparedBar(canvas.transform);
 
+            // M25b：AI 偷看手牌的眼睛提示（2026-10-08）。
+            // ⚠ 建在 PeekLayer **之前**：它要压住手牌，但绝不能压住任何弹窗 / 结算界面
+            //  （Canvas 里同层绘制顺序 = 兄弟顺序，后建在上）。
+            PeekEyeView peekEye = BuildPeekEyeLayer(canvas.transform);
+
             // M25：查看对方手牌弹窗。**必须排在最后一个建** ——
             // 它要压在所有视图之上（准备标记条、飞牌层、中央提示都在它下面），
             // Canvas 里同层节点的绘制顺序 = 兄弟顺序，最后建 = 画在最上。
-            PeekView peek = BuildPeekLayer(canvas.transform, body, title);
+            PeekView peek = BuildPeekLayer(canvas.transform, body, title, handPrefab);
 
             // M27：手牌选择弹窗（磁暴 / 充能 / 电弧）。
             // 比 PeekLayer 更晚建 = 压在它之上 —— 两者不会同屏（一拍只有一种决策），
             // 但绘制顺序上「后建的在上面」这条要守住。
             // ⚠ 2026-09-27：不再需要 body 字型 —— 这块浮层现在只有标题（title 体）与确认文案，
             //   那条「已选 N / M」的副标题已按用户口径删掉（见 BuildHandPickLayer）。
-            HandPickView handPick = BuildHandPickLayer(canvas.transform, title);
+            HandPickView handPick = BuildHandPickLayer(canvas.transform, title, handPrefab);
 
             // M28：按住怪物手牌数 → 查看它的手牌。同样排在最后，
             // 「后建 = 画在最上」这条要守住（三块浮层不会同屏，但顺序是硬约束）。
-            MonsterHandView monsterHand = BuildMonsterHandLayer(canvas.transform, body, title);
+            MonsterHandView monsterHand = BuildMonsterHandLayer(canvas.transform, body, title, handPrefab);
+
+            // 战斗胜利结算界面（2026-10-04）。**必须最后一个建** ——
+            // Canvas 里同层绘制顺序 = 兄弟顺序，最后建 = 画在最上。
+            // 它自己会 SetActive(false)（打胜了才铺上来），所以不会挡着平常的对局。
+            ResultWinView resultWin = BuildResultWin(canvas.transform, handPrefab, body, title);
+
+            // 战斗失败结算界面（2026-10-05）：与胜利界面同一套版式语言，两个键「重试 / 退出」。
+            // 排在胜利界面之后建（同层绘制顺序 = 兄弟顺序，后建在上）；两块不会同屏。
+            ResultLoseView resultLose = BuildResultLose(canvas.transform, body, title);
 
             // ── M28：捞一下 ArtLayer/HandCount_Monster 上的「按住 / 松手」手势 ──
             // ⚠ 组件本体由 BattleArtLayerBuilder.BuildHandCount 挂，本构建器只做接线。
@@ -277,6 +300,7 @@ namespace MagicBrawl.App.EditorTools
             uso.FindProperty("_floatTip").objectReferenceValue = floatTip;
             uso.FindProperty("_thinkBubble").objectReferenceValue = thinkBubble;
             uso.FindProperty("_peek").objectReferenceValue = peek;
+            uso.FindProperty("_peekEye").objectReferenceValue = peekEye;
             uso.FindProperty("_handPick").objectReferenceValue = handPick;
             uso.FindProperty("_monsterHand").objectReferenceValue = monsterHand;
             uso.FindProperty("_monsterHandHold").objectReferenceValue = monsterHandHold;
@@ -285,6 +309,8 @@ namespace MagicBrawl.App.EditorTools
             uso.FindProperty("_resultTitle").objectReferenceValue = resultTitle;
             uso.FindProperty("_resultSub").objectReferenceValue = resultSub;
             uso.FindProperty("_againButton").objectReferenceValue = againButton;
+            uso.FindProperty("_resultWin").objectReferenceValue = resultWin;
+            uso.FindProperty("_resultLose").objectReferenceValue = resultLose;
             uso.FindProperty("_logPanel").objectReferenceValue = logPanel;
             uso.FindProperty("_logText").objectReferenceValue = logText;
             uso.ApplyModifiedPropertiesWithoutUndo();
@@ -308,7 +334,14 @@ namespace MagicBrawl.App.EditorTools
                 logPanel.SetActive(false);
             }
 
-            SettingsUiBuilder.Ensure(canvas);
+            // ── M44 全局覆盖层（右上角「设置」键 + 右下角「卡池」键）──
+            //
+            //  ⚠ 2026-10-05 起<strong>取代</strong> M39 的 SettingsLayer：用户口径是
+            //    「所有场景统一只放退出」，所以旧的「继续游戏 / 重新开始 / 测试卡池」三枚
+            //    留着没有意义。Ensure 会顺手把 Canvas 上那份旧设置层删掉
+            //    （判据 = 同名节点且挂着 SettingsView，避免误删同名装饰节点），
+            //    并把这一层接到 `BattleUi._overlay`。
+            GlobalOverlayBuilder.Ensure(canvas, true, SaveSlot.Main);
 
             // ── 保存 ──────────────────────────────────────────
             PrefabUtility.SaveAsPrefabAssetAndConnect(canvas, PrefabDir + "/" + CanvasName + ".prefab",
@@ -783,6 +816,62 @@ namespace MagicBrawl.App.EditorTools
         }
 
         // ══════════════════════════════════════════════════════
+        //  M25b · AI 偷看手牌的眼睛提示
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 预建 <c>PeekEyeLayer</c>：铺满画布的透明层 + N 个失活的眼睛槽位。
+        ///
+        /// <para><b>为什么由这里预建</b>：与 PeekLayer / MonsterHandLayer 同一条账 ——
+        /// <see cref="Cleanup"/> 会整棵删掉 <c>PeekEyeLayer</c> 再重建，手摆的节点
+        /// 活不过一次重跑（M21 在 <c>PreparedAura</c> 上正是这么丢的，且零报错）。</para>
+        ///
+        /// <para><b>层本身常开、槽位失活</b>：层不吃射线（眼睛是纯展示，不能挡住手牌的拖拽），
+        /// 槽位由 <c>PeekEyeView.Show</c> 逐个点亮。⚠ 别在层的 <c>Awake</c> 里关槽位 ——
+        /// 「构建器置失活 + 运行时 Show」的组件在 Awake 里关一次会把本局第一次 Show 也关掉
+        /// （DropArrowView / PlayedCardView 各中过一次）。</para>
+        ///
+        /// <para>槽位锚在层中心、<c>anchoredPosition</c> 由运行时给
+        /// （层的 pivot 是默认的 0.5/0.5，所以「层本地坐标 == 相对中心的偏移」）。</para>
+        /// </summary>
+        private static PeekEyeView BuildPeekEyeLayer(Transform canvas)
+        {
+            GameObject go = NewUi("PeekEyeLayer", canvas);
+            Stretch(Rt(go));                 // 铺满画布；pivot 保持新建时的 0.5/0.5
+
+            var view = go.AddComponent<PeekEyeView>();
+            var so = new SerializedObject(view);
+
+            Sprite eyeSprite = AssetDatabase.LoadAssetAtPath<Sprite>(PeekEyeSpritePath);
+            so.FindProperty("_eyeSprite").objectReferenceValue = eyeSprite;
+
+            SerializedProperty slots = so.FindProperty("_slots");
+            slots.arraySize = UiLayout.PeekEyeSlotCount;
+
+            for (int i = 0; i < UiLayout.PeekEyeSlotCount; i++)
+            {
+                GameObject eyeGo = NewUi("Eye" + i, go.transform);
+                RectTransform eyeRt = Rt(eyeGo);
+                Box(eyeRt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
+                    new Vector2(UiLayout.PeekEyeWidth, UiLayout.PeekEyeHeight));
+
+                Image img = AddImage(eyeGo, Color.white);
+                img.sprite = eyeSprite;
+                img.preserveAspect = true;
+                img.raycastTarget = false;    // 纯展示：绝不吃射线（不能挡住手牌拖拽）
+
+                eyeGo.SetActive(false);
+
+                SerializedProperty slot = slots.GetArrayElementAtIndex(i);
+                slot.FindPropertyRelative("Root").objectReferenceValue = eyeRt;
+                slot.FindPropertyRelative("Icon").objectReferenceValue = img;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return view;
+        }
+
+        // ══════════════════════════════════════════════════════
         //  M25 · 查看对方手牌弹窗
         // ══════════════════════════════════════════════════════
 
@@ -808,7 +897,8 @@ namespace MagicBrawl.App.EditorTools
         /// <c>Hide()</c> 会把本局第一次 Show 一起关回去（本工程已在
         /// <c>DropArrowView</c> / <c>PlayedCardView</c> 上中过两次）。</para>
         /// </summary>
-        private static PeekView BuildPeekLayer(Transform canvas, TMP_FontAsset body, TMP_FontAsset title)
+        private static PeekView BuildPeekLayer(Transform canvas, TMP_FontAsset body, TMP_FontAsset title,
+            CardView handPrefab)
         {
             GameObject go = NewUi("PeekLayer", canvas);
             Stretch(Rt(go));
@@ -850,7 +940,7 @@ namespace MagicBrawl.App.EditorTools
             var slots = new PeekCardSlot[UiLayout.PeekSlotCount];
             for (int i = 0; i < slots.Length; i++)
             {
-                slots[i] = BuildPeekSlot(panelGo.transform, i, body);
+                slots[i] = BuildPeekSlot(panelGo.transform, i, body, handPrefab);
             }
 
             var view = go.AddComponent<PeekView>();
@@ -881,6 +971,47 @@ namespace MagicBrawl.App.EditorTools
         }
 
         /// <summary>
+        /// 在牌位里塞一张「<b>组成式卡面</b>」—— 唯一那份 <c>CardView_Hand.prefab</c> 的实例。
+        ///
+        /// <para><b>2026-10-05 修的现象</b>：工程里只剩插画那一份美术（成品整图整族已删），
+        /// 于是这三块界面（查看对方手牌 / 按住看怪物手牌 / 选冷却牌）翻出来只有一张光图，
+        /// 没有卡名 / 力量 / 冷却 / 效果文字。卡面改由这个子节点画 ——
+        /// 与手牌 / 商店 / 卡池共用同一份 Prefab（铁律 9）。</para>
+        ///
+        /// <para><b>默认失活</b>：牌背朝上时不画它（<c>PeekView</c> 在翻面那一刻才打开；
+        /// <c>MonsterHandSlot.Bind</c> / <c>HandPickView.RefreshSlots</c> 各自按需打开）。</para>
+        /// </summary>
+        private static CardView BuildSlotCardFace(Transform slot, CardView handPrefab, float faceWidth,
+            int siblingIndex)
+        {
+            if (handPrefab == null)
+            {
+                return null;
+            }
+
+            // ⚠ 传进来的是一份 Prefab 资产（CardView 组件）。`PrefabUtility.InstantiatePrefab`
+            //   会「按传入的类型返回」——所以拿到的是 CardView 实例，硬 cast 成 GameObject
+            //   会直接抛 InvalidCastException（本工程 2026-10-04 在胜利结算卡面上踩过同一次）。
+            CardView view = (CardView)PrefabUtility.InstantiatePrefab(handPrefab, slot);
+            GameObject go = view.gameObject;
+            go.name = "CardFace";
+            var slotRt = (RectTransform)slot;
+            Box(Rt(go), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, slotRt.sizeDelta);
+
+            if (view != null)
+            {
+                // ⚠ 构建期调这两句只是把「按钮停用 / 压暗节点关掉」写进 Prefab；
+                //   运行时每次 Bind 之后还会再调一次（铁律 15：尺寸与状态一律运行时重申）。
+                view.SetFaceWidth(faceWidth);
+                view.SetReadOnly();
+            }
+
+            go.transform.SetSiblingIndex(siblingIndex);
+            go.SetActive(false);
+            return view;
+        }
+
+        /// <summary>
         /// 一个会翻面的牌位。
         ///
         /// <para>里外只有<b>一张</b> <see cref="Image"/>：翻面靠「换 sprite + 横向压缩」
@@ -892,7 +1023,8 @@ namespace MagicBrawl.App.EditorTools
         /// 角标是 186×34 ≈ 5.5:1，拿任何一张无 border 的圆角图去 Simple 拉伸都会把圆角
         /// 抻成一段弧。</para>
         /// </summary>
-        private static PeekCardSlot BuildPeekSlot(Transform panel, int index, TMP_FontAsset body)
+        private static PeekCardSlot BuildPeekSlot(Transform panel, int index, TMP_FontAsset body,
+            CardView handPrefab)
         {
             GameObject slotGo = NewUi("Slot" + index, panel);
             RectTransform slot = Rt(slotGo);
@@ -910,6 +1042,10 @@ namespace MagicBrawl.App.EditorTools
             face.preserveAspect = true;
             // 射线由 PeekView 在 Show 时打开（这一拍才允许点），Awake 阶段绝不写
             face.raycastTarget = false;
+
+            // 正面卡面：组成式卡面（唯一那份 CardView_Hand 的实例），翻面那一刻才亮。
+            // 排在 Face 之后、Badge 之前 —— 同层绘制顺序 = 兄弟顺序。
+            CardView cardFace = BuildSlotCardFace(slotGo.transform, handPrefab, UiLayout.PeekCardWidth, 1);
 
             GameObject badgeGo = NewUi("Badge", slotGo.transform);
             RectTransform badge = Rt(badgeGo);
@@ -940,6 +1076,7 @@ namespace MagicBrawl.App.EditorTools
             so.FindProperty("_face").objectReferenceValue = face;
             so.FindProperty("_badge").objectReferenceValue = badgeGo;
             so.FindProperty("_badgeText").objectReferenceValue = badgeText;
+            so.FindProperty("_cardFace").objectReferenceValue = cardFace;
             so.ApplyModifiedPropertiesWithoutUndo();
             return comp;
         }
@@ -974,7 +1111,8 @@ namespace MagicBrawl.App.EditorTools
         /// <c>Hide()</c> 会把本局第一次 Show 一起关回去（<c>DropArrowView</c> /
         /// <c>PlayedCardView</c> 已中过两次）。</para>
         /// </summary>
-        private static MonsterHandView BuildMonsterHandLayer(Transform canvas, TMP_FontAsset body, TMP_FontAsset title)
+        private static MonsterHandView BuildMonsterHandLayer(Transform canvas, TMP_FontAsset body, TMP_FontAsset title,
+            CardView handPrefab)
         {
             GameObject go = NewUi("MonsterHandLayer", canvas);
             Stretch(Rt(go));
@@ -1026,7 +1164,7 @@ namespace MagicBrawl.App.EditorTools
             var slots = new MonsterHandSlot[UiLayout.MonsterHandSlotCount];
             for (int i = 0; i < slots.Length; i++)
             {
-                slots[i] = BuildMonsterHandSlot(panelGo.transform, i, body);
+                slots[i] = BuildMonsterHandSlot(panelGo.transform, i, body, handPrefab);
             }
 
             var view = go.AddComponent<MonsterHandView>();
@@ -1069,7 +1207,8 @@ namespace MagicBrawl.App.EditorTools
         /// 是为了让已知 / 未知两种格子共用同一张底图、只差一层色调 ——
         /// 玩家一眼就能看出「这几张跟我手上的是同一种东西」。</para>
         /// </summary>
-        private static MonsterHandSlot BuildMonsterHandSlot(Transform panel, int index, TMP_FontAsset body)
+        private static MonsterHandSlot BuildMonsterHandSlot(Transform panel, int index, TMP_FontAsset body,
+            CardView handPrefab)
         {
             GameObject slotGo = NewUi("Slot" + index, panel);
             RectTransform slot = Rt(slotGo);
@@ -1087,6 +1226,11 @@ namespace MagicBrawl.App.EditorTools
             face.preserveAspect = true;
             face.raycastTarget = false;   // 纯展示，永远不吃射线
 
+            // 正面卡面：组成式卡面（唯一那份 CardView_Hand 的实例），「已知」那一格才亮。
+            // 排在 Face 之后、Dim 之前 —— 同层绘制顺序 = 兄弟顺序。
+            CardView cardFace = BuildSlotCardFace(slotGo.transform, handPrefab,
+                UiLayout.MonsterHandCardWidth, 1);
+
             // 「未知」压暗层：只在没有正面卡面时亮（由 MonsterHandSlot.Bind 切）
             GameObject dimGo = NewUi("Dim", slotGo.transform);
             Stretch(Rt(dimGo));
@@ -1098,6 +1242,7 @@ namespace MagicBrawl.App.EditorTools
             var so = new SerializedObject(comp);
             so.FindProperty("_face").objectReferenceValue = face;
             so.FindProperty("_dim").objectReferenceValue = dim;
+            so.FindProperty("_cardFace").objectReferenceValue = cardFace;
             so.ApplyModifiedPropertiesWithoutUndo();
             return comp;
         }
@@ -1129,7 +1274,8 @@ namespace MagicBrawl.App.EditorTools
         /// <c>Hide()</c> 会把本局第一次 Show 一起关回去（本工程已在
         /// <c>DropArrowView</c> / <c>PlayedCardView</c> 上中过两次）。</para>
         /// </summary>
-        private static HandPickView BuildHandPickLayer(Transform canvas, TMP_FontAsset title)
+        private static HandPickView BuildHandPickLayer(Transform canvas, TMP_FontAsset title,
+            CardView handPrefab)
         {
             GameObject go = NewUi("HandPickLayer", canvas);
             Stretch(Rt(go));
@@ -1233,7 +1379,7 @@ namespace MagicBrawl.App.EditorTools
             var slots = new HandPickSlot[UiLayout.PeekSlotCount];
             for (int i = 0; i < slots.Length; i++)
             {
-                slots[i] = BuildHandPickSlot(areaGo.transform, i);
+                slots[i] = BuildHandPickSlot(areaGo.transform, i, handPrefab);
             }
 
             // ── 确认键 ─────────────────────────────────────────
@@ -1363,7 +1509,7 @@ namespace MagicBrawl.App.EditorTools
         ///   两个属性（已一起删），以及只服务于它的 <c>UiTheme.HandPickIndexBadge</c>。
         ///   Prefab 里残留的旧序列化数据 Unity 会静默丢弃，不需要手工清。</para>
         /// </summary>
-        private static HandPickSlot BuildHandPickSlot(Transform area, int index)
+        private static HandPickSlot BuildHandPickSlot(Transform area, int index, CardView handPrefab)
         {
             GameObject slotGo = NewUi("Slot" + index, area);
             RectTransform slot = Rt(slotGo);
@@ -1386,6 +1532,11 @@ namespace MagicBrawl.App.EditorTools
             // 射线由 HandPickView 在 Show 时打开（这一拍才允许点）
             face.raycastTarget = false;
 
+            // 正面卡面：组成式卡面（唯一那份 CardView_Hand 的实例），有牌时才亮。
+            // 排在 Face 之后 —— 同层绘制顺序 = 兄弟顺序（Edge 在下、卡面在上）。
+            CardView cardFace = BuildSlotCardFace(slotGo.transform, handPrefab,
+                UiLayout.HandPickSlotWidth, 2);
+
             // ⚠ 这里刻意**没有**序号角标节点（2026-09-23 用户口径）。
             //   别照着旧版本再加回来：SlotArea 的兄弟序里有 SlotSiblingBase() 那套
             //   「装饰在下、槽位在上」的算术，多一个子节点不是无害的改动。
@@ -1393,6 +1544,7 @@ namespace MagicBrawl.App.EditorTools
             var so = new SerializedObject(comp);
             so.FindProperty("_face").objectReferenceValue = face;
             so.FindProperty("_edge").objectReferenceValue = edge;
+            so.FindProperty("_cardFace").objectReferenceValue = cardFace;
             so.ApplyModifiedPropertiesWithoutUndo();
             return comp;
         }
@@ -1411,6 +1563,7 @@ namespace MagicBrawl.App.EditorTools
             "Assets/Art/Ui/Peek_Frame.png",
             "Assets/Art/Ui/Peek_PanelSmall.png",
             PeekCardBackPath,
+            PeekEyeSpritePath,
             // M30：确认键底图（素材按钮条）。它也要横向九宫格拉伸 ——
             // 丢了 border 的症状是两端六边形被抻成椭圆，且 Unity 零警告，
             // 所以一并进这张表由 EnsurePeekImporters 每次构建对一遍。
@@ -1871,6 +2024,439 @@ namespace MagicBrawl.App.EditorTools
             GameObject btnLabelGo = NewUi("Label", btnGo.transform);
             Stretch(Rt(btnLabelGo));
             AddText(btnLabelGo, title, 28f, UiTheme.TextPrimary, TextAlignmentOptions.Center).text = "再来一局";
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  战斗胜利结算界面（2026-10-04 · 参考 Assets/Art/Reference-5.png）
+        // ══════════════════════════════════════════════════════
+        //
+        //  版式常量在 UiLayout.ResultWin*，配色在 UiTheme.ResultWin*，
+        //  运行时的「绑三张卡 / 选中 / 继续」在 ResultWinView。
+        //
+        //  ── 它是全屏接管的一块 ────────────────────────────────
+        //  自带底图（战斗背景 cover 铺满 + 一层暗纱），所以不必避让手牌区 / 冷却区 / 角色
+        //  —— 那些都压在它下面。这也正是用户那句「将背景换成正常的战斗背景」的落点：
+        //  参考图里洞窟背景换成 Bg_Stage 那张（= BattleArtLibrary.Background）。
+        //
+        //  ── 为什么全部程序化搭、不从参考图切图 ────────────────
+        //  参考图是**成品效果图**（带场景光影、文字烘焙在里面、分辨率只有 1672×940）。
+        //  从它切出来的元素会带一圈岩壁底色与阴影，贴到水城背景上就是一圈脏边；
+        //  放大到 1920 画布还会糊。所以这里按它的**版式与配色**用 PolySprite 形状重建，
+        //  换来的是：可无限缩放、可重跑、尺寸精确、文字用本游戏自己的 TMP 字体。
+        //
+        //  ⚠ 必须排在**最后一个建**（见 RunBuild 末尾）：Canvas 里同层绘制顺序 = 兄弟顺序。
+        //    结算界面出现时其它浮层理论上都收掉了，但「后建 = 画在最上」这条不变量要守住。
+        private static ResultWinView BuildResultWin(Transform canvas, CardView handPrefab,
+            TMP_FontAsset body, TMP_FontAsset title)
+        {
+            Vector2 mid = new Vector2(0.5f, 0.5f);
+            Sprite diamond = LoadPolySprite("Diamond");
+            Sprite round = LoadPolySprite("RoundedRectangle");
+            Sprite circle = LoadPolySprite("Circle");
+
+            GameObject rootGo = NewUi("ResultWinRoot", canvas);
+            Stretch(Rt(rootGo));
+
+            // ── ① 底图：战斗背景，按 cover 铺满 ──────────────────
+            Sprite bgSprite = BattleArtLibrary.Instance == null ? null : BattleArtLibrary.Instance.Background;
+            GameObject bgGo = NewUi("Bg", rootGo.transform);
+            var bgImg = bgGo.AddComponent<Image>();
+            bgImg.sprite = bgSprite;
+            bgImg.color = bgSprite == null ? UiTheme.Backdrop : Color.white;
+            bgImg.raycastTarget = false;
+
+            Vector2 native = bgSprite != null ? bgSprite.rect.size
+                : new Vector2(UiLayout.BgNativeWidth, UiLayout.BgNativeHeight);
+            float bgRatio = native.x / native.y;
+            float need = UiLayout.ReferenceWidth / UiLayout.ReferenceHeight;
+            Vector2 bgSize = bgRatio > need
+                ? new Vector2(UiLayout.ReferenceHeight * bgRatio, UiLayout.ReferenceHeight)
+                : new Vector2(UiLayout.ReferenceWidth, UiLayout.ReferenceWidth / bgRatio);
+            Box(Rt(bgGo), mid, mid, Vector2.zero, bgSize);
+
+            // ── ② 暗纱（同时也是整块的射线面：挡住底下的手牌与齿轮）──
+            GameObject veilGo = NewUi("Veil", rootGo.transform);
+            Stretch(Rt(veilGo));
+            Image veil = AddImage(veilGo, UiTheme.ResultWinVeil);
+            veil.raycastTarget = true;
+
+            // ── ③ 顶部徽记（三层同心菱形 + 中心点）────────────────
+            BuildCrest(rootGo.transform, diamond, circle);
+
+            // ── ④ 「战斗胜利」横幅 ────────────────────────────────
+            // 标题控件本界面不需要单独留引用（它是静态文字），用丢弃符接住 out。
+            BuildBanner(rootGo.transform, title, "战斗胜利", diamond, round, out _);
+
+            // ── ⑤ 「获得奖励」分隔线 ──────────────────────────────
+            GameObject dividerGo = NewUi("Divider", rootGo.transform);
+            Box(Rt(dividerGo), mid, mid, new Vector2(0f, UiLayout.ResultWinDividerY),
+                new Vector2(UiLayout.ResultWinDividerWidth, UiLayout.ResultWinDividerHeight));
+
+            const float lineLen = 250f;
+            const float lineCenter = 211f;
+            MakeBar(dividerGo, "LineLeft", mid, mid, new Vector2(-lineCenter, 0f),
+                new Vector2(lineLen, 3f), UiTheme.ResultWinDivider);
+            MakeBar(dividerGo, "LineRight", mid, mid, new Vector2(lineCenter, 0f),
+                new Vector2(lineLen, 3f), UiTheme.ResultWinDivider);
+            MakeDiamond(dividerGo, "DiamondLeft", diamond, UiTheme.ResultWinDivider,
+                new Vector2(-70f, 0f), new Vector2(16f, 16f));
+            MakeDiamond(dividerGo, "DiamondRight", diamond, UiTheme.ResultWinDivider,
+                new Vector2(70f, 0f), new Vector2(16f, 16f));
+
+            GameObject dividerTextGo = NewUi("Text", dividerGo.transform);
+            Box(Rt(dividerTextGo), mid, mid, Vector2.zero, new Vector2(120f, 40f));
+            AddText(dividerTextGo, body, UiLayout.FontSizeResultWinDivider,
+                UiTheme.ResultWinDivider, TextAlignmentOptions.Center).text = "获得奖励";
+
+            // ── ⑥ 三张奖励卡 ─────────────────────────────────────
+            GameObject cardsGo = NewUi("Cards", rootGo.transform);
+            Stretch(Rt(cardsGo));
+
+            var cards = new CardView[UiLayout.ResultWinCardCount];
+            float pitch = UiLayout.ResultWinCardWidth + UiLayout.ResultWinCardGap;
+            for (int i = 0; i < cards.Length; i++)
+            {
+                float x = (i - (cards.Length - 1) * 0.5f) * pitch;
+
+                GameObject slotGo = NewUi("Slot" + (i + 1), cardsGo.transform);
+                Box(Rt(slotGo), mid, mid, new Vector2(x, UiLayout.ResultWinCardY),
+                    new Vector2(UiLayout.ResultWinCardWidth, UiLayout.ResultWinCardHeight));
+                // 卡背后垫一层暗衬，把卡从水城背景里托出来
+                Image backing = AddImage(slotGo, UiTheme.ResultWinCardBackdrop);
+                backing.sprite = round;
+                backing.type = Image.Type.Sliced;
+
+                // ⚠⚠ 卡位上的进场动画组件（CanvasGroup / TweenScale / TweenCanvasAlpha）
+                //   **刻意不在这里挂** —— 由 `ResultWinView.BindTweens()` 在运行时补。
+                //   原因：`TweenScale` / `TweenCanvasAlpha` 与它们的基类 `UiTween` 写在
+                //   同一个文件 `UiTween.cs` 里，而「进 Prefab 的 MonoBehaviour 必须一文件一类」
+                //   —— 构建器挂上去，存 Prefab 时 `m_Script` 会被写成 `{fileID: 0}`
+                //   （2026-10-05 实测：3 个卡位 × 2 个补间 = 6 个空脚本组件），
+                //   而且这正好是 M25 / M32 那两次事故的同一个坑。
+                //   本项目其余视图（PeekView / MonsterHandView / HandPickView / HudBuffView /
+                //   MapView）也都是**运行时 AddComponent** —— 照它们办。
+
+                // ⚠ 这里传进去的 `handPrefab` 是 **CardView（组件）** 而不是 GameObject ——
+                //   `PrefabUtility.InstantiatePrefab` 会「按传入的类型返回」，所以拿到的是
+                //   CardView 实例；硬 cast 成 GameObject 会直接抛 InvalidCastException
+                //   （2026-10-04 踩过：M8 跑到这里整趟中断，前面建好的节点全没存进 Prefab）。
+                //   ShopUiBuilder 之所以能写成 (GameObject)，是因为它那边装的是 GameObject。
+                var view = (CardView)PrefabUtility.InstantiatePrefab(handPrefab, slotGo.transform);
+                GameObject face = view.gameObject;
+                face.name = "Card";
+                Box(Rt(face), mid, mid, Vector2.zero,
+                    new Vector2(UiLayout.ResultWinCardWidth, UiLayout.ResultWinCardHeight));
+
+                view.SetFaceWidth(UiLayout.ResultWinCardWidth);
+                view.Clear();
+
+                cards[i] = view;
+            }
+
+            // ── ⑦ 金币「+ 20」 ───────────────────────────────────
+            GameObject goldGo = NewUi("Gold", rootGo.transform);
+            Box(Rt(goldGo), mid, mid, new Vector2(0f, UiLayout.ResultWinGoldY),
+                new Vector2(UiLayout.ResultWinGoldWidth, UiLayout.ResultWinGoldHeight));
+
+            float coin = UiLayout.ResultWinGoldIcon;
+            GameObject coinGo = NewUi("Coin", goldGo.transform);
+            Box(Rt(coinGo), mid, mid, new Vector2(-104f, 0f), new Vector2(coin, coin));
+            Image coinOuter = AddImage(coinGo, UiTheme.ResultWinCoin);
+            coinOuter.sprite = circle;
+
+            GameObject coinCore = NewUi("Core", coinGo.transform);
+            Box(Rt(coinCore), mid, mid, Vector2.zero, new Vector2(coin * 0.6f, coin * 0.68f));
+            Image core = AddImage(coinCore, UiTheme.ResultWinCoinEdge);
+            core.sprite = LoadPolySprite("Hex_Vertical");
+
+            GameObject coinGem = NewUi("Gem", coinGo.transform);
+            Box(Rt(coinGem), mid, mid, Vector2.zero, new Vector2(coin * 0.26f, coin * 0.3f));
+            Image gem = AddImage(coinGem, UiTheme.ResultWinCoin);
+            gem.sprite = diamond;
+
+            GameObject goldTextGo = NewUi("Text", goldGo.transform);
+            Box(Rt(goldTextGo), mid, new Vector2(0f, 0.5f), new Vector2(-56f, 0f),
+                new Vector2(240f, 60f));
+            TMP_Text goldText = AddText(goldTextGo, title, UiLayout.FontSizeResultWinGold,
+                UiTheme.ResultWinGoldText, TextAlignmentOptions.Left);
+            goldText.text = "+ " + UiLayout.ResultWinGoldReward;
+
+            // ── ⑧ 「继续」键 ─────────────────────────────────────
+            GameObject btnGo = NewUi("ContinueButton", rootGo.transform);
+            Box(Rt(btnGo), mid, mid, new Vector2(0f, UiLayout.ResultWinButtonY),
+                new Vector2(UiLayout.ResultWinButtonWidth, UiLayout.ResultWinButtonHeight));
+
+            GameObject btnPlateGo = NewUi("Plate", btnGo.transform);
+            Stretch(Rt(btnPlateGo));
+            Image btnPlate = AddImage(btnPlateGo, UiTheme.ResultWinButtonPlate);
+            btnPlate.sprite = round;
+            btnPlate.type = Image.Type.Sliced;
+            btnPlate.raycastTarget = true;
+
+            GameObject btnEdgeGo = NewUi("Edge", btnGo.transform);
+            Stretch(Rt(btnEdgeGo));
+            MakeFrame(btnEdgeGo.transform, 2f, UiTheme.ResultWinGold);
+
+            MakeDiamond(btnGo, "SparkleLeft", diamond, UiTheme.ResultWinSparkle,
+                new Vector2(-146f, 0f), new Vector2(22f, 22f));
+            MakeDiamond(btnGo, "SparkleRight", diamond, UiTheme.ResultWinSparkle,
+                new Vector2(146f, 0f), new Vector2(22f, 22f));
+
+            GameObject btnLabelGo = NewUi("Label", btnGo.transform);
+            Stretch(Rt(btnLabelGo));
+            AddText(btnLabelGo, title, UiLayout.FontSizeResultWinButton,
+                UiTheme.ResultWinButtonText, TextAlignmentOptions.Center).text = "继续";
+
+            var button = btnGo.AddComponent<Button>();
+            button.targetGraphic = btnPlate;
+            button.transition = Selectable.Transition.ColorTint;
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = UiTheme.ResultWinButtonHot;
+            colors.pressedColor = UiTheme.ResultWinButtonHot;
+            colors.selectedColor = Color.white;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+
+            // ── ⑨ 接线 ───────────────────────────────────────────
+            var resultWin = rootGo.AddComponent<ResultWinView>();
+            resultWin.Configure(rootGo, cards, goldText, button);
+
+            // 一开始收着 —— 它是「打赢之后才铺上来」的那一块
+            rootGo.SetActive(false);
+            return resultWin;
+        }
+
+        /// <summary>
+        /// 顶部徽记（三层同心菱形 + 中心点 + 左右一对横放的「翼」）。
+        ///
+        /// <para><b>胜利与失败两块结算界面共用</b>（2026-10-05 抽出）：两块只在横幅文字与
+        /// 下半部分不同，徽记必须一模一样 —— 各抄一份的话，以后挪一次徽记只会挪到其中一块。</para>
+        /// </summary>
+        private static GameObject BuildCrest(Transform root, Sprite diamond, Sprite circle)
+        {
+            Vector2 mid = new Vector2(0.5f, 0.5f);
+            float crest = UiLayout.ResultWinCrestSize;
+
+            GameObject crestGo = NewUi("Crest", root);
+            Box(Rt(crestGo), mid, mid, new Vector2(0f, UiLayout.ResultWinCrestY),
+                new Vector2(crest, crest));
+            MakeDiamond(crestGo, "Outer", diamond, UiTheme.ResultWinGold,
+                Vector2.zero, new Vector2(crest, crest));
+            MakeDiamond(crestGo, "Inner", diamond, UiTheme.ResultWinCrest,
+                Vector2.zero, new Vector2(crest * 0.62f, crest * 0.62f));
+            MakeDiamond(crestGo, "Core", diamond, UiTheme.ResultWinCrestInner,
+                Vector2.zero, new Vector2(crest * 0.28f, crest * 0.28f));
+
+            GameObject crestDot = NewUi("Dot", crestGo.transform);
+            Box(Rt(crestDot), mid, mid, Vector2.zero, new Vector2(10f, 10f));
+            Image dot = AddImage(crestDot, UiTheme.ResultWinCrest);
+            dot.sprite = circle;
+
+            // 左右一对横放的小菱形 —— 读作展开的「翼」，把那枚星徽从孤立的一个点
+            // 撑成参考图里那种有横向宽度的顶饰（没有它，徽记在 1920 的画布上太小）。
+            MakeDiamond(crestGo, "WingLeft", diamond, UiTheme.ResultWinCrest,
+                new Vector2(-crest * 0.56f, 0f), new Vector2(crest * 0.40f, crest * 0.22f));
+            MakeDiamond(crestGo, "WingRight", diamond, UiTheme.ResultWinCrest,
+                new Vector2(crest * 0.56f, 0f), new Vector2(crest * 0.40f, crest * 0.22f));
+            return crestGo;
+        }
+
+        /// <summary>
+        /// 牌匾横幅（暗紫底 + 下缘加深 + 两端燕尾 + 上下金边 + 中央标题）。
+        /// <b>胜利与失败两块结算界面共用</b>，文字由 <paramref name="label"/> 给。
+        /// </summary>
+        private static GameObject BuildBanner(Transform root, TMP_FontAsset titleFont, string label,
+            Sprite diamond, Sprite round, out TMP_Text titleLabel)
+        {
+            Vector2 mid = new Vector2(0.5f, 0.5f);
+
+            GameObject bannerGo = NewUi("Banner", root);
+            Box(Rt(bannerGo), mid, mid, new Vector2(0f, UiLayout.ResultWinBannerY),
+                new Vector2(UiLayout.ResultWinBannerWidth, UiLayout.ResultWinBannerHeight));
+
+            GameObject plateGo = NewUi("Plate", bannerGo.transform);
+            Stretch(Rt(plateGo));
+            Image plate = AddImage(plateGo, UiTheme.ResultWinBannerPlate);
+            plate.sprite = round;
+            plate.type = Image.Type.Sliced;
+
+            // 下缘一条更深的色带：牌匾立刻有了「厚度」，不再是贴纸
+            GameObject shadeGo = NewUi("Shade", bannerGo.transform);
+            Box(Rt(shadeGo), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 0f),
+                new Vector2(UiLayout.ResultWinBannerWidth, 34f));
+            AddImage(shadeGo, UiTheme.ResultWinBannerShade);
+
+            // 两端「燕尾」：两个朝外的三角
+            MakeTail(bannerGo, "TailLeft", LoadPolySprite("Triangle"), -1f,
+                UiTheme.ResultWinBannerTail);
+            MakeTail(bannerGo, "TailRight", LoadPolySprite("Triangle"), 1f,
+                UiTheme.ResultWinBannerTail);
+
+            // 上下金边
+            MakeBar(bannerGo, "EdgeTop", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0f, -3f), new Vector2(UiLayout.ResultWinBannerWidth, 3f), UiTheme.ResultWinGold);
+            MakeBar(bannerGo, "EdgeBottom", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, 3f), new Vector2(UiLayout.ResultWinBannerWidth, 3f), UiTheme.ResultWinGold);
+
+            GameObject titleGo = NewUi("Title", bannerGo.transform);
+            Stretch(Rt(titleGo), 40f, 0f, 40f, 0f);
+            titleLabel = AddText(titleGo, titleFont, UiLayout.FontSizeResultWinTitle, UiTheme.ResultWinTitle,
+                TextAlignmentOptions.Center);
+            titleLabel.text = label;
+            return bannerGo;
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  战斗失败结算界面（2026-10-05 · 与胜利界面同一套版式语言）
+        // ══════════════════════════════════════════════════════
+        //
+        //  与 ResultWinRoot 的差别只有三处：横幅文字（「战斗失败」/「平局」）、
+        //  没有奖励区（失败不给牌也不给钱）、底部换成「重试」+「退出」两个键。
+        //  徽记与横幅直接复用上面那两个 helper —— 保证两块界面视觉上是一家人。
+        private static ResultLoseView BuildResultLose(Transform canvas, TMP_FontAsset body,
+            TMP_FontAsset title)
+        {
+            Vector2 mid = new Vector2(0.5f, 0.5f);
+            Sprite diamond = LoadPolySprite("Diamond");
+            Sprite round = LoadPolySprite("RoundedRectangle");
+            Sprite circle = LoadPolySprite("Circle");
+
+            GameObject rootGo = NewUi("ResultLoseRoot", canvas);
+            Stretch(Rt(rootGo));
+
+            // ── ① 底图：战斗背景 cover 铺满（与胜利界面同一张，保持「还在同一个战场」的连续感）──
+            Sprite bgSprite = BattleArtLibrary.Instance == null ? null : BattleArtLibrary.Instance.Background;
+            GameObject bgGo = NewUi("Bg", rootGo.transform);
+            var bgImg = bgGo.AddComponent<Image>();
+            bgImg.sprite = bgSprite;
+            bgImg.color = bgSprite == null ? UiTheme.Backdrop : Color.white;
+            bgImg.raycastTarget = false;
+
+            Vector2 native = bgSprite != null ? bgSprite.rect.size
+                : new Vector2(UiLayout.BgNativeWidth, UiLayout.BgNativeHeight);
+            float bgRatio = native.x / native.y;
+            float need = UiLayout.ReferenceWidth / UiLayout.ReferenceHeight;
+            Vector2 bgSize = bgRatio > need
+                ? new Vector2(UiLayout.ReferenceHeight * bgRatio, UiLayout.ReferenceHeight)
+                : new Vector2(UiLayout.ReferenceWidth, UiLayout.ReferenceWidth / bgRatio);
+            Box(Rt(bgGo), mid, mid, Vector2.zero, bgSize);
+
+            // ── ② 暗纱（同时也是整块的射线面：挡住底下的手牌与齿轮）──
+            GameObject veilGo = NewUi("Veil", rootGo.transform);
+            Stretch(Rt(veilGo));
+            Image veil = AddImage(veilGo, UiTheme.ResultWinVeil);
+            veil.raycastTarget = true;
+
+            // ── ③ 徽记 + ④ 横幅（与胜利界面共用）──────────────────
+            BuildCrest(rootGo.transform, diamond, circle);
+            TMP_Text bannerTitle;
+            BuildBanner(rootGo.transform, title, "战斗失败", diamond, round, out bannerTitle);
+
+            // ── ⑤ 提示行（原因 / 回合数）──────────────────────────
+            GameObject hintGo = NewUi("Hint", rootGo.transform);
+            Box(Rt(hintGo), mid, mid, new Vector2(0f, UiLayout.ResultLoseHintY),
+                new Vector2(UiLayout.ResultLoseHintWidth, UiLayout.ResultLoseHintHeight));
+            TMP_Text hint = AddText(hintGo, body, UiLayout.FontSizeResultLoseHint,
+                UiTheme.TextSecondary, TextAlignmentOptions.Center);
+
+            // ── ⑥ 两个键：左「重试」· 右「退出」────────────────────
+            float pitch = UiLayout.ResultLoseButtonWidth + UiLayout.ResultLoseButtonGap;
+
+            Button retry = MakeResultButton(rootGo.transform, "RetryButton", title, "重试",
+                new Vector2(-pitch * 0.5f, UiLayout.ResultLoseButtonY), round,
+                UiTheme.ResultWinButtonPlate, UiTheme.ResultWinGold);
+            Button quit = MakeResultButton(rootGo.transform, "QuitButton", title, "退出",
+                new Vector2(pitch * 0.5f, UiLayout.ResultLoseButtonY), round,
+                UiTheme.ResultWinBannerPlate, UiTheme.ResultWinDivider);
+
+            // ── ⑦ 接线 ───────────────────────────────────────────
+            var lose = rootGo.AddComponent<ResultLoseView>();
+            lose.Configure(rootGo, bannerTitle, hint, retry, quit);
+
+            // 一开始收着 —— 它是「输了之后才铺上来」的那一块
+            rootGo.SetActive(false);
+            return lose;
+        }
+
+        /// <summary>结算界面上的一个牌匾按钮（底 + 金边 + 中央标签），返回它的 <see cref="Button"/>。</summary>
+        private static Button MakeResultButton(Transform root, string name, TMP_FontAsset titleFont,
+            string label, Vector2 position, Sprite round, Color plateColor, Color edgeColor)
+        {
+            Vector2 mid = new Vector2(0.5f, 0.5f);
+
+            GameObject btnGo = NewUi(name, root);
+            Box(Rt(btnGo), mid, mid, position,
+                new Vector2(UiLayout.ResultLoseButtonWidth, UiLayout.ResultLoseButtonHeight));
+
+            GameObject plateGo = NewUi("Plate", btnGo.transform);
+            Stretch(Rt(plateGo));
+            Image plate = AddImage(plateGo, plateColor);
+            plate.sprite = round;
+            plate.type = Image.Type.Sliced;
+            plate.raycastTarget = true;
+
+            GameObject edgeGo = NewUi("Edge", btnGo.transform);
+            Stretch(Rt(edgeGo));
+            MakeFrame(edgeGo.transform, 2f, edgeColor);
+
+            GameObject labelGo = NewUi("Label", btnGo.transform);
+            Stretch(Rt(labelGo));
+            AddText(labelGo, titleFont, UiLayout.FontSizeResultLoseButton,
+                UiTheme.ResultWinButtonText, TextAlignmentOptions.Center).text = label;
+
+            var button = btnGo.AddComponent<Button>();
+            button.targetGraphic = plate;
+            button.transition = Selectable.Transition.ColorTint;
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = UiTheme.ResultWinButtonHot;
+            colors.pressedColor = UiTheme.ResultWinButtonHot;
+            colors.selectedColor = Color.white;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+            return button;
+        }
+
+        /// <summary>一块菱形（<c>PolySprite/Diamond</c>，白色，靠 <c>Image.color</c> 上色）。</summary>
+        private static void MakeDiamond(GameObject parent, string name, Sprite diamond,
+            Color color, Vector2 position, Vector2 size)
+        {
+            GameObject go = NewUi(name, parent.transform);
+            Box(Rt(go), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position, size);
+            Image img = AddImage(go, color);
+            img.sprite = diamond;
+        }
+
+        /// <summary>横幅两端的「燕尾」：一个朝外的三角形。</summary>
+        private static void MakeTail(GameObject banner, string name, Sprite triangle,
+            float dir, Color color)
+        {
+            float w = 46f;
+            float h = 96f;
+            float x = dir * (UiLayout.ResultWinBannerWidth * 0.5f + w * 0.5f - 6f);
+            GameObject go = NewUi(name, banner.transform);
+            Box(Rt(go), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, 0f),
+                new Vector2(w, h));
+            // Triangle 默认顶点朝上；转 ±90° 让它朝外
+            go.transform.localRotation = Quaternion.Euler(0f, 0f, dir > 0f ? -90f : 90f);
+            Image img = AddImage(go, color);
+            img.sprite = triangle;
+        }
+
+        private static void MakeBar(GameObject parent, string name, Vector2 anchor, Vector2 pivot,
+            Vector2 position, Vector2 size, Color color)
+        {
+            GameObject go = NewUi(name, parent.transform);
+            AddImage(go, color);
+            Box(Rt(go), anchor, pivot, position, size);
+        }
+
+        /// <summary>取 ThirdParty/PolySprite 里的白色几何形状（可被 <c>Image.color</c> 上色）。</summary>
+        private static Sprite LoadPolySprite(string name)
+        {
+            return AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/ThirdParty/PolySprite/" + name + ".png");
         }
 
         private static void BuildLog(Transform canvas, TMP_FontAsset body,

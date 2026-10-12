@@ -53,7 +53,7 @@ namespace MagicBrawl.App.EditorTools
             {
                 var current = existing.GetComponent<SettingsView>();
                 if (current == null) throw new InvalidOperationException("SettingsLayer 存在但没有 SettingsView。");
-                SetReference(ui, "_settings", current);
+                WireFullSettings(canvas, current);
                 return;
             }
 
@@ -149,9 +149,36 @@ namespace MagicBrawl.App.EditorTools
             Set(serialized, "_selectNone", none); Set(serialized, "_count", count); Set(serialized, "_error", error);
             Set(serialized, "_scroll", scroll); Set(serialized, "_content", contentRect); Set(serialized, "_entryTemplate", template);
             serialized.ApplyModifiedPropertiesWithoutUndo();
-            SetReference(ui, "_settings", view);
+
+            // ⚠ 2026-10-05：原来这里写的是 `SetReference(ui, "_settings", view)` ——
+            //   但 M44 把 `BattleUi._settings` 字段整个去掉了，那一句现在会
+            //   NullReferenceException（FindProperty 返回 null）。
+            //   现在这份完整设置层由 M44 的 `GlobalOverlayView` 拿着，
+            //   从设置面板标题上的**隐藏热点**进入（见 `GlobalOverlayView._fullSettings`
+            //   与 `M45 · 战斗设置·隐藏入口`）。
+            GlobalOverlayView overlayView = canvas.GetComponentInChildren<GlobalOverlayView>(true);
+            if (overlayView != null)
+            {
+                SetReference(overlayView, "_fullSettings", view);
+            }
+
             pool.SetActive(false);
             layer.SetActive(false);
+        }
+
+        /// <summary>
+        /// 把这份完整设置层接到 M44 的 <c>GlobalOverlayView._fullSettings</c> 上。
+        ///
+        /// <para><b>⚠ 别再写 <c>BattleUi._settings</c></b>：那个字段已经随 M44 移除，
+        /// <c>FindProperty</c> 会返回 null 并当场抛异常。</para>
+        /// </summary>
+        private static void WireFullSettings(GameObject canvas, SettingsView view)
+        {
+            GlobalOverlayView overlay = canvas.GetComponentInChildren<GlobalOverlayView>(true);
+            if (overlay != null)
+            {
+                SetReference(overlay, "_fullSettings", view);
+            }
         }
 
         private static CardPoolEntryView BuildEntry(Transform parent)

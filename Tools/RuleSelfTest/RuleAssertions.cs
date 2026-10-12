@@ -25,10 +25,11 @@ namespace MagicBrawl.SelfTest
             report.Add("── 数据类断言 ──");
 
             // 2026-09-29：40 → 42（新增 ao 毒刺 / ap 击穿）；
-            // 2026-10-01：42 → 45（新增 aq 水之形 / ar 闪电球 / as 冷冻核心）。总数一旦变化，
+            // 2026-10-01：42 → 45（新增 aq 水之形 / ar 闪电球 / as 冷冻核心）；
+            // 2026-10-07：45 → 47（新增 at 火炬 / au 海啸 · 刻印）。总数一旦变化，
             // 下面的力量 / 冷却分布断言必须同步 —— 否则报的是「分布不符」，
             // 看不出到底是哪一步错了。
-            ok &= Check(report, CardLibrary.Count == 45, "卡表共 45 张（实为 " + CardLibrary.Count + "）");
+            ok &= Check(report, CardLibrary.Count == 47, "卡表共 47 张（实为 " + CardLibrary.Count + "）");
 
             string powerReport;
             bool powerOk = CardLibrary.ValidatePowerDistribution(out powerReport);
@@ -79,6 +80,26 @@ namespace MagicBrawl.SelfTest
             ok &= Check(report, everyHasEffect, "每张卡至少有 1 条效果");
             ok &= Check(report, idsOk, "卡 ID 无重复");
             ok &= Check(report, mimicOk, "模仿（x）HiddenPower=true 且卡面显示 \"X\"");
+
+            // 2026-10-07：ID → 中文名 的查询口径。
+            // ⚠ 在 Core 侧验证（不能引 CardPoolConfig —— 那个在 Unity 程序集里，
+            //   引用 UnityEngine，本自测工程链不到）。这里验的是它内部依赖的那一步：
+            //   「每个字母 ID 都能经 ICardCatalog 查到，且名字非空」——
+            //   资产上 CardNames 属性翻出来的就是这张表。
+            bool namesOk = true;
+            for (int i = 0; i < CardLibrary.Count; i++)
+            {
+                CardDef d = CardLibrary.GetByIndex(i);
+                CardDef found;
+                // CardLibrary.TryGet 是 Core 里唯一的「安全查」入口（不抛异常）。
+                if (!CardLibrary.TryGet(d.Id, out found) || found == null
+                    || string.IsNullOrEmpty(found.Name) || found.Name != d.Name)
+                {
+                    namesOk = false;
+                }
+            }
+
+            ok &= Check(report, namesOk, "47 张卡的 ID 均可查到非空中文名，且与卡表逐字一致");
 
             // 双光环卡：af / aj 的指示物数为 2
             bool afOk = CardLibrary.Get("af").AuraTokenCount == 2;
@@ -498,10 +519,16 @@ namespace MagicBrawl.SelfTest
                     return false;
                 }
 
-                int need = NeedBonus(o.Card, req.ContextPower);
+                // ⚠ 手牌数必须传：海啸（au）的 β 是「防御时 +（每张手牌 ×1）」，
+                //   不传就等于按 0 张算 —— 会把它的合法选项误判成「挡不住的牌」。
+                //   口径与引擎的两处（IssueDefense 的 BuildOptions / DoChooseDefense 的复核）
+                //   完全一致：出牌前的手牌数，含正在打出的这一张。
+                int handCount = defender.Hand.Count;
+
+                int need = NeedBonus(o.Card, req.ContextPower, handCount);
                 if (o.PairCard != null)
                 {
-                    need += NeedBonus(o.PairCard, req.ContextPower);
+                    need += NeedBonus(o.PairCard, req.ContextPower, handCount);
                 }
                 else if (req.ContextDouble)
                 {
@@ -522,9 +549,11 @@ namespace MagicBrawl.SelfTest
         ///
         /// <para>⚠ 引擎改了防御力量的算法，这里必须跟着改，否则断言会误报：
         /// 2026-09-20 起防御力量 = 有效力量 + 卡面 β「防御时力量 +A」
-        /// （<see cref="DefenseResolver.DefensePower"/>）。</para>
+        /// （<see cref="DefenseResolver.DefensePower"/>）；
+        /// 2026-10-07 起 β 还可能是「+（每张手牌 ×A）」（海啸 au），所以
+        /// <paramref name="handCount"/> 也要一起传 —— 不传就会把它的合法选项判成非法。</para>
         /// </summary>
-        private static int NeedBonus(CardInstance card, int attackPower)
+        private static int NeedBonus(CardInstance card, int attackPower, int handCount)
         {
             for (int i = 0; i < card.Def.Effects.Count; i++)
             {
@@ -535,7 +564,7 @@ namespace MagicBrawl.SelfTest
                 }
             }
 
-            int need = attackPower - DefenseResolver.DefensePower(card);
+            int need = attackPower - DefenseResolver.DefensePower(card, handCount);
             return need < 0 ? 0 : need;
         }
 
@@ -776,6 +805,9 @@ namespace MagicBrawl.SelfTest
             /// <summary>实际检查过的「带 α 光环的进攻牌」张数 —— 断言不是空跑的凭据。</summary>
             public int AttackAuraChecked { get; private set; }
 
+            /// <summary>实际检查过的「带 α 刻印的进攻牌」张数（2026-10-07）—— 同上，断言不是空跑的凭据。</summary>
+            public int AttackSigilChecked { get; private set; }
+
             /// <summary>实际检查过的「带光环的防御牌」张数 —— 断言不是空跑的凭据。</summary>
             public int DefenseAuraChecked { get; private set; }
 
@@ -994,14 +1026,52 @@ namespace MagicBrawl.SelfTest
             private void CheckAuraActivationByRole()
             {
                 CardInstance atk = _pendingAttackAura;
-                if (atk != null && atk.IsCooling && atk.Def.AuraTokenCountOf(EffectTrigger.Attack) > 0)
+                if (atk != null && atk.IsCooling)
                 {
-                    AttackAuraChecked++;
-
-                    if (!atk.AuraLive)
+                    // ⚠ 2026-10-07 起这里要分两类（刻印之前可以一锅端）：
+                    //   · **普通 α 光环**（ag 淬火那类）→ 第 ⑤ 步当场 AuraLive = true；
+                    //   · **α 刻印**（at 火炬）→ 第 ⑤ 步只点亮刻印（SigilLive），
+                    //     指示物要等下一个回合开始由刻印触发才到账 —— 拿 AuraLive 判它必然误报。
+                    bool plainAlphaAura = false;
+                    bool alphaSigil = false;
+                    for (int e = 0; e < atk.Def.Effects.Count; e++)
                     {
-                        Violations.Add("进攻牌的 α 光环未点亮：" + atk.Def.Name
-                                       + "（卡面带 α 光环，作为进攻牌打出后 AuraLive 仍为 false）");
+                        EffectDef ef = atk.Def.Effects[e];
+                        if (ef.Trigger != EffectTrigger.Attack)
+                        {
+                            continue;
+                        }
+
+                        if (ef.Sigil != SigilTiming.None)
+                        {
+                            alphaSigil = true;
+                        }
+                        else if (ef.Op == EffectOp.Aura)
+                        {
+                            plainAlphaAura = true;
+                        }
+                    }
+
+                    if (plainAlphaAura)
+                    {
+                        AttackAuraChecked++;
+
+                        if (!atk.AuraLive)
+                        {
+                            Violations.Add("进攻牌的 α 光环未点亮：" + atk.Def.Name
+                                           + "（卡面带 α 光环，作为进攻牌打出后 AuraLive 仍为 false）");
+                        }
+                    }
+
+                    if (alphaSigil)
+                    {
+                        AttackSigilChecked++;
+
+                        if (!atk.SigilLive)
+                        {
+                            Violations.Add("进攻牌的 α 刻印未点亮：" + atk.Def.Name
+                                           + "（卡面带 α 刻印，作为进攻牌打出后 SigilLive 仍为 false）");
+                        }
                     }
                 }
 
@@ -1085,6 +1155,29 @@ namespace MagicBrawl.SelfTest
                 }
             }
 
+            /// <summary>
+            /// 「刻印光环」最多能堆到几枚（2026-10-07）。
+            ///
+            /// <para>普通光环卡的指示物上限就是卡面光环条数（<c>AuraTokenCount</c>）——
+            /// 一枚指示物对应卡面上的一条光环。但<b>火炬（at）的刻印每回合都会再给 1 枚</b>
+            /// （用户 2026-10-07 口径：累积叠加），冷却期间必然超过卡面那 1 条。
+            /// 它最多堆「每个回合 1 枚 × 在冷却区待的回合数」，而那个数 ≤ 基础冷却值，
+            /// 所以用 <c>Cooldown</c> 当余量是紧的上界。</para>
+            /// </summary>
+            private static int SigilAuraSlack(CardDef def)
+            {
+                for (int e = 0; e < def.Effects.Count; e++)
+                {
+                    EffectDef ef = def.Effects[e];
+                    if (ef.Sigil != SigilTiming.None && ef.Op == EffectOp.Aura)
+                    {
+                        return def.Cooldown;
+                    }
+                }
+
+                return 0;
+            }
+
             public void CheckInvariants()
             {
                 // 先看「这一段进攻有没有被重放」：重放时对局根本走不到段结束，这个入口是唯一抓得住它的地方。
@@ -1114,9 +1207,11 @@ namespace MagicBrawl.SelfTest
                             Violations.Add("冷却不变量被破坏：" + c.Def.Name + " 剩余 " + c.RemainingCooldown);
                         }
 
-                        if (c.AuraTokens > c.Def.AuraTokenCount)
+                        int auraCap = c.Def.AuraTokenCount + SigilAuraSlack(c.Def);
+                        if (c.AuraTokens > auraCap)
                         {
-                            Violations.Add("光环指示物超过卡面上限：" + c.Def.Name);
+                            Violations.Add("光环指示物超过上限：" + c.Def.Name
+                                           + "（" + c.AuraTokens + " > " + auraCap + "）");
                         }
 
                         if (c.AuraTokens > 0 && !c.AuraLive)

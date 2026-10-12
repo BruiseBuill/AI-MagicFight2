@@ -35,6 +35,16 @@ namespace MagicBrawl.App
         [Tooltip("卡框描边（选中态亮色）。")]
         [SerializeField] private Image _edge;
 
+        /// <summary>
+        /// 已选牌的<b>组成式卡面</b>（唯一那份 <c>CardView_Hand.prefab</c> 的实例），
+        /// 默认失活 —— 2026-10-05 加。
+        ///
+        /// <para>与 <see cref="PeekCardSlot.CardFace"/> 同一件事：工程里只剩插画那一份美术，
+        /// 直接把插画塞进 <see cref="_face"/> 会只显示一张光图
+        /// （用户 2026-10-05：「选择冷却牌的界面当中，也只显示一个卡面插画」）。</para>
+        /// </summary>
+        [SerializeField] private CardView _cardFace;
+
         /// <summary>被点了（= 取消选择）。参数是自己，上层好知道该取掉哪一格。</summary>
         public event Action<HandPickSlot> Clicked;
 
@@ -55,6 +65,12 @@ namespace MagicBrawl.App
         public Image Edge
         {
             get { return _edge; }
+        }
+
+        /// <summary>已选牌的组成式卡面（见字段说明）。可能为 null（老 Prefab 没跑过补丁）。</summary>
+        public CardView CardFace
+        {
+            get { return _cardFace; }
         }
 
         /// <summary>还能不能点（= 卡面吃不吃射线）。空格不可点。</summary>
