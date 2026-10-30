@@ -279,7 +279,9 @@ namespace MagicBrawl.App
                 _counter.text = "已选 " + _selected.Count + " / " + _maxSelect;
 
                 // 有标记时数字行转成高亮色 —— 「已选 0 / 3」和「已选 2 / 3」要一眼能分开。
-                _counter.color = _selected.Count > 0 ? UiTheme.SelectionGlow : UiTheme.TextSecondary;
+                // 2026-10-29：底换成米白之后，#FFD166 金字压上去几乎看不见 ——
+            // 改用同一家族的琥珀棕（InkOnIvoryAccent），选中 / 未选中都还能拉开对比。
+            _counter.color = _selected.Count > 0 ? UiTheme.InkOnIvoryAccent : UiTheme.InkMuted;
             }
 
             // 一张没标记时「确认替换」没有意义（MinSelect = 0，等价于不替换）。
@@ -383,7 +385,7 @@ namespace MagicBrawl.App
 
         private IEnumerator CoFlashCounter()
         {
-            _counter.color = UiTheme.WarnRed;
+            _counter.color = UiTheme.InkOnIvoryWarm;
             yield return new WaitForSecondsRealtime(0.32f);
             _flashRoutine = null;
             RefreshCounter();

@@ -33,22 +33,15 @@
     <Compile Include="BetaDefenseScenario.cs" />
     <Compile Include="PeekScenario.cs" />
     <Compile Include="CoolHandScenario.cs" />
-    <Compile Include="RemoveFromGameScenario.cs" />
     <Compile Include="EarthquakeScenario.cs" />
     <Compile Include="TorrentScenario.cs" />
     <Compile Include="AvalancheScenario.cs" />
     <Compile Include="MimicScenario.cs" />
     <Compile Include="WeakenScenario.cs" />
-    <Compile Include="CardUpgradeScenario.cs" />
-    <Compile Include="UpgradeBookScenario.cs" />
-    <Compile Include="WitchWorkshopScenario.cs" />
-    <Compile Include="AltarRiteScenario.cs" />
     <Compile Include="NewCardsScenario.cs" />
-    <Compile Include="MapScenario.cs" />
+    <Compile Include="CardAuditScenario.cs" />
     <Compile Include="HeuristicAgentScenario.cs" />
     <Compile Include="MonsterScenario.cs" />
-    <Compile Include="CardAcquisitionScenario.cs" />
-    <Compile Include="SigilScenario.cs" />
     <Compile Include="CardPriorityScenario.cs" />
     <!-- Core 源码（链接，不复制） -->
     <Compile Include="../../Assets/Scripts/Core/**/*.cs" />

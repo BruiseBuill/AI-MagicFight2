@@ -45,12 +45,6 @@ namespace MagicBrawl.App.EditorTools
         /// </summary>
         private const string CardFacePrefabPath = "Assets/Prefabs/Ui/CardView_Hand.prefab";
 
-        /// <summary>
-        /// 怪物点击面的节点名（M41）。<b>与 <c>BattleUi.MonsterClickNodeName</c> 必须一致</b> ——
-        /// 那边在 <c>Awake</c> 里按这个名字去捞本节点上的 <see cref="MonsterClickCatcher"/>。改名两处一起改。
-        /// </summary>
-        private const string MonsterClickNodeName = "Char_Monster_Click";
-
         /// <summary>新层接管的旧节点：构建时收起。</summary>
         private static readonly string[] RetiredNodes =
         {
@@ -139,11 +133,13 @@ namespace MagicBrawl.App.EditorTools
                 UiLayout.CharHeroScale, log);
             CharacterView monster = BuildCharacter(layer, "Char_Monster", art.Monster,
                 UiLayout.CharMonsterX, UiLayout.CharScale, log);
-            BuildMonsterClickFace(layer, log);
-            TMP_Text orbNumber = BuildOrb(layer, art, body, log);
             RectTransform[] playerRows = BuildSlotColumn(layer, art, true, log);
             RectTransform[] enemyRows = BuildSlotColumn(layer, art, false, log);
-            HudView hud = BuildHud(layer, art, title, body, orbNumber, log);
+
+            // 2026-10-29：708×95 顶栏（Hud_Bar）与 150 px 能量球一起退役，改成右侧动作区。
+            //  顶栏那 6 项信息里 4 项与别处重复（生命 / 光环数 / 手牌数 / 齿轮），
+            //  留下的唯一常驻动作是「结束进攻 / 放弃防御」—— 见 Ui/BattleDockView.cs。
+            BattleDockView dock = BuildActionDock(layer, title, body, log);
             // M35：两侧各一块「刚打出的牌」展示面板（玩家在左、怪物在右，与角色同轴）
             PlayedCardView playedHero = BuildPlayedCard(layer, "PlayedCard_Hero",
                 UiLayout.CharHeroX, body, log);
@@ -182,7 +178,7 @@ namespace MagicBrawl.App.EditorTools
 
             // 4) 接线
             WireCooldown(canvasGo, playerRows, enemyRows, log);
-            WireBattleUi(canvasGo, hud, playedHero, playedFoe, hudBuff, layer, log);
+            WireBattleUi(canvasGo, dock, playedHero, playedFoe, hudBuff, layer, log);
 
             // 4.5) 层级自检（不合规就往 Console 砸 error，避免又变成一次静默黑屏）
             VerifyLayerOrder(canvasGo, log);
@@ -282,7 +278,8 @@ namespace MagicBrawl.App.EditorTools
             GameObject badgeBg = NewUi("Bg", Rt(badge));
             Stretch(Rt(badgeBg), 0f, 0f, 0f, 0f);
             var bgImg = badgeBg.AddComponent<Image>();
-            bgImg.color = UiTheme.PromptBackdrop;
+            // 2026-10-29：读数改成宝石之后不再需要那块深色底 —— 宝石直接浮在角色头顶。
+            bgImg.color = new Color(0f, 0f, 0f, 0f);
             bgImg.raycastTarget = false;
 
             GameObject icon = NewUi("Icon", Rt(badge));
@@ -297,6 +294,21 @@ namespace MagicBrawl.App.EditorTools
             Stretch(Rt(textGo), 8f, 0f, 8f, 0f);
             TMP_Text badgeText = AddText(textGo, LoadFont(BodyFontPath),
                 UiLayout.FontSizeCharBadge, UiTheme.TextPrimary, TextAlignmentOptions.Center);
+
+            // 生命宝石（2026-10-29）：规则上限 4，一枚一格 —— 亮 = 还有、暗 = 掉了、
+            // 更暗 = 上限被削（见 CharacterView.BindHpGems）。美术就位前是纯色方块。
+            var gems = new Image[UiLayout.HpGemCount];
+            for (int gi = 0; gi < gems.Length; gi++)
+            {
+                GameObject gemGo = NewUi("Gem" + gi, Rt(badge));
+                float gx = (gi - (gems.Length - 1) * 0.5f) * UiLayout.HpGemSpacing;
+                Box(Rt(gemGo), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                    new Vector2(gx, 0f), new Vector2(UiLayout.HpGemSize, UiLayout.HpGemSize));
+                var gemImg = gemGo.AddComponent<Image>();
+                gemImg.color = UiTheme.HpFull;
+                gemImg.raycastTarget = false;
+                gems[gi] = gemImg;
+            }
 
             // 虚弱徽标（2026-09-29，毒刺 ao）：被削的那一方头顶再叠一行「虚弱 ×N」——
             // 否则「对面 7 的牌只算 4」在玩家眼里就是个 bug。
@@ -322,6 +334,7 @@ namespace MagicBrawl.App.EditorTools
 
             var view = go.AddComponent<CharacterView>();
             view.Configure(img, anim, Rt(badge), badgeText, iconImg);
+            view.ConfigureHpGems(gems);
             view.ConfigureWeaken(weaken, weakenText);
             view.SetScale(scale);
             view.SetFps(UiLayout.CharIdleFps, UiLayout.CharAttackFps);
@@ -400,56 +413,6 @@ namespace MagicBrawl.App.EditorTools
         }
 
         /// <summary>
-        /// 怪物的<b>点击面</b>（M41，2026-09-26）：一块透明、可吃射线的矩形，盖在怪物模型上，
-        /// 玩家点它 → 弹「思考框」预告它下一张进攻牌的元素。
-        ///
-        /// <para><b>为什么不直接把 <see cref="MonsterClickCatcher"/> 挂到角色本体上</b>：
-        /// 角色节点的 <c>sizeDelta</c> 每帧随动作帧重设（<see cref="SpriteAnimator"/>）、
-        /// <c>pivot</c> 也在切 —— 于是「能点到的范围」会随动作在屏幕上游走，
-        /// 出现「有的动作点得到、有的动作点不到」的漂移。拿一块固定尺寸的透明面钉在怪物的
-        /// 站立位置上，命中范围就只跟这一块有关。</para>
-        ///
-        /// <para><b>尺寸 / 位置</b>：以 <see cref="UiLayout.CharMonsterX"/> /
-        /// <see cref="UiLayout.CharGroundY"/>（脚底）为基准，取
-        /// <see cref="UiLayout.ThinkBubbleClickWidth"/> × <see cref="UiLayout.ThinkBubbleClickHeight"/>，
-        /// 中心抬到模型躯干高度（168 = 模型高 335 的一半）。</para>
-        ///
-        /// <para><b>⚠ 2026-09-27 撑大到「盖住整个模型」</b>（用户口径「当前的有效点击判定区域太小，
-        /// 应当覆盖整个怪物模型」）：原来 320×340、故意比模型小一圈 —— 实测有效区只剩
-        /// x 1086…1226 那一条（右边被敌方冷却列的滚动视口吃掉，见
-        /// <see cref="BuildCoolingDragSurface"/>）。现在按模型包围盒给到 420×360。</para>
-        ///
-        /// <para><b>组件由本方法挂</b>（同 <c>HandCount_Monster</c> 那条账）：本构建器会
-        /// <c>DestroyImmediate</c> 整棵 ArtLayer 推倒重建，组件必须与节点同生命周期，
-        /// 才不会先被 M8 挂上、再被 M11 顺手抹掉。<c>BattleUi</c> 里的兜底查找只是防漏配。</para>
-        /// </summary>
-        private static void BuildMonsterClickFace(RectTransform layer, StringBuilder log)
-        {
-            GameObject go = NewUi(MonsterClickNodeName, layer);
-            // ⚠ anchor 必须是 Vector2.zero（底边口径），不是 (0.5,0.5)！
-            //   本层的局部原点在左下角，UiLayout.CharMonsterX / CharGroundY 这批
-            //   Char* 常量全是**底边口径**。第一版把 anchor 写成 (0.5,0.5) 却填了底边口径
-            //   的值，等于在画面中心之外又加了一次半屏偏移 —— 点击面整个跑到屏幕外
-            //   （世界坐标 x 3070…3550 / y 1421…1931，画布只有 1920×1080），
-            //   表现是「点怪物毫无反应」（2026-09-26 踩，与 BuildHandCount 的 anchor 口径对齐）。
-            Box(Rt(go), Vector2.zero, new Vector2(0.5f, 0.5f),
-                new Vector2(UiLayout.CharMonsterX, UiLayout.CharGroundY + UiLayout.ThinkBubbleClickCenterY),
-                new Vector2(UiLayout.ThinkBubbleClickWidth, UiLayout.ThinkBubbleClickHeight));
-
-            // 透明底图只为了「吃射线」—— 用户红线：颜色不写代码，所以这里是全透明
-            //（alpha=0 的 Image 依然参与 GraphicRaycaster 命中判定，raycastTarget 默认开着）。
-            var img = go.AddComponent<Image>();
-            img.color = new Color(0f, 0f, 0f, 0f);
-            img.raycastTarget = true;
-
-            go.AddComponent<MonsterClickCatcher>();
-
-            log.AppendLine("  " + MonsterClickNodeName + " 点击面 "
-                           + UiLayout.ThinkBubbleClickWidth + "×" + UiLayout.ThinkBubbleClickHeight
-                           + " @ y=" + (UiLayout.CharGroundY + UiLayout.ThinkBubbleClickCenterY).ToString("0.#"));
-        }
-
-        /// <summary>
         /// 怪物手牌数标签（M20）：深色底 + 一行「手牌 ×N」，摆在模型右下角。
         ///
         /// <para><b>故意最后一个建</b>：层内绘制顺序 = 建节点的先后，而它的位置可能与
@@ -490,32 +453,110 @@ namespace MagicBrawl.App.EditorTools
             view.ConfigureHandCount(root, label);
         }
 
-        // ── 能量球 ───────────────────────────────────────────────────
+        // ── 右侧动作区（2026-10-29）──────────────────────────────────
+        //
+        //  用户口径：进攻时可以主动结束（一张没打 / 连击打了一半都算），这个键要摆在
+        //  「界面右侧、比右下角高」的位置；防御的「放弃」也收在同一处。
+        //
+        //  版式账：右侧唯一一块空地 = x 1740…1896 / y 176…344
+        //    · 上面是冷却列视口（底边 344，再往上就是迷你卡）；
+        //    · 左边是 8 张满手牌（最右 1740，见 HandFanSideMargin）；
+        //    · 下面是卡池键（44…130）。
+        //  所以键取 156×72、底边 176；pips 抬到中心 270（local 94）。
 
-        private static TMP_Text BuildOrb(RectTransform layer, BattleArtLibrary art,
+        /// <summary>动作键底板（象牙石九宫格）。美术没导入时自动退回纯色块。</summary>
+        private const string DockPlateSpritePath = "Assets/Art/Ui/Ui_ActionBtn.png";
+
+        private static BattleDockView BuildActionDock(RectTransform layer, TMP_FontAsset title,
             TMP_FontAsset body, StringBuilder log)
         {
-            GameObject go = NewUi("Orb_Energy", layer);
-            Box(Rt(go), Vector2.zero, Vector2.zero,
-                new Vector2(UiLayout.OrbLeft, UiLayout.OrbBottom),
-                new Vector2(UiLayout.OrbSize, UiLayout.OrbSize));
+            float pipLift = UiLayout.DockPipCenterY - UiLayout.DockBottom;
+            float rootH = UiLayout.DockHeight + pipLift + UiLayout.DockPipSize;
 
-            var img = go.AddComponent<Image>();
-            img.sprite = art.EnergyOrb;
-            img.preserveAspect = true;
-            img.raycastTarget = false;
+            GameObject rootGo = NewUi("ActionDock", layer);
+            RectTransform root = Rt(rootGo);
+            // 轴心放右下角：anchoredPosition 就是「键的右下角相对屏幕右下角」的偏移，
+            // 以后调 DockBottom / DockRight 不会因为轴心不同而拐弯。
+            Box(root, new Vector2(1f, 0f), new Vector2(1f, 0f),
+                new Vector2(-UiLayout.DockRight, UiLayout.DockBottom),
+                new Vector2(UiLayout.DockWidth, rootH));
 
-            GameObject numGo = NewUi("Number", Rt(go));
-            // 宝石中心略偏上（原图 1/1 的位置），居中排数字
-            Box(Rt(numGo), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, 8f), new Vector2(UiLayout.OrbSize - 24f, 64f));
-            TMP_Text num = AddText(numGo, body, UiLayout.FontSizeOrbNumber,
-                UiTheme.TextPrimary, TextAlignmentOptions.Center);
+            // ① 底板（可点）
+            GameObject plateGo = NewUi("Plate", root);
+            Box(Rt(plateGo), new Vector2(0f, 0f), new Vector2(0f, 0f), Vector2.zero,
+                new Vector2(UiLayout.DockWidth, UiLayout.DockHeight));
 
-            num.text = "0/1";
+            var plate = plateGo.AddComponent<Image>();
+            Sprite dockArt = AssetDatabase.LoadAssetAtPath<Sprite>(DockPlateSpritePath);
+            plate.raycastTarget = true;
+            plate.sprite = dockArt;
+            if (dockArt != null)
+            {
+                // 九宫格 + pixelsPerUnitMultiplier：把 691 px 高的原图压到 72 px 时，
+                // 两端的缺口按比例一起缩，不会被横向拉扁。
+                plate.type = Image.Type.Sliced;
+                plate.pixelsPerUnitMultiplier = Mathf.Max(1f, dockArt.rect.height / UiLayout.DockHeight);
+            }
+            else
+            {
+                plate.color = UiTheme.AuraReady;   // 纯色占位（美术未就位）
+            }
 
-            log.AppendLine("  能量球 " + (art.EnergyOrb != null ? "OK" : "缺图"));
-            return num;
+            var button = plateGo.AddComponent<Button>();
+            button.targetGraphic = plate;
+            button.transition = Selectable.Transition.ColorTint;
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 1f, 1f, 0.92f);
+            colors.pressedColor = new Color(0.86f, 0.86f, 0.86f, 1f);
+            colors.selectedColor = Color.white;
+            colors.fadeDuration = 0.06f;
+            button.colors = colors;
+
+            // ② 文案（墨色字压象牙底；颜色由 BattleDockView.Bind 按状态改）
+            Color ink = new Color(0.13f, 0.19f, 0.18f, 1f);
+
+            GameObject labelGo = NewUi("Label", Rt(plateGo));
+            // 上留 4、下留 24：下面那行是「−1」，没副标时文字自然居中偏上，不会顶到底边
+            Stretch(Rt(labelGo), 10f, 24f, 10f, 6f);
+            TMP_Text label = AddText(labelGo, title, UiLayout.FontSizeDock,
+                ink, TextAlignmentOptions.Center);
+
+            GameObject subGo = NewUi("Sub", Rt(plateGo));
+            Box(Rt(subGo), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, 7f),
+                new Vector2(UiLayout.DockWidth - 16f, UiLayout.FontSizeDockSub + 5f));
+            TMP_Text sub = AddText(subGo, body, UiLayout.FontSizeDockSub,
+                ink, TextAlignmentOptions.Center);
+            subGo.SetActive(false);
+
+            // ③ pips（还剩几次能出牌）—— 美术就位前是纯色小方块
+            var pips = new Image[UiLayout.DockPipSlots];
+            for (int i = 0; i < pips.Length; i++)
+            {
+                GameObject pipGo = NewUi("Pip" + i, root);
+                float px = (i - (pips.Length - 1) * 0.5f) * UiLayout.DockPipSpacing;
+                Box(Rt(pipGo), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f),
+                    new Vector2(px, pipLift),
+                    new Vector2(UiLayout.DockPipSize, UiLayout.DockPipSize));
+                var pipImg = pipGo.AddComponent<Image>();
+                pipImg.color = UiTheme.AuraReady;
+                pipImg.raycastTarget = false;
+                pips[i] = pipImg;
+                pipGo.SetActive(false);
+            }
+
+            var view = rootGo.AddComponent<BattleDockView>();
+            view.Configure(button, plate, label, sub, pips);
+
+            // 建好先收起：本拍没有「结束 / 放弃」可交时它就是隐藏的，
+            // 第一拍决策来了由 BattleDockView.Bind 打开（与 IconTemplate 同一个套路）。
+            rootGo.SetActive(false);
+
+            log.AppendLine("  ActionDock 156×72 @ 右下 (−" + UiLayout.DockRight + ", "
+                           + UiLayout.DockBottom + ") · pips " + UiLayout.DockPipSlots
+                           + " 枚 · 底板" + (dockArt != null ? "已接" : "缺图（纯色占位）"));
+            return view;
         }
 
         // ── 冷却槽（一侧 4 行）──────────────────────────────────────
@@ -660,74 +701,6 @@ namespace MagicBrawl.App.EditorTools
             return result;
         }
 
-        // ── 顶部状态栏 ───────────────────────────────────────────────
-
-        private static HudView BuildHud(RectTransform layer, BattleArtLibrary art,
-            TMP_FontAsset title, TMP_FontAsset body, TMP_Text orbNumber, StringBuilder log)
-        {
-            GameObject hudGo = NewUi("Hud", layer);
-            RectTransform hudRoot = Rt(hudGo);
-            Box(hudRoot, new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(UiLayout.HudLeft, -UiLayout.HudTop),
-                new Vector2(UiLayout.HudBarWidth, UiLayout.HudBarHeight));
-
-            GameObject barGo = NewUi("Bar", hudRoot);
-            Stretch(Rt(barGo));
-            var barImg = barGo.AddComponent<Image>();
-            barImg.sprite = art.HudBar;
-            barImg.raycastTarget = false;
-            if (art.HudBar == null)
-            {
-                barImg.color = UiTheme.Panel;
-            }
-
-            // 名字 / 副标题 —— 位置就是切图时擦掉的那两行文字原位
-            GameObject nameGo = NewUi("Name", hudRoot);
-            Box(Rt(nameGo), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(UiLayout.HudNameX, -UiLayout.HudNameY),
-                new Vector2(UiLayout.HudNameWidth, UiLayout.HudNameHeight));
-            TMP_Text name = AddText(nameGo, title, UiLayout.FontSizeHudName,
-                UiTheme.TextPrimary, TextAlignmentOptions.Left);
-
-            GameObject subGo = NewUi("Subtitle", hudRoot);
-            Box(Rt(subGo), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(UiLayout.HudSubX, -UiLayout.HudSubY),
-                new Vector2(UiLayout.HudSubWidth, UiLayout.HudSubHeight));
-            TMP_Text sub = AddText(subGo, body, UiLayout.FontSizeHudSub,
-                UiTheme.TextSecondary, TextAlignmentOptions.Left);
-
-            GameObject hpGo = NewUi("HpNumber", hudRoot);
-            Box(Rt(hpGo), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(UiLayout.HudHpX, -UiLayout.HudHpY),
-                new Vector2(UiLayout.HudHpWidth, UiLayout.HudHpHeight));
-            TMP_Text hp = AddText(hpGo, body, UiLayout.FontSizeHudHp,
-                UiTheme.TextPrimary, TextAlignmentOptions.Left);
-
-            GameObject resGo = NewUi("ResNumber", hudRoot);
-            Box(Rt(resGo), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(UiLayout.HudResX, -UiLayout.HudResY),
-                new Vector2(UiLayout.HudResWidth, UiLayout.HudResHeight));
-            TMP_Text res = AddText(resGo, body, UiLayout.FontSizeHudRes,
-                UiTheme.AuraReady, TextAlignmentOptions.Left);
-
-            // 齿轮：条上那颗齿轮是烘在图里的，这里只放一个不可见的点击区，正好盖住它
-            GameObject gearGo = NewUi("GearButton", hudRoot);
-            Box(Rt(gearGo), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(UiLayout.HudGearX, -UiLayout.HudGearY),
-                new Vector2(UiLayout.HudGearSize, UiLayout.HudGearSize));
-            var gearHit = gearGo.AddComponent<Image>();
-            gearHit.color = new Color(0f, 0f, 0f, 0f);
-            gearHit.raycastTarget = true;
-            var gear = gearGo.AddComponent<Button>();
-            gear.transition = Selectable.Transition.None;
-
-            // 状态图标行（M15：由「条下方一排假图标」改成真正的光环图标区 HudBuff，见 BuildHudBuff）
-            var hud = hudGo.AddComponent<HudView>();
-            hud.Configure(name, sub, hp, res, orbNumber, gear);
-
-            log.AppendLine("  顶栏 " + (art.HudBar != null ? "OK" : "缺图"));
-            return hud;
-        }
 
         // ── 光环图标区（M15）────────────────────────────────────────
         //
@@ -1108,7 +1081,7 @@ namespace MagicBrawl.App.EditorTools
             log.AppendLine("  CooldownView → 分 4 行挂载点已接");
         }
 
-        private static void WireBattleUi(GameObject canvasGo, HudView hud, PlayedCardView playedHero,
+        private static void WireBattleUi(GameObject canvasGo, BattleDockView dock, PlayedCardView playedHero,
             PlayedCardView playedFoe, HudBuffView hudBuff, RectTransform layer, StringBuilder log)
         {
             BattleUi ui = canvasGo.GetComponent<BattleUi>();
@@ -1119,7 +1092,7 @@ namespace MagicBrawl.App.EditorTools
             }
 
             var so = new SerializedObject(ui);
-            so.FindProperty("_hud").objectReferenceValue = hud;
+            so.FindProperty("_dock").objectReferenceValue = dock;
             so.FindProperty("_playedHero").objectReferenceValue = playedHero;
             so.FindProperty("_playedFoe").objectReferenceValue = playedFoe;
             so.FindProperty("_hudBuff").objectReferenceValue = hudBuff;
@@ -1132,7 +1105,7 @@ namespace MagicBrawl.App.EditorTools
                 monster == null ? null : monster.GetComponent<CharacterView>();
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            log.AppendLine("  BattleUi → _hud / _hero / _monster / _hudBuff 已接");
+            log.AppendLine("  BattleUi → _dock / _hero / _monster / _hudBuff 已接");
         }
 
         // ══════════════════════════════════════════════════════

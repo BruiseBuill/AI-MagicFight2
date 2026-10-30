@@ -51,12 +51,6 @@ namespace MagicBrawl.App.EditorTools
         /// <summary>「删除存档」的底图 —— 用「离开」那一张（木色、带警示感；也是设置面板里「退出」用的）。</summary>
         private const string DeleteButtonSpritePath = "Assets/Art/Ui/Shop_LeaveButton.png";
 
-        /// <summary>
-        /// 界面上摆几行存档 = <see cref="UiLayout.HomeSlotRows"/>（= <c>SaveSlots.PlayerSlots</c>
-        /// 的长度）。<b>构建器建满，运行时只显示「真的有存档」的那几行</b>（见 <c>HomeView.SetRowCount</c>）。
-        /// </summary>
-        private const int SlotRows = UiLayout.HomeSlotRows;
-
         private static readonly Vector2 Mid = new Vector2(0.5f, 0.5f);
 
         // ── 菜单入口 ─────────────────────────────────────────────────
@@ -95,10 +89,6 @@ namespace MagicBrawl.App.EditorTools
             Sprite enterSprite = AssetDatabase.LoadAssetAtPath<Sprite>(EnterButtonSpritePath);
             Missing(log, enterSprite, "「进入游戏」按钮底图", EnterButtonSpritePath);
 
-            EnsureSpriteSettings(DeleteButtonSpritePath, log);
-            Sprite deleteSprite = AssetDatabase.LoadAssetAtPath<Sprite>(DeleteButtonSpritePath);
-            Missing(log, deleteSprite, "「删除存档」按钮底图", DeleteButtonSpritePath);
-
             // 1) 场景
             EditorSceneManager.SaveOpenScenes();
             bool created = !System.IO.File.Exists(AbsolutePath(ScenePath));
@@ -116,7 +106,7 @@ namespace MagicBrawl.App.EditorTools
             }
 
             // 3) 建新
-            GameObject canvasGo = BuildCanvas(body, title, enterSprite, deleteSprite, log);
+            GameObject canvasGo = BuildCanvas(body, title, enterSprite, log);
             EnsureEventSystem();
             EnsureCamera(log);
 
@@ -158,7 +148,7 @@ namespace MagicBrawl.App.EditorTools
         // ══════════════════════════════════════════════════════
 
         private static GameObject BuildCanvas(TMP_FontAsset body, TMP_FontAsset title, Sprite enterSprite,
-            Sprite deleteSprite, StringBuilder log)
+            StringBuilder log)
         {
             var canvasGo = new GameObject(CanvasName,
                 typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -191,117 +181,24 @@ namespace MagicBrawl.App.EditorTools
             Box(Rt(subGo), Mid, Mid, new Vector2(0f, UiLayout.HomeSubtitleY),
                 new Vector2(1200f, 60f));
             TMP_Text subtitle = AddText(subGo, body, UiLayout.FontSizeHomeSubtitle, UiTheme.TextSecondary,
-                TextAlignmentOptions.Center, "选择存档 · 进入冒险");
+                TextAlignmentOptions.Center, "选择玩法");
 
-            // ④ 存档行：每行 = 定位容器 → 底板（Image + Button + Outline）→ 档名 / 状态
-            //
-            //    ⚠ 这里**建满** HomeSlotRows 行（长期节点由构建器生成，铁律 4）——
-            //      运行时由 HomeSceneEntry 按「磁盘上真的有哪几个存档」调 SetRowCount 只显示前 N 行。
-            var buttons = new Button[SlotRows];
-            var names = new TMP_Text[SlotRows];
-            var status = new TMP_Text[SlotRows];
-            var edges = new Outline[SlotRows];
+            // ④ 两枚玩法键（2026-10-28 · 大改：存档行 / 新建 / 删除全删）
+            //     标准战斗 = 双方各随机 8 张；自定义战斗 = 去牌组编辑界面挑牌。
+            const float buttonWidth = 440f;
+            const float buttonHeight = 156f;
+            const float buttonPitch = 520f;
+            const float buttonY = -60f;
 
-            for (int i = 0; i < SlotRows; i++)
-            {
-                GameObject lineGo = NewUi("SlotLine_" + i, canvasGo.transform);
-                Box(Rt(lineGo), Mid, Mid, new Vector2(0f, UiLayout.HomeRowY(i)),
-                    new Vector2(UiLayout.HomeRowWidth, UiLayout.HomeRowHeight));
+            Button standardButton = BuildModeButton(canvasGo.transform, "StandardButton", "标准战斗",
+                new Vector2(-buttonPitch * 0.5f, buttonY), new Vector2(buttonWidth, buttonHeight),
+                enterSprite, title);
 
-                GameObject rowGo = NewUi("Row", lineGo.transform);
-                Stretch(Rt(rowGo));
+            Button customButton = BuildModeButton(canvasGo.transform, "CustomButton", "自定义战斗",
+                new Vector2(buttonPitch * 0.5f, buttonY), new Vector2(buttonWidth, buttonHeight),
+                enterSprite, title);
 
-                var img = rowGo.AddComponent<Image>();
-                img.color = UiTheme.OverlayPanel;
-                img.raycastTarget = true;
-
-                var outline = rowGo.AddComponent<Outline>();
-                outline.effectColor = UiTheme.ResultWinGold;
-                outline.effectDistance = new Vector2(3f, -3f);
-                outline.enabled = false;             // 默认不选中，运行时由 HomeView 切
-                edges[i] = outline;
-
-                var button = rowGo.AddComponent<Button>();
-                button.targetGraphic = img;
-                buttons[i] = button;
-
-                GameObject nameGo = NewUi("Name", rowGo.transform);
-                Stretch(Rt(nameGo), UiLayout.HomeRowPaddingX, 0f, UiLayout.HomeRowPaddingX, 0f);
-                names[i] = AddText(nameGo, title, UiLayout.FontSizeHomeRowName, UiTheme.TextPrimary,
-                    TextAlignmentOptions.Left, "存档");
-
-                GameObject statusGo = NewUi("Status", rowGo.transform);
-                Stretch(Rt(statusGo), UiLayout.HomeRowPaddingX, 0f, UiLayout.HomeRowPaddingX, 0f);
-                status[i] = AddText(statusGo, body, UiLayout.FontSizeHomeRowStatus, UiTheme.TextSecondary,
-                    TextAlignmentOptions.Right, "—");
-            }
-
-            // ⑤ 操作行：新建存档（左） / 删除存档（右）
-            GameObject newGo = NewUi("NewButton", canvasGo.transform);
-            Box(Rt(newGo), Mid, Mid, new Vector2(-UiLayout.HomeActionPitch * 0.5f, UiLayout.HomeActionY),
-                new Vector2(UiLayout.HomeActionWidth, UiLayout.HomeActionHeight));
-            var newImg = newGo.AddComponent<Image>();
-            if (enterSprite != null)
-            {
-                newImg.sprite = enterSprite;
-                newImg.type = Image.Type.Sliced;
-                newImg.pixelsPerUnitMultiplier = 1f;
-            }
-
-            newImg.color = enterSprite != null ? Color.white : UiTheme.Panel;
-            var newButton = newGo.AddComponent<Button>();
-            newButton.targetGraphic = newImg;
-            newButton.transition = Selectable.Transition.None;
-
-            GameObject newLabelGo = NewUi("Label", newGo.transform);
-            Stretch(Rt(newLabelGo));
-            TMP_Text newLabel = AddText(newLabelGo, title, UiLayout.FontSizeHomeAction, UiTheme.TextPrimary,
-                TextAlignmentOptions.Center, UiLayout.HomeNewLabel);
-
-            GameObject delGo = NewUi("DeleteButton", canvasGo.transform);
-            Box(Rt(delGo), Mid, Mid, new Vector2(UiLayout.HomeActionPitch * 0.5f, UiLayout.HomeActionY),
-                new Vector2(UiLayout.HomeActionWidth, UiLayout.HomeActionHeight));
-            var delImg = delGo.AddComponent<Image>();
-            if (deleteSprite != null)
-            {
-                // ⚠ 与设置面板的「退出到主菜单」同一口径：这张底图自带木质高光与描边，
-                //   九宫格与源图 border 对不上会拉出接缝 → 用 Simple。
-                delImg.sprite = deleteSprite;
-                delImg.type = Image.Type.Simple;
-            }
-
-            delImg.color = deleteSprite != null ? Color.white : UiTheme.Panel;
-            var deleteButton = delGo.AddComponent<Button>();
-            deleteButton.targetGraphic = delImg;
-            deleteButton.transition = Selectable.Transition.None;
-
-            GameObject delLabelGo = NewUi("Label", delGo.transform);
-            Stretch(Rt(delLabelGo));
-            TMP_Text deleteLabel = AddText(delLabelGo, title, UiLayout.FontSizeHomeAction,
-                UiTheme.ShopLeaveText, TextAlignmentOptions.Center, UiLayout.HomeDeleteLabel);
-
-            // ⑥ 「进入游戏」
-            GameObject enterGo = NewUi("EnterButton", canvasGo.transform);
-            Box(Rt(enterGo), Mid, Mid, new Vector2(0f, UiLayout.HomeEnterY),
-                new Vector2(UiLayout.HomeEnterWidth, UiLayout.HomeEnterHeight));
-            var enterImg = enterGo.AddComponent<Image>();
-            if (enterSprite != null)
-            {
-                enterImg.sprite = enterSprite;
-                enterImg.type = Image.Type.Sliced;
-                enterImg.pixelsPerUnitMultiplier = 1f;
-            }
-
-            enterImg.color = enterSprite != null ? Color.white : UiTheme.Panel;
-            var enterButton = enterGo.AddComponent<Button>();
-            enterButton.targetGraphic = enterImg;
-
-            GameObject labelGo = NewUi("Label", enterGo.transform);
-            Stretch(Rt(labelGo));
-            TMP_Text enterLabel = AddText(labelGo, title, UiLayout.FontSizeHomeEnter, UiTheme.TextPrimary,
-                TextAlignmentOptions.Center, "进入游戏");
-
-            // ⑦ 底部提示
+            // ⑤ 底部提示
             GameObject hintGo = NewUi("Hint", canvasGo.transform);
             Box(Rt(hintGo), Mid, Mid, new Vector2(0f, UiLayout.HomeHintY),
                 new Vector2(UiLayout.HomeHintWidth, UiLayout.HomeHintHeight));
@@ -310,11 +207,44 @@ namespace MagicBrawl.App.EditorTools
 
             // 接线
             var view = canvasGo.AddComponent<HomeView>();
-            view.Configure(titleText, subtitle, buttons, names, status, edges,
-                newButton, newLabel, deleteButton, deleteLabel, enterButton, enterLabel, hint);
+            view.Configure(titleText, subtitle, standardButton, customButton, hint);
 
-            log.AppendLine("  已建 " + CanvasName + "（" + SlotRows + " 行存档 + 新建/删除 + 进入游戏）");
+            log.AppendLine("  已建 " + CanvasName + "（标准战斗 + 自定义战斗）");
             return canvasGo;
+        }
+
+        /// <summary>
+        /// 建一枚主菜单大键（底图 + 居中文字）。
+        ///
+        /// <para><b>⚠ 底图用 <c>Simple</c> 而不是九宫格</b>：本工程那几张按钮底图自带木质高光与
+        /// 描边，九宫格与源图 border 对不上会拉出接缝 —— 与设置面板「退出到主菜单」、
+        /// 商店「离开」同一口径。</para>
+        /// </summary>
+        private static Button BuildModeButton(Transform parent, string name, string label,
+            Vector2 position, Vector2 size, Sprite sprite, TMP_FontAsset titleFont)
+        {
+            GameObject go = NewUi(name, parent);
+            Box(Rt(go), Mid, Mid, position, size);
+
+            var image = go.AddComponent<Image>();
+            if (sprite != null)
+            {
+                image.sprite = sprite;
+                image.type = Image.Type.Simple;
+            }
+
+            image.color = sprite != null ? Color.white : UiTheme.Panel;
+
+            var button = go.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.transition = Selectable.Transition.ColorTint;
+
+            GameObject labelGo = NewUi("Label", go.transform);
+            Stretch(Rt(labelGo));
+            AddText(labelGo, titleFont, UiLayout.FontSizeHomeEnter, UiTheme.TextPrimary,
+                TextAlignmentOptions.Center, label);
+
+            return button;
         }
 
         /// <summary>
@@ -381,12 +311,12 @@ namespace MagicBrawl.App.EditorTools
         /// 前面所有验证都看不出来。战斗失败界面的「退出」现在会切到 <c>Home</c>，
         /// 所以 Home 必须在这里。</para>
         ///
-        /// <para>顺序 = <see cref="MapRoutes.BuildOrder"/>；<b>排第一的那个就是正式构建的启动场景</b>，
+        /// <para>顺序 = <see cref="SceneRoutes.BuildOrder"/>；<b>排第一的那个就是正式构建的启动场景</b>，
         /// 所以 Home 在最前 = 打开游戏从开始界面进。</para>
         /// </summary>
         private static void EnsureBuildSettings(StringBuilder log)
         {
-            List<string> want = MapRoutes.BuildOrderPaths();
+            List<string> want = SceneRoutes.BuildOrderPaths();
 
             var keep = new List<EditorBuildSettingsScene>();
             EditorBuildSettingsScene[] current = EditorBuildSettings.scenes;
@@ -430,7 +360,7 @@ namespace MagicBrawl.App.EditorTools
             EditorBuildSettings.scenes = next.ToArray();
 
             log.AppendLine("  Build Settings：" + want.Count + " 个场景（新登记 " + missing
-                           + " 个）· 启动场景 = " + MapRoutes.BuildOrder[0]);
+                           + " 个）· 启动场景 = " + SceneRoutes.BuildOrder[0]);
         }
 
         // ══════════════════════════════════════════════════════

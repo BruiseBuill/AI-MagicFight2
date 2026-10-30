@@ -61,7 +61,7 @@ namespace MagicBrawl.App
         /// 同一张牌的<b>基础版与强化版同时存在时，只保留强化版</b>（默认开）。
         ///
         /// <para><b>为什么这是一条必须写在卡池上的规则</b>：强化会产生一张新卡
-        /// （ID = 基础 ID 挂一个 <c>+</c>，见 <see cref="CardUpgrade"/>），
+        /// （ID = 基础 ID 挂一个 <c>+</c> —— 那套机制 2026-10-28 已删除），
         /// 而「内置 42 张」那份清单永远还在。没有这条规则时，
         /// <c>useAllCards</c> 的卡池会同时拿到 <c>a</c> 与 <c>a+</c> ——
         /// 玩家手里凭空多出一张同名牌，而且零报错。
@@ -253,7 +253,7 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 解析成**去重后的 ID 清单**（<see cref="preferUpgraded"/> 在这里生效）。
+        /// 解析成**去重后的 ID 清单**。
         ///
         /// <para>去重规则只有一条：清单里若同时有 <c>a</c> 与 <c>a+</c>，去掉 <c>a</c>。
         /// 判定用的是清单本身（不是卡表），所以 <c>useAllCards</c> 与手写 ID 两种口径都走同一段逻辑。</para>
@@ -285,17 +285,9 @@ namespace MagicBrawl.App
                 }
             }
 
-            if (!preferUpgraded)
-            {
-                return ids.AsReadOnly();
-            }
-
-            // ⚠ 规则本体在 <see cref="CardUpgrade.PreferUpgraded"/>（Core）——
-            //   存档（SaveStore）也要走同一条，两边各写一份的下场是
-            //   「从卡池资产进场景是强化版、从存档进场景又变回基础版」，而且零报错。
-            //   判据是「**卡表里**有没有 <id>+」而不是「清单里有没有」：卡池资产与存档里
-            //   写的永远只是基础 ID（"a"），强化版只存在于卡目录的动态卡区。
-            return CardUpgrade.PreferUpgraded(ids, source);
+            // 2026-10-28：强化系统已删除 —— 卡池里不再有「基础版 / 强化版二选一」这一步，
+            // <see cref="preferUpgraded"/> 只作为旧字段保留（序列化兼容），不参与解析。
+            return ids.AsReadOnly();
         }
 
         /// <summary>
@@ -358,7 +350,7 @@ namespace MagicBrawl.App
                     continue;
                 }
 
-                if (!Contains(CardUpgrade.BaseIdOf(entry.cardId))
+                if (!Contains(CardIds.BaseOf(entry.cardId))
                     && !list.Contains(entry.cardId))
                 {
                     list.Add(entry.cardId);

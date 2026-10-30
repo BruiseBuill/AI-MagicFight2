@@ -11,7 +11,7 @@ namespace MagicBrawl.Core
     /// </summary>
     public sealed class CardDef
     {
-        /// <summary>卡 ID："a" .. "an"。</summary>
+        /// <summary>卡 ID："a" .. "ar"。</summary>
         public readonly string Id;
 
         /// <summary>卡名，如「暴风雪」。</summary>
@@ -31,7 +31,7 @@ namespace MagicBrawl.Core
         /// <summary>效果列表，按卡面书写顺序 —— 同优先级效果的默认结算顺序。</summary>
         public readonly IReadOnlyList<EffectDef> Effects;
 
-        /// <summary>卡表序号 0–39（a=0 … an=39），与美术资源编号一一对应。</summary>
+        /// <summary>卡表序号 0–43（a=0 … ar=43），与美术资源编号一一对应（Card_01 … Card_44）。</summary>
         public readonly int Index;
 
         /// <summary>

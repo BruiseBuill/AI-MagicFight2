@@ -66,40 +66,6 @@ namespace MagicBrawl.App
         [Tooltip("本场战斗的怪物资产（留空 = 兜底怪物）。建议 Resources/Monsters/Monster_*.asset。")]
         [SerializeField] private CharacterConfig _monsterConfig;
 
-        /// <summary>
-        /// <b>终点（Boss 那一格）专用的怪</b>（2026-10-09）。
-        ///
-        /// <para><b>用户口径</b>：「最后的一个事件注定是精英战役，你需要配置一个精英，
-        /// 然后我来亲自给这个精英写卡组」。所以这里的 <c>_bossConfig</c> 就是那一只 ——
-        /// 它的卡组（<c>Assets/Resources/Pools/MonsterPool_Boss.asset</c>）由用户自己填，
-        /// 血量 / AI 档案 / 行为写在这份角色资产上。</para>
-        ///
-        /// <para><b>怎么接上的</b>：地图上的节点类型是「进去之后会发生什么」的唯一分类依据
-        /// （<see cref="MapNodeType"/> 的类注释），而终点固定是
-        /// <see cref="MapNodeType.Boss"/> —— 所以战斗侧不需要任何"这是第几层 / 第几场"的判断，
-        /// 只要问 <see cref="IsBossBattle"/>。判据只有一处（<see cref="MapRun"/>）。</para>
-        ///
-        /// <para><b>⚠ 留空 = 老行为</b>：那一场仍旧用 <see cref="_monsterConfig"/>，
-        /// 与这一格不存在时逐字相同。</para>
-        ///
-        /// <para><b>⚠ 单场景调试不受影响</b>：直接在编辑器里点开 <c>SampleScene</c> 进 Play 时
-        /// <see cref="MapRun"/> 是空的 → <see cref="IsBossBattle"/> 恒为 false →
-        /// 用的还是 <see cref="_monsterConfig"/>（独立场景契约 E1/E2）。</para>
-        /// </summary>
-        [Tooltip("终点（Boss 节点）专用的怪（留空 = 与普通战斗同一只）。"
-                 + "建议 Resources/Monsters/Monster_Boss.asset。")]
-        [SerializeField] private CharacterConfig _bossConfig;
-
-        [Header("存档（玩家卡池的来源）")]
-        [Tooltip("本场战斗读哪个存档的卡池。\n"
-                 + "· 主存档（存档 2）= **默认（2026-10-05 起）**。商店 / 强化 / 女巫工坊 / 战斗"
-                 + "共用同一份卡池与同一份「卡牌获取状态」（已获得 / 曾展示）—— 战斗奖励里"
-                 + "排除掉的牌，商店货架上也一并排除。\n"
-                 + "· 战斗测试档（存档 1）= 原来的默认值（单场景调试手感）。只有战斗读得到它；"
-                 + "没有存档时用角色自带的卡池（BattlePool = 全 45 张），"
-                 + "点了设置面板的「保存并重开」才落盘。\n"
-                 + "⚠ 这两个档位是**两套独立的卡池 + 两套独立的获取状态**，互不影响。")]
-        [SerializeField] private SaveSlot _saveSlot = SaveSlot.Main;
 
         [Header("演出节奏")]
         [Tooltip("节拍总倍率：0 = 关闭演出（事件仍逐条发，只不等待）。")]
@@ -124,36 +90,38 @@ namespace MagicBrawl.App
         public Func<IBattleMode> ModeFactory { get; set; }
         public Func<EffectRegistry> EffectRegistryFactory { get; set; }
         public Func<int, ParticipantSetup, IParticipantController> ControllerFactory { get; set; }
-        public int LocalSeat { get { return _localSeat; } }
-        public int ParticipantCount { get { return _engine == null ? 0 : _engine.State.Players.Count; } }
-        public bool IsPaused { get { return _paused; } }
+
         /// <summary>
-        /// 本场战斗读的存档档位。
+        /// <b>本机视角的座位</b>（= 界面把谁摆在「我方」那一侧）。
         ///
-        /// <para><b>两个来源，优先级明确</b>：</para>
-        /// <list type="bullet">
-        /// <item><description>
-        ///   <b>玩家在主菜单里选过档</b>（<see cref="GameSession.HasChosen"/> 为真）——
-        ///   用他选的（<see cref="GameSession.Slot"/>）。这是「一场游戏」的正常路径；
-        /// </description></item>
-        /// <item><description>
-        ///   <b>没选过</b>（直接从编辑器点开 <c>SampleScene</c> 进 Play 调试）——
-        ///   用 Inspector 里的 <c>_saveSlot</c>。这样单场景调试不会被主菜单影响，
-        ///   与三个事件场景的「独立场景契约」同一口径。
-        /// </description></item>
-        /// </list>
-        ///
-        /// <para><b>⚠ 内部的读 / 写也必须走这个属性</b>，不能再用 <c>_saveSlot</c> ——
-        /// 混用会让「读的是主存档、写的是测试档」，而症状是「奖励拿了但商店里没有」，
-        /// 零报错。</para>
+        /// <para>2026-10-30 起<b>可以运行时切换</b>：同屏热座（玩家对玩家）时，轮到谁操作
+        /// 就把视角切到谁的座位 —— 见 <c>BattleUi.HandleDecision</c>。正常单机
+        /// （玩家对 AI）一局里不会变，值来自 <see cref="GameSettings.LocalSeat"/>。</para>
         /// </summary>
-        public SaveSlot ActiveSaveSlot
+        public int LocalSeat { get { return _activeLocalSeat < 0 ? _localSeat : _activeLocalSeat; } }
+
+        /// <summary>
+        /// 把本机视角切到 <paramref name="seat"/>（热座 / 未来网络客户端切换视角用）。
+        /// 越界直接忽略 —— 这个口子只服务界面，不该因为一次误调把整局打崩。
+        /// </summary>
+        public void SetLocalSeat(int seat)
         {
-            get { return SaveSlots.Active(_saveSlot); }
+            if (_engine != null && (seat < 0 || seat >= _engine.State.Players.Count))
+            {
+                return;
+            }
+
+            _activeLocalSeat = seat;
         }
 
-        /// <summary>当前档位的落盘路径（设置面板显示用）。</summary>
-        public string CardPoolSavePath { get { return SaveStore.FilePathFor(ActiveSaveSlot); } }
+        /// <summary>这个座位是不是人类操作（= 界面要等他点）。判据只有 <see cref="GameSettings"/> 一处。</summary>
+        public bool IsHumanSeat(int seat)
+        {
+            return GameSettings.IsHumanSeat(seat);
+        }
+        public int ParticipantCount { get { return _engine == null ? 0 : _engine.State.Players.Count; } }
+        public bool IsPaused { get { return _paused; } }
+
         public void SetPaused(bool paused) { _paused = paused; }
 
         /// <summary>
@@ -165,7 +133,7 @@ namespace MagicBrawl.App
         /// （<c>LookAndCool</c> 的翻牌、AI 的决策都不受影响）。</para>
         /// </summary>
         public bool ForceRevealMonsterHand { get; set; }
-        public int OpponentSeat { get { return _engine == null ? (_localSeat == 0 ? 1 : 0) : _engine.State.Mode.SelectDefender(_engine.State, _localSeat); } }
+        public int OpponentSeat { get { return _engine == null ? (LocalSeat == 0 ? 1 : 0) : _engine.State.Mode.SelectDefender(_engine.State, LocalSeat); } }
         public BattleOutcome Outcome { get { return _engine == null ? null : _engine.State.Outcome; } }
 
         /// <summary>
@@ -175,6 +143,20 @@ namespace MagicBrawl.App
         /// —— 那是「所有怪共用一份」的旧口径，保留它才不会让没配美术的怪变成空白。</para>
         /// </summary>
         public BattleArtLibrary.CharacterSet MonsterArtSet { get { return _monsterArt; } }
+
+        /// <summary>最近一次开局用的种子（<see cref="GetLocalCharacterDefinition"/> 在开局前
+        /// 被调用时拿它去派生牌组 —— 没有它就只能是 0，抽出来的牌与真正开局那副不一致）。</summary>
+        private int _lastSeed;
+
+        /// <summary>
+        /// <b>本局的本机座位</b>（2026-10-30）；<c>-1</c> = 还没开局、用 Inspector 上的
+        /// <see cref="_localSeat"/>。
+        ///
+        /// <para><b>为什么要这一层而不是直接改 <see cref="_localSeat"/></b>：那是个
+        /// <c>[SerializeField]</c>，Play 模式里改它会把「这一局用哪个座位」写回 Inspector，
+        /// 退出 Play 后留痕，下次排查会被一个说不清来历的 1 绊住。运行态单独存一份就没有这个问题。</para>
+        /// </summary>
+        private int _activeLocalSeat = -1;
 
         private Coroutine _routine;
 
@@ -380,7 +362,13 @@ namespace MagicBrawl.App
 
         public void StartBattle(int seed)
         {
-            BattleSetup setup = BuildSetup();
+            _lastSeed = seed;
+
+            // 2026-10-30：本机座位在开局这一刻定下来（主菜单设置里可选 0 / 1）。
+            // 对局中途不改；热座时的临时切换走 SetLocalSeat。
+            _activeLocalSeat = GameSettings.LocalSeat;
+
+            BattleSetup setup = BuildSetup(seed);
             BattleEngine engine = BattleEngine.Create(seed, setup);
             var controllers = new Dictionary<int, IParticipantController>();
             for (int seat = 0; seat < setup.Participants.Count; seat++)
@@ -390,16 +378,7 @@ namespace MagicBrawl.App
                 if (controller == null)
                     controller = participant.Control == ControlKind.Human && !_autoPlay
                         ? (IParticipantController)new HumanController()
-                        // 2026-10-03：默认 AI 换成 HeuristicAgent（四流派 + 出牌优先级 + 防御口径），
-                        // 并按角色的 aiProfile 选择怪物专属子类（空 = 通用）。
-                        // ⚠ 必须把 engine.State 传进去 —— 流派判定要读手牌，减速流派还要读
-                        //   对方冷却区张数与手牌数；不传的话这两条功能会静默降级。
-                        // 2026-10-08：手写出牌优先级挂在角色定义上（来自它的卡池资产），
-                        // 与 AiProfile 同一条传递路径 —— 一个座位一份，不会串台。
-                        : new AiController(MonsterAgentFactory.Create(
-                            participant.Character.AiProfile, engine.State,
-                            _aiUseAuras, unchecked(seed + seat),
-                            participant.Character.CardPriorities));
+                        : CreateAiController(participant, engine.State, seat, seed);
                 controllers.Add(seat, controller);
             }
 
@@ -440,6 +419,46 @@ namespace MagicBrawl.App
             }
 
             _routine = StartCoroutine(CoRun());
+        }
+
+        /// <summary>
+        /// 按<b>敌人智力</b>建一个 AI 控制器（2026-10-30）。
+        ///
+        /// <list type="bullet">
+        /// <item><b>简单</b> → <see cref="SimpleAiAgent"/>：进攻只会「挑当前力量最大的一张」，
+        /// 这正好是用户要的「按力量从大到小打牌」。刻意<b>不开光环、不换开局手牌</b> ——
+        /// 这两条都会让它明显强于「只会按力量出牌」，与这一档的定位不符。</item>
+        /// <item><b>标准</b> → <see cref="MonsterAgentFactory"/>（四流派 + 手写优先级），
+        /// 即大改之前的行为，一个字节都没变。</item>
+        /// </list>
+        ///
+        /// <para>⚠ <c>_aiUseAuras</c> 只喂给标准档：它是「AI 是否动用光环」的调试开关，
+        /// 简单档按定义不用光环。</para>
+        /// </summary>
+        private IParticipantController CreateAiController(ParticipantSetup participant,
+            BattleState state, int seat, int seed)
+        {
+            if (GameSettings.Difficulty == AiDifficulty.Easy)
+            {
+                var easy = new SimpleAiAgent
+                {
+                    UseAuras = false,
+                    ReplaceWeakCards = false,
+                    BlindPickSeed = unchecked(seed + seat),
+                };
+                return new AiController(easy);
+            }
+
+            // 2026-10-03：默认 AI 换成 HeuristicAgent（四流派 + 出牌优先级 + 防御口径），
+            // 并按角色的 aiProfile 选择怪物专属子类（空 = 通用）。
+            // ⚠ 必须把 state 传进去 —— 流派判定要读手牌，减速流派还要读
+            //   对方冷却区张数与手牌数；不传的话这两条功能会静默降级。
+            // 2026-10-08：手写出牌优先级挂在角色定义上（来自它的卡池资产），
+            // 与 AiProfile 同一条传递路径 —— 一个座位一份，不会串台。
+            return new AiController(MonsterAgentFactory.Create(
+                participant.Character.AiProfile, state,
+                _aiUseAuras, unchecked(seed + seat),
+                participant.Character.CardPriorities));
         }
 
         public void StopBattle()
@@ -681,27 +700,8 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
 
         /// <summary>
-        /// 这一场是不是<b>终点（Boss 节点）</b>的那一战（2026-10-09）。
-        ///
-        /// <para><b>判据只有一处</b>：<see cref="MapRun"/> 里正在进入的那个节点的类型是不是
-        /// <see cref="MapNodeType.Boss"/>。战斗场景不在别处再判一遍「这是第几层 / 是不是最后一场」
-        /// —— 那正是「规则在两个地方各写一份」的老问题。</para>
-        ///
-        /// <para>没有冒险在跑（单场景调试）时它恒为 <c>false</c>。</para>
-        /// </summary>
-        public static bool IsBossBattle
-        {
-            get
-            {
-                return MapRun.HasPending
-                       && MapRun.Graph.Nodes[MapRun.PendingIndex].Type == MapNodeType.Boss;
-            }
-        }
-
-        /// <summary>
-        /// 某个座位用哪份角色资产。查找顺序（2026-10-09 起四项）：
-        /// ① <b>终点专用怪</b>（对非本地座位，且这一场是 Boss 那一格）
-        /// → ② <b>怪物资产</b>（对非本地座位）→ ③ 名单里显式写的那一份 → ④ null（用兜底）。
+        /// 某个座位用哪份角色资产。查找顺序（2026-10-28 起三项）：
+        /// ① <b>怪物资产</b>（对非本地座位）→ ② 名单里显式写的那一份 → ③ null（用兜底）。
         ///
         /// <para>⚠ <b>怪物资产优先，不是名单优先</b> —— 这是实测逼出来的：本工程的
         /// <c>BattleCanvas.prefab</c> 里 <c>_participants</c> <b>早就填着</b>
@@ -714,15 +714,8 @@ namespace MagicBrawl.App
         /// </summary>
         private CharacterConfig ConfigFor(int seat)
         {
-            // ① 终点（Boss 那一格）专用的怪 —— 只对非本地座位有意义（2026-10-09）。
-            // ⚠ 它排在 _monsterConfig 之前：终点那一战的对手就是用户配的那只精英。
-            if (seat != _localSeat && _bossConfig != null && IsBossBattle)
-            {
-                return _bossConfig;
-            }
-
-            // ② 本场战斗的怪
-            if (_monsterConfig != null && seat != _localSeat)
+            // ① 本场战斗的怪
+            if (_monsterConfig != null && seat != LocalSeat)
             {
                 return _monsterConfig;
             }
@@ -755,7 +748,7 @@ namespace MagicBrawl.App
                 // ⚠ 判据必须是那个 bool，不能判 `art != null` —— 它是 [Serializable] class，
                 //   反序列化之后**永远非 null**（只是一组空 Clip）。用 null 判会让每只怪
                 //   都被绑上一份空美术，表现为「怪物整个不见了」而且零报错。
-                if (seat != _localSeat && config.useCustomArt)
+                if (seat != LocalSeat && config.useCustomArt)
                 {
                     _monsterArt = config.art;
                 }
@@ -766,57 +759,156 @@ namespace MagicBrawl.App
             // 兜底（没配任何角色资产）—— 本地座位是人类口径，其余是怪物口径。
             // ⚠ 2026-10-03 起这里必须显式给 DealProfile：不给就会落回引擎默认（人类 6 张），
             //   兜底怪物又会变成「开局 6 张、第 2–3 回合各补 1」。
-            bool local = seat == _localSeat;
+            bool local = seat == LocalSeat;
             return new CharacterDefinition(
                 local ? "player.default" : "monster.default",
                 local ? "你" : "怪物",
                 local ? CharacterKind.Player : CharacterKind.Monster,
-                4, 4, 8,
+                4, 4, BattleLaunch.DeckSize,
                 CardPool.AllCards(catalog),
                 null, null,
-                local ? DealProfile.Human() : DealProfile.Monster());
+                DealProfile.Duel());
         }
 
-        private BattleSetup BuildSetup(CardPool localOverride = null)
+        /// <summary>
+        /// 组装这一局（2026-10-28 · 大改：牌组由<b>玩法</b>决定，不再读存档）。
+        ///
+        /// <para><b>两条来源</b>：</para>
+        /// <list type="bullet">
+        /// <item><description><b>自定义战斗</b>（<see cref="BattleLaunch.HasCustomDecks"/> 为真）——
+        /// 用玩家在牌组编辑界面挑好的两份 8 张；</description></item>
+        /// <item><description><b>其余情况</b>（标准战斗 / 直接从编辑器进 Play）——
+        /// 由<b>本局种子</b>派生，双方各随机 8 张。同一颗种子必然抽出同一副牌，
+        /// 所以「重试 = 回到本场最开始」自动成立。</description></item>
+        /// </list>
+        ///
+        /// <para><b>⚠ 发牌口径一律覆盖成 <see cref="DealProfile.Duel"/></b>：
+        /// 角色资产上写的（玩家 EngineDefault / 怪物 Monster）在这条路上都不再生效 ——
+        /// 两种玩法的节奏必须完全一致（开局 8 张、之后不补不换）。</para>
+        /// </summary>
+        private BattleSetup BuildSetup(int seed)
         {
             _monsterArt = null;
             int count = _participants == null || _participants.Length == 0 ? 2 : _participants.Length;
-            if (_localSeat < 0 || _localSeat >= count) throw new InvalidOperationException("本地玩家座位无效。");
+            if (LocalSeat < 0 || LocalSeat >= count) throw new InvalidOperationException("本地玩家座位无效。");
+
+            ICardCatalog catalog = GetCardCatalog();
+
+            // 2026-10-30 用户口径：**双方共用一个卡池** —— 整副牌只洗一次，
+            //   座位按顺序切走自己那份 8 张。所以两边的牌永不重复（旧的写法
+            //   是每个座位各洗一遍，同一种子下也可能撞牌）。
+            List<CardDef> shared = ShuffledCatalog(catalog, seed);
+
             var participants = new List<ParticipantSetup>();
             for (int seat = 0; seat < count; seat++)
             {
                 CharacterDefinition character = BaseDefinition(seat);
-                if (seat == _localSeat)
-                {
-                    CardPool pool;
-                    string error;
-                    if (localOverride != null) pool = localOverride;
-                    else if (!SaveStore.TryLoadCardPool(ActiveSaveSlot, character, out pool, out error)) Debug.LogWarning(error + " 本局使用角色默认卡池。");
-                    character = character.WithCardPool(pool);
+                character = character.WithCardPool(DeckFor(seat, seed, catalog, shared)).WithDeal(DealProfile.Duel());
 
-                    // 2026-10-05 · 带伤入场：冒险里玩家的入场当前生命 = 局外当前生命，
-                    // 入场上限仍是角色资产的正常上限（规格 §3.2）。
-                    // ⚠ 判据是「局外有没有一份当前生命」，不是「有没有在冒险里」——
-                    //   单场景调试同样走这条路（否则「冒险里带伤、单场景满血」会分成两套口径，
-                    //   而玩家看到的永远是后者）。第一次进场是 0 → 满血；之后逐场带伤。
-                    if (MapRun.HasPlayerHp)
-                    {
-                        character = character.WithHp(MapRun.PlayerHp, character.MaxHp);
-                    }
-                }
-                bool defaults = _participants == null || _participants.Length == 0;
-                participants.Add(new ParticipantSetup(character,
-                    defaults ? (seat == _localSeat ? ControlKind.Human : ControlKind.Ai) : _participants[seat].control,
-                    defaults ? seat : _participants[seat].team));
+                // 2026-10-30：**控制方式改由 GameSettings 决定** —— 主菜单里选的
+                // 「玩家对 AI / AI 对 AI / 玩家对玩家」才是这一局的真相。
+                // 名单（_participants）继续只表达「谁能上场 + 属于哪一队」：
+                //   · 控制方式：它是玩法设置，不是角色属性；
+                //   · 队伍：那是规则（谁是敌人），必须留在名单/模式里。
+                bool hasList = _participants != null && _participants.Length > 0;
+                int team = hasList && seat < _participants.Length && _participants[seat] != null
+                    ? _participants[seat].team
+                    : seat;
+                participants.Add(new ParticipantSetup(character, GameSettings.ControlOf(seat), team));
             }
             return new BattleSetup(participants, ModeFactory == null ? new DuelMode() : ModeFactory(),
                 EffectRegistryFactory == null ? null : EffectRegistryFactory());
         }
 
+        /// <summary>
+        /// 这一局给 <paramref name="seat"/> 用的牌组（正好 <see cref="BattleLaunch.DeckSize"/> 张）。
+        /// </summary>
+        private CardPool DeckFor(int seat, int seed, ICardCatalog catalog, List<CardDef> shared)
+        {
+            if (BattleLaunch.HasCustomDecks)
+            {
+                string[] ids = seat == LocalSeat ? BattleLaunch.PlayerCardIds : BattleLaunch.MonsterCardIds;
+                if (ids != null && ids.Length == BattleLaunch.DeckSize)
+                {
+                    return new CardPool(ids, catalog);
+                }
+            }
+
+            return RandomDeck(catalog, shared, seat);
+        }
+
+        /// <summary>
+        /// 把整张卡表按对局种子<b>洗一次</b>，供所有座位<b>顺序切牌</b>
+        /// （2026-10-30 用户口径：双方共用一个卡池）。
+        ///
+        /// <para><b>为什么用 Core 的 <see cref="Rng"/> 而不是 <c>UnityEngine.Random</c></b>：
+        /// 「重试 = 同一种子重开」要连牌组一起复现。这里只洗一次，
+        /// 所以座位之间不需要再掺种子 —— 掺了就会各自洗一副，两边必然可能撞牌。</para>
+        /// </summary>
+        private static List<CardDef> ShuffledCatalog(ICardCatalog catalog, int seed)
+        {
+            IReadOnlyList<CardDef> all = catalog.All;
+            var shuffled = new List<CardDef>(all.Count);
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i] != null)
+                {
+                    shuffled.Add(all[i]);
+                }
+            }
+
+            var rng = new Rng(unchecked(seed * 397 ^ 7919));
+            rng.Shuffle(shuffled);
+            return shuffled;
+        }
+
+        /// <summary>
+        /// 从<b>已经洗好的同一副牌</b>里切走 <paramref name="seat"/> 那一段
+        /// （正好 <see cref="BattleLaunch.DeckSize"/> 张）。
+        ///
+        /// <para>座位 0 拿前 8 张、座位 1 拿接下来 8 张 …… 因此两边的牌<b>一定不重复</b>。
+        /// 牌数不够切（座位数 × 8 &gt; 卡表张数，当前 44 张最多容纳 5 个座位）时，
+        /// 才退回「按座位派生一颗种子各洗一副」的旧口径 —— 那种情况才可能撞牌，
+        /// 但至少不会因为凑不满 8 张而在开局当场抛异常。</para>
+        /// </summary>
+        private static CardPool RandomDeck(ICardCatalog catalog, List<CardDef> shared, int seat)
+        {
+            int start = seat * BattleLaunch.DeckSize;
+            var ids = new List<string>(BattleLaunch.DeckSize);
+
+            if (start + BattleLaunch.DeckSize <= shared.Count)
+            {
+                for (int i = start; i < start + BattleLaunch.DeckSize; i++)
+                {
+                    ids.Add(shared[i].Id);
+                }
+
+                return new CardPool(ids, catalog);
+            }
+
+            var fallback = new List<CardDef>(shared);
+            var rng = new Rng(unchecked((seat + 1) * 7919 + shared.Count));
+            rng.Shuffle(fallback);
+            for (int i = 0; i < fallback.Count && i < BattleLaunch.DeckSize; i++)
+            {
+                ids.Add(fallback[i].Id);
+            }
+
+            return new CardPool(ids, catalog);
+        }
+
+        /// <summary>
+        /// 本局的卡表 —— <b>唯一出口</b>（随机牌组、自定义牌组校验、卡池面板全走它）。
+        ///
+        /// <para>2026-10-30：主菜单的「<b>经典模式</b>」在这里生效 —— 开 = 只给前
+        /// <see cref="GameSettings.ClassicCardLimit"/> 张。过滤放在这个出口而不是散在
+        /// 各个消费点，才能保证「标准战斗抽不到 ao..ar」与「自定义战斗也选不到它」是同一件事。</para>
+        /// </summary>
         public ICardCatalog GetCardCatalog()
         {
             CardCatalogAsset catalog = _cardCatalog == null ? Resources.Load<CardCatalogAsset>("CardCatalog") : _cardCatalog;
-            return catalog == null ? CardCatalog.Builtin() : catalog.CreateCatalog();
+            ICardCatalog raw = catalog == null ? CardCatalog.Builtin() : catalog.CreateCatalog();
+            return GameSettings.Filter(raw);
         }
 
         public CardPool GetAllCardPool() { return CardPool.AllCards(GetCardCatalog()); }
@@ -825,29 +917,15 @@ namespace MagicBrawl.App
         {
             if (_engine == null) throw new InvalidOperationException("请先开局。");
             if (definition == null) throw new ArgumentNullException(nameof(definition));
-            int targetSeat = seat < 0 ? _localSeat : seat;
+            int targetSeat = seat < 0 ? LocalSeat : seat;
             return _engine.GenerateCard(definition.CreateDefinition(10000 + targetSeat), targetSeat);
         }
 
         public CharacterDefinition GetLocalCharacterDefinition()
         {
-            return _setup == null ? BuildSetup().Participants[_localSeat].Character : _setup.Participants[_localSeat].Character;
-        }
-
-        public bool TrySaveCardPoolAndRestart(CardPool pool, out string error)
-        {
-            error = null;
-            if (pool == null) { error = "卡池不能为空。"; return false; }
-            BattleSetup setup;
-            try { setup = BuildSetup(pool); }
-            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException)
-            {
-                error = ex.Message;
-                return false;
-            }
-            if (!SaveStore.TrySaveCardPool(ActiveSaveSlot, pool, out error)) return false;
-            StartBattle();
-            return true;
+            return _setup == null
+                ? BuildSetup(_lastSeed).Participants[LocalSeat].Character
+                : _setup.Participants[LocalSeat].Character;
         }
 
         private void HandleEvent(BattleEvent e)

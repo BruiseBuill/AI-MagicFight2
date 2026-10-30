@@ -20,15 +20,15 @@ MonoBehaviour:
     m_FaceIndex: 0
     m_FamilyName: MagicBrawl Trigger Icons
     m_StyleName: Regular
-    m_PointSize: 258
+    m_PointSize: 207
     m_Scale: 1
-    m_UnitsPerEM: 258
-    m_LineHeight: 257.77777
-    m_AscentLine: 226.84444
-    m_CapLine: 226.84444
-    m_MeanLine: 113.42222
+    m_UnitsPerEM: 207
+    m_LineHeight: 207.14285
+    m_AscentLine: 215.42856
+    m_CapLine: 215.42856
+    m_MeanLine: 91.14285
     m_Baseline: 0
-    m_DescentLine: -30.933332
+    m_DescentLine: -24.857141
     m_SuperscriptOffset: 0
     m_SuperscriptSize: 0
     m_SubscriptOffset: 0
@@ -37,7 +37,7 @@ MonoBehaviour:
     m_UnderlineThickness: 0
     m_StrikethroughOffset: 0
     m_StrikethroughThickness: 0
-    m_TabWidth: 257.77777
+    m_TabWidth: 207.14285
   spriteSheet: {fileID: 2800000, guid: 4e350be48e6eac54dae46f155d945fe7, type: 3}
   m_SpriteCharacterTable:
   - m_ElementType: 2
@@ -64,7 +64,7 @@ MonoBehaviour:
       m_Width: 189
       m_Height: 240
       m_HorizontalBearingX: 0
-      m_HorizontalBearingY: 230.84444
+      m_HorizontalBearingY: 219.42856
       m_HorizontalAdvance: 189
     m_GlyphRect:
       m_X: 0
@@ -80,7 +80,7 @@ MonoBehaviour:
       m_Width: 189
       m_Height: 240
       m_HorizontalBearingX: 0
-      m_HorizontalBearingY: 230.84444
+      m_HorizontalBearingY: 219.42856
       m_HorizontalAdvance: 189
     m_GlyphRect:
       m_X: 189
@@ -96,7 +96,7 @@ MonoBehaviour:
       m_Width: 189
       m_Height: 240
       m_HorizontalBearingX: 0
-      m_HorizontalBearingY: 230.84444
+      m_HorizontalBearingY: 219.42856
       m_HorizontalAdvance: 189
     m_GlyphRect:
       m_X: 378

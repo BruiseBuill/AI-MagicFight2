@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using TMPro;
 using UnityEditor;
@@ -48,53 +48,15 @@ namespace MagicBrawl.App.EditorTools
         private const string TitleFontPath = "Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
         private const string BattleCanvasPath = "Assets/Prefabs/Ui/BattleCanvas.prefab";
 
-        /// <summary>战斗场景的档位（与 <c>BattleDriver._saveSlot</c> 的默认值同口径）。</summary>
-        private const SaveSlot BattleSlot = SaveSlot.Main;
-
         /// <summary>居中锚点 / pivot 的简写。</summary>
         private static readonly Vector2 Mid = new Vector2(0.5f, 0.5f);
 
-        /// <summary>一个「内联 Canvas」场景的落点。</summary>
-        private sealed class SceneTarget
-        {
-            public string ScenePath;
-            public string CanvasName;
-            public string PrefabPath;
-
-            /// <summary>这个场景要不要「卡池」键（商店不要 —— 它已经有背包键了）。</summary>
-            public bool WithPoolButton;
-
-            /// <summary>这个场景要不要压暗「本局已抽到」的牌（只有战斗要）。</summary>
-            public bool DimDrawnCards;
-
-            public SaveSlot Slot;
-        }
-
-        /// <summary>
-        /// 四个「内联 Canvas」场景。<b>Home 不在里面</b> —— 它是选档界面，
-        /// 放「退出到选存档」等于自己点自己（用户 2026-10-05 口径：Home 不加）。
-        /// </summary>
-        private static readonly SceneTarget[] Targets =
-        {
-            new SceneTarget { ScenePath = "Assets/Scenes/Map.unity", CanvasName = "MapCanvas",
-                PrefabPath = "Assets/Prefabs/Ui/MapCanvas.prefab", WithPoolButton = true,
-                DimDrawnCards = false, Slot = SaveSlot.Main },
-            new SceneTarget { ScenePath = "Assets/Scenes/Shop.unity", CanvasName = "ShopCanvas",
-                PrefabPath = "Assets/Prefabs/Ui/ShopCanvas.prefab", WithPoolButton = false,
-                DimDrawnCards = false, Slot = SaveSlot.Main },
-            new SceneTarget { ScenePath = "Assets/Scenes/Upgrade.unity", CanvasName = "UpgradeCanvas",
-                PrefabPath = "Assets/Prefabs/Ui/UpgradeCanvas.prefab", WithPoolButton = true,
-                DimDrawnCards = false, Slot = SaveSlot.Main },
-            new SceneTarget { ScenePath = "Assets/Scenes/WitchWorkshop.unity", CanvasName = "WitchCanvas",
-                PrefabPath = "Assets/Prefabs/Ui/WitchCanvas.prefab", WithPoolButton = true,
-                DimDrawnCards = false, Slot = SaveSlot.Main },
-        };
 
         // ══════════════════════════════════════════════════════
         //  菜单
         // ══════════════════════════════════════════════════════
 
-        [MenuItem("魔法乱斗/M44 · 构建全局覆盖层（设置键 + 卡池键）", false, 44)]
+        [MenuItem("魔法乱斗/M44 · 构建全局覆盖层（设置键）", false, 44)]
         private static void MenuEntry()
         {
             // ⚠ 故意不加 EditorUtility.DisplayDialog：带弹窗的菜单在脚本 / MCP 调用时
@@ -122,17 +84,10 @@ namespace MagicBrawl.App.EditorTools
                 return log.ToString();
             }
 
-            // ① 战斗：场景里是 PrefabInstance → 只改 Prefab（它是唯一带「本局已抽压暗」的场景）。
-            EditPrefab(BattleCanvasPath, true, true, BattleSlot, assets, log);
-
-            // ② 四个内联 Canvas 场景：Prefab 与场景两份都要补。
-            EditorSceneManager.SaveOpenScenes();
-            for (int i = 0; i < Targets.Length; i++)
-            {
-                SceneTarget target = Targets[i];
-                EditPrefab(target.PrefabPath, target.WithPoolButton, target.DimDrawnCards, target.Slot, assets, log);
-                EditScene(target, assets, log);
-            }
+            // 2026-10-28：只剩战斗画布要这一层。主菜单与牌组编成界面都不需要
+            //「退出到主菜单」（它们本来就在主菜单链路上），事件场景已全部删除。
+            // 战斗场景里那份是 PrefabInstance → 只改 Prefab 就够。
+            EditPrefab(BattleCanvasPath, assets, log);
 
             AssetDatabase.SaveAssets();
             log.AppendLine("[M44] ==== 完成 ====");
@@ -147,7 +102,7 @@ namespace MagicBrawl.App.EditorTools
         /// <para>供 <c>BattleUiBuilder</c>（M8）在重建战斗界面时调用 —— 这样「重建战斗界面」
         /// 一条龙里就带上了这一层，不会出现「跑完 M8 右上角的键没了」。</para>
         /// </summary>
-        public static void Ensure(GameObject canvasRoot, bool dimDrawnCards, SaveSlot slot)
+        public static void Ensure(GameObject canvasRoot)
         {
             if (canvasRoot == null)
             {
@@ -162,8 +117,7 @@ namespace MagicBrawl.App.EditorTools
                 return;
             }
 
-            // 战斗场景固定有卡池键（它是「其余四个场景」的一员，商店那条例外管不到它）。
-            ApplyToRoot(canvasRoot, true, dimDrawnCards, slot, assets, log);
+            ApplyToRoot(canvasRoot, assets, log);
         }
 
         // ══════════════════════════════════════════════════════
@@ -171,8 +125,7 @@ namespace MagicBrawl.App.EditorTools
         // ══════════════════════════════════════════════════════
 
         /// <summary>改一份 Prefab（LoadPrefabContents → 补层 → SaveAsPrefabAsset）。</summary>
-        private static void EditPrefab(string prefabPath, bool withPool, bool dimCards, SaveSlot slot,
-            Assets assets, StringBuilder log)
+        private static void EditPrefab(string prefabPath, Assets assets, StringBuilder log)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
             if (root == null)
@@ -183,7 +136,7 @@ namespace MagicBrawl.App.EditorTools
 
             try
             {
-                ApplyToRoot(root, withPool, dimCards, slot, assets, log);
+                ApplyToRoot(root, assets, log);
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
                 log.AppendLine("  ✔ Prefab " + prefabPath);
             }
@@ -193,36 +146,12 @@ namespace MagicBrawl.App.EditorTools
             }
         }
 
-        /// <summary>打开一个场景、在它的 Canvas 上补层、存场景。</summary>
-        private static void EditScene(SceneTarget target, Assets assets, StringBuilder log)
-        {
-            if (!System.IO.File.Exists(AbsolutePath(target.ScenePath)))
-            {
-                log.AppendLine("✘ 场景不存在，跳过：" + target.ScenePath);
-                return;
-            }
-
-            UnityEngine.SceneManagement.Scene scene =
-                EditorSceneManager.OpenScene(target.ScenePath, OpenSceneMode.Single);            GameObject canvas = GameObject.Find(target.CanvasName);
-            if (canvas == null)
-            {
-                log.AppendLine("✘ " + target.ScenePath + " 里找不到 " + target.CanvasName + "，跳过");
-                return;
-            }
-
-            ApplyToRoot(canvas, target.WithPoolButton, target.DimDrawnCards, target.Slot, assets, log);
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene, target.ScenePath);
-            log.AppendLine("  ✔ 场景 " + target.ScenePath);
-        }
-
         // ══════════════════════════════════════════════════════
         //  建层
         // ══════════════════════════════════════════════════════
 
         /// <summary>把 <c>GlobalOverlayLayer</c> 建到 <paramref name="root"/> 下（先拆旧的）。</summary>
-        private static void ApplyToRoot(GameObject root, bool withPool, bool dimCards, SaveSlot slot,
-            Assets assets, StringBuilder log)
+        private static void ApplyToRoot(GameObject root, Assets assets, StringBuilder log)
         {
             Transform old = FindDeep(root.transform, LayerName);
             if (old != null)
@@ -268,61 +197,17 @@ namespace MagicBrawl.App.EditorTools
             setButton.targetGraphic = setImg;
             setButton.transition = Selectable.Transition.None;
 
-            // ── 右下角：卡池键 ────────────────────────────────
-            Button poolButton = null;
-            if (withPool)
-            {
-                GameObject poolGo = NewUi("PoolButton", layer.transform);
-                Box(Rt(poolGo), new Vector2(1f, 0f), new Vector2(1f, 0f),
-                    new Vector2(-UiLayout.OverlayPoolButtonRight, UiLayout.OverlayPoolButtonBottom),
-                    new Vector2(UiLayout.OverlayPoolButtonWidth, UiLayout.OverlayPoolButtonHeight));
-                var poolImg = poolGo.AddComponent<Image>();
-                poolImg.sprite = assets.BagIcon;
-                poolImg.color = assets.BagIcon != null ? Color.white : UiTheme.Panel;
-                poolImg.raycastTarget = true;
-
-                poolButton = poolGo.AddComponent<Button>();
-                poolButton.targetGraphic = poolImg;
-                poolButton.transition = Selectable.Transition.None;
-
-                // 图标本身没写字，靠下面这行小字说清「这是看卡池」。
-                // ⚠ 它挂在按钮**外面一点**（y 为负 = 按钮矩形之下），UI 没有裁剪所以画得出来；
-                //   设成按钮的子节点是为了「按钮隐藏时小字一起隐藏」。
-                GameObject poolLabelGo = NewUi("Label", poolGo.transform);
-                Box(Rt(poolLabelGo), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-                    new Vector2(0f, UiLayout.OverlayPoolLabelCenterY), new Vector2(140f, 34f));
-                AddText(poolLabelGo, assets.Body, UiLayout.FontSizeOverlayPoolLabel,
-                    UiTheme.ShopBagCountText, TextAlignmentOptions.Center, "卡池");
-            }
-
             // ── 设置层（默认失活）────────────────────────────
             GameObject settingsLayer = BuildSettingsLayer(layer.transform, assets);
-
-            // ── 卡池层（默认失活）────────────────────────────
-            CardPoolView cardPool = BuildCardPoolLayer(layer.transform, assets);
 
             // ── 接线 ─────────────────────────────────────────
             var view = layer.AddComponent<GlobalOverlayView>();
             var serialized = new SerializedObject(view);
             SetRef(serialized, "_settingsButton", setButton);
-            SetRef(serialized, "_poolButton", poolButton);
             SetRef(serialized, "_settingsLayer", settingsLayer);
             SetRef(serialized, "_settingsVeil", settingsLayer.transform.Find("Veil").GetComponent<Button>());
             SetRef(serialized, "_resumeButton", settingsLayer.transform.Find("Panel/ResumeButton").GetComponent<Button>());
             SetRef(serialized, "_quitButton", settingsLayer.transform.Find("Panel/QuitButton").GetComponent<Button>());
-            SetRef(serialized, "_cardPool", cardPool);
-            SerializedProperty slotProp = serialized.FindProperty("_slot");
-            if (slotProp != null)
-            {
-                slotProp.enumValueIndex = (int)slot;
-            }
-
-            SerializedProperty dimProp = serialized.FindProperty("_dimDrawnCards");
-            if (dimProp != null)
-            {
-                dimProp.boolValue = dimCards;
-            }
-
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // 战斗：把这一层接到 `BattleUi._overlay` —— 顶栏齿轮走它打开设置，
@@ -338,13 +223,8 @@ namespace MagicBrawl.App.EditorTools
             }
 
             settingsLayer.SetActive(false);
-            if (cardPool != null)
-            {
-                cardPool.gameObject.SetActive(false);
-            }
 
-            log.AppendLine("  · 覆盖层：设置键" + (withPool ? " + 卡池键" : "（无卡池键 —— 商店已有背包键）")
-                           + (dimCards ? " + 本局已抽压暗" : ""));
+            log.AppendLine("  · 覆盖层：设置键");
         }
 
         /// <summary>设置层：遮罩（点它关闭）+ 面板（标题 / 小字 / 继续游戏 / 退出到主菜单）。</summary>
@@ -431,206 +311,6 @@ namespace MagicBrawl.App.EditorTools
                 UiTheme.ShopLeaveText, TextAlignmentOptions.Center, label);
         }
 
-        /// <summary>卡池层：复用商店背包那一整套版式（面板底图、6 列网格、唯一那份卡面）。</summary>
-        private static CardPoolView BuildCardPoolLayer(Transform parent, Assets assets)
-        {
-            GameObject layerGo = NewUi("PoolLayer", parent);
-            Stretch(Rt(layerGo));
-
-            GameObject veilGo = NewUi("Veil", layerGo.transform);
-            Stretch(Rt(veilGo));
-            var veilImg = veilGo.AddComponent<Image>();
-            veilImg.color = UiTheme.ShopBagVeil;
-            veilImg.raycastTarget = true;
-            var veilButton = veilGo.AddComponent<Button>();
-            veilButton.targetGraphic = veilImg;
-            veilButton.transition = Selectable.Transition.None;
-
-            GameObject panelGo = NewUi("Panel", layerGo.transform);
-            Box(Rt(panelGo), Mid, Mid, Vector2.zero,
-                new Vector2(UiLayout.ShopBagPanelWidth, UiLayout.ShopBagPanelHeight));
-            var panelImg = panelGo.AddComponent<Image>();
-            panelImg.sprite = assets.Panel;
-            panelImg.color = assets.Panel != null ? Color.white : UiTheme.Panel;
-            panelImg.raycastTarget = true;
-            if (assets.Panel != null)
-            {
-                panelImg.type = Image.Type.Sliced;
-                panelImg.pixelsPerUnitMultiplier = 1f;
-            }
-
-            GameObject titleGo = NewUi("Title", panelGo.transform);
-            Box(Rt(titleGo), Mid, Mid, new Vector2(0f, UiLayout.ShopBagTitleCenterY),
-                new Vector2(UiLayout.ShopBagTitleWidth, UiLayout.ShopBagTitleHeight));
-            AddText(titleGo, assets.Title, UiLayout.FontSizeShopBagTitle,
-                UiTheme.ShopBagTitleText, TextAlignmentOptions.Center, "卡池");
-
-            GameObject countGo = NewUi("Count", panelGo.transform);
-            Box(Rt(countGo), Mid, Mid, new Vector2(0f, UiLayout.ShopBagCountCenterY),
-                new Vector2(UiLayout.ShopBagCountWidth, UiLayout.ShopBagCountHeight));
-            AddText(countGo, assets.Body, UiLayout.FontSizeShopBagCount,
-                UiTheme.ShopBagCountText, TextAlignmentOptions.Center, "0 张");
-
-            // 说明行（战斗里写「灰色的牌本局已经抽到过」）。放底部左侧 ——
-            // 标题行与网格之间只剩 22 px，塞不下第二行。
-            float hintWidth = 900f;
-            GameObject hintGo = NewUi("Hint", panelGo.transform);
-            Box(Rt(hintGo), Mid, Mid,
-                new Vector2(-UiLayout.ShopBagPanelWidth * 0.5f + UiLayout.ShopBagGridPadding + hintWidth * 0.5f,
-                    UiLayout.ShopBagCloseCenterY),
-                new Vector2(hintWidth, UiLayout.ShopBagCountHeight));
-            AddText(hintGo, assets.Body, UiLayout.FontSizeShopBagCount,
-                UiTheme.ShopBagCountText, TextAlignmentOptions.Left, string.Empty);
-
-            GameObject scrollGo = NewUi("Cards", panelGo.transform);
-            Box(Rt(scrollGo), Mid, Mid, new Vector2(0f, UiLayout.ShopBagScrollCenterY),
-                new Vector2(UiLayout.ShopBagScrollWidth, UiLayout.ShopBagScrollHeight));
-            var scrollImg = scrollGo.AddComponent<Image>();
-            scrollImg.color = UiTheme.ShopBagGridBacking;
-            scrollImg.raycastTarget = true;
-
-            var scroll = scrollGo.AddComponent<ScrollRect>();
-            scroll.horizontal = false;
-            scroll.vertical = true;
-            scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = 48f;
-
-            GameObject viewportGo = NewUi("Viewport", scrollGo.transform);
-            Stretch(Rt(viewportGo));
-            Rt(viewportGo).offsetMax = new Vector2(-UiLayout.ShopBagViewportRightInset, 0f);
-            var viewportImg = viewportGo.AddComponent<Image>();
-            viewportImg.color = new Color(0f, 0f, 0f, 0f);
-            viewportImg.raycastTarget = true;
-            viewportGo.AddComponent<RectMask2D>();
-
-            GameObject contentGo = NewUi("Content", viewportGo.transform);
-            RectTransform contentRt = Rt(contentGo);
-            contentRt.anchorMin = new Vector2(0f, 1f);
-            contentRt.anchorMax = Vector2.one;
-            contentRt.pivot = new Vector2(0.5f, 1f);
-            contentRt.anchoredPosition = Vector2.zero;
-            contentRt.sizeDelta = Vector2.zero;
-
-            var grid = contentGo.AddComponent<GridLayoutGroup>();
-            grid.cellSize = new Vector2(UiLayout.ShopBagCellWidth, UiLayout.ShopBagCellHeight);
-            grid.spacing = new Vector2(UiLayout.ShopBagGridSpacingX, UiLayout.ShopBagGridSpacingY);
-            grid.padding = new RectOffset((int)UiLayout.ShopBagGridPadding, (int)UiLayout.ShopBagGridPadding,
-                (int)UiLayout.ShopBagGridPadding, (int)UiLayout.ShopBagGridPadding);
-            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            grid.constraintCount = UiLayout.ShopBagColumns;
-            grid.childAlignment = TextAnchor.UpperCenter;
-
-            var fitter = contentGo.AddComponent<ContentSizeFitter>();
-            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            scroll.viewport = Rt(viewportGo);
-            scroll.content = contentRt;
-
-            GameObject barGo = NewUi("Scrollbar", scrollGo.transform);
-            RectTransform barRt = Rt(barGo);
-            barRt.anchorMin = new Vector2(1f, 0f);
-            barRt.anchorMax = Vector2.one;
-            barRt.pivot = new Vector2(1f, 0.5f);
-            barRt.offsetMin = new Vector2(-UiLayout.ShopBagScrollbarWidth, 8f);
-            barRt.offsetMax = new Vector2(0f, -8f);
-            var barBg = barGo.AddComponent<Image>();
-            barBg.color = UiTheme.PanelEdge;
-            barBg.raycastTarget = true;
-
-            GameObject handleGo = NewUi("Handle", barGo.transform);
-            Stretch(Rt(handleGo));
-            var handleImg = handleGo.AddComponent<Image>();
-            handleImg.color = UiTheme.TextSecondary;
-            handleImg.raycastTarget = true;
-
-            var scrollbar = barGo.AddComponent<Scrollbar>();
-            scrollbar.handleRect = Rt(handleGo);
-            scrollbar.targetGraphic = handleImg;
-            scrollbar.direction = Scrollbar.Direction.BottomToTop;
-            scroll.verticalScrollbar = scrollbar;
-
-            // 卡面模板（唯一那份 CardView_Hand 的实例，失活）
-            CardView card = null;
-            if (assets.HandPrefab != null)
-            {
-                GameObject face = (GameObject)PrefabUtility.InstantiatePrefab(assets.HandPrefab, contentGo.transform);
-                face.name = "PoolCardTemplate";
-                Box(Rt(face), Mid, Mid, Vector2.zero,
-                    new Vector2(UiLayout.ShopBagCardFaceWidth, UiLayout.HandCardHeight));
-                card = face.GetComponent<CardView>();
-                if (card != null)
-                {
-                    card.SetFaceWidth(UiLayout.ShopBagCardFaceWidth);
-                }
-
-                // ⚠ 卡面子树自带的交互要全部关掉：否则① 卡面会吃掉滚动的拖拽（列表拖不动），
-                //   ② 一次点击冒泡两遍。
-                foreach (Graphic g in face.GetComponentsInChildren<Graphic>(true))
-                {
-                    g.raycastTarget = false;
-                }
-
-                foreach (Button b in face.GetComponentsInChildren<Button>(true))
-                {
-                    b.enabled = false;
-                }
-
-                foreach (CardInteractor it in face.GetComponentsInChildren<CardInteractor>(true))
-                {
-                    it.enabled = false;
-                }
-
-                face.SetActive(false);
-            }
-
-            GameObject emptyGo = NewUi("Empty", panelGo.transform);
-            Box(Rt(emptyGo), Mid, Mid, new Vector2(0f, UiLayout.ShopBagScrollCenterY),
-                new Vector2(UiLayout.ShopBagEmptyWidth, UiLayout.ShopBagEmptyHeight));
-            AddText(emptyGo, assets.Body, UiLayout.FontSizeShopBagEmpty, UiTheme.ShopBagEmptyText,
-                TextAlignmentOptions.Center, "卡池里还没有牌");
-            emptyGo.SetActive(false);
-
-            GameObject closeGo = NewUi("CloseButton", panelGo.transform);
-            Box(Rt(closeGo), Mid, Mid,
-                new Vector2(UiLayout.ShopBagPanelWidth * 0.5f - UiLayout.ShopBagCloseRightInset
-                            - UiLayout.ShopBagCloseWidth * 0.5f, UiLayout.ShopBagCloseCenterY),
-                new Vector2(UiLayout.ShopBagCloseWidth, UiLayout.ShopBagCloseHeight));
-            var closeImg = closeGo.AddComponent<Image>();
-            closeImg.sprite = assets.Button;
-            closeImg.color = assets.Button != null ? Color.white : UiTheme.Panel;
-            closeImg.raycastTarget = true;
-            if (assets.Button != null)
-            {
-                closeImg.type = Image.Type.Sliced;
-                closeImg.pixelsPerUnitMultiplier = 1f;
-            }
-
-            var closeButton = closeGo.AddComponent<Button>();
-            closeButton.targetGraphic = closeImg;
-            closeButton.transition = Selectable.Transition.None;
-
-            GameObject closeLabelGo = NewUi("Label", closeGo.transform);
-            Stretch(Rt(closeLabelGo));
-            AddText(closeLabelGo, assets.Title, UiLayout.FontSizeShopBagClose,
-                UiTheme.ShopBagCloseText, TextAlignmentOptions.Center, "关闭");
-
-            var view = layerGo.AddComponent<CardPoolView>();
-            var serialized = new SerializedObject(view);
-            SetRef(serialized, "_veilButton", veilButton);
-            SetRef(serialized, "_closeButton", closeButton);
-            SetRef(serialized, "_title", titleGo.GetComponent<TMP_Text>());
-            SetRef(serialized, "_count", countGo.GetComponent<TMP_Text>());
-            SetRef(serialized, "_hint", hintGo.GetComponent<TMP_Text>());
-            SetRef(serialized, "_empty", emptyGo);
-            SetRef(serialized, "_scroll", scroll);
-            SetRef(serialized, "_content", contentRt);
-            SetRef(serialized, "_cardTemplate", card);
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            return view;
-        }
-
         // ══════════════════════════════════════════════════════
         //  资源 / 小工具
         // ══════════════════════════════════════════════════════
@@ -657,8 +337,7 @@ namespace MagicBrawl.App.EditorTools
             assets.Title = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(TitleFontPath);
             assets.Panel = AssetDatabase.LoadAssetAtPath<Sprite>(PanelSpritePath);
             assets.Button = AssetDatabase.LoadAssetAtPath<Sprite>(UiLayout.HandPickConfirmSpritePath);
-            assets.BagIcon = AssetDatabase.LoadAssetAtPath<Sprite>(UiLayout.ShopBagIconSpritePath);
-            assets.Leave = AssetDatabase.LoadAssetAtPath<Sprite>(UiLayout.ShopLeaveSpritePath);
+            assets.Leave = AssetDatabase.LoadAssetAtPath<Sprite>(UiLayout.OverlayQuitSpritePath);
             assets.HandPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HandCardPath);
 
             // 齿轮图是 Python 直接写盘的 png，Unity 可能还没把它导成 Sprite → 先钉导入参数再取。
@@ -671,8 +350,7 @@ namespace MagicBrawl.App.EditorTools
             if (assets.HandPrefab == null) { log.AppendLine("✘ 缺卡面 Prefab：" + HandCardPath); ok = false; }
             if (assets.Panel == null) { log.AppendLine("⚠ 缺面板底图（会退化成纯色面板）：" + PanelSpritePath); }
             if (assets.Button == null) { log.AppendLine("⚠ 缺按钮底图（会退化成纯色块）：" + UiLayout.HandPickConfirmSpritePath); }
-            if (assets.BagIcon == null) { log.AppendLine("⚠ 缺背包图标（卡池键会变成色块）：" + UiLayout.ShopBagIconSpritePath); }
-            if (assets.Leave == null) { log.AppendLine("⚠ 缺离开键底图（退出键会退化成色块）：" + UiLayout.ShopLeaveSpritePath); }
+            if (assets.Leave == null) { log.AppendLine("⚠ 缺离开键底图（退出键会退化成色块）：" + UiLayout.OverlayQuitSpritePath); }
             if (assets.Gear == null) { log.AppendLine("⚠ 缺齿轮图（设置键会退化成一个方块）：" + UiLayout.OverlaySettingsGearSpritePath); }
             return ok;
         }

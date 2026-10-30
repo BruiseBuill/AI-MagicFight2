@@ -1,4 +1,4 @@
-using MagicBrawl.Core;
+﻿using MagicBrawl.Core;
 using TMPro;
 using UnityEngine;
 
@@ -84,7 +84,7 @@ namespace MagicBrawl.App
             AddMini(_playerCoolingRoot, "l", 2, 0, false);   // 磁暴：无光环、剩余 2
             AddMini(_playerCoolingRoot, "ak", 4, 1, true);   // 石化：光环 1 枚未用
             AddMini(_playerCoolingRoot, "af", 2, 2, true);   // 冰封铠甲：双光环都还在
-            AddMini(_playerCoolingRoot, "ad", 1, 0, false);  // 雷云：剩余 1（强调色）
+            AddMini(_playerCoolingRoot, "ad", 1, 0, false);  // 吞食：剩余 1（强调色）
             AddMini(_playerCoolingRoot, "aa", 2, 0, false);  // 漩涡
         }
 

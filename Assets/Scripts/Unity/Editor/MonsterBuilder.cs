@@ -221,11 +221,14 @@ namespace MagicBrawl.App.EditorTools
                 PoolDisplayName = "荆棘傀儡 · 卡池（双发）",
                 // 双发逻辑的档位顺序：防御光环卡（区域减速牌除外）→ 双发卡 → 加速 → 按力量。
                 // 卡池 = 全部 4 张双发卡（荆棘 t / 飞叶连击 u / 藤蔓 v / 狂躁蘑菇 w）
-                //        + 3 张防御光环卡（冰封铠甲 af / 冷冻核心 as / 烈焰斗篷 ah）
-                //        + 1 张加速卡（湍流 ab，加速 ×2）。
+                //        + 2 张防御光环卡（冰封铠甲 af / 烈焰斗篷 ah）
+                //        + 1 张加速卡（湍流 ab，加速 ×2）
+                //        + 1 张冰霜核心（ao：减速 + 让对方下次进攻力量减半）。
                 // 4 张双发里 3 张带「对方无法防御时」的额外收益 —— 正好呼应
                 // 「双发不吃防御修正时会很痛」这件事（见 HeuristicAgent.ShouldDefendDouble）。
-                PoolCardIds = new[] { "t", "u", "v", "w", "af", "as", "ah", "ab" },
+                // ⚠ 2026-10-29：原第 7 张「冷冻核心 as」已随卡表改版删除，由 ao 冰霜核心顶上
+                //   （同为 6/3 冰系，且「削弱对方下一刀」正好是双发最想要的节奏）。
+                PoolCardIds = new[] { "t", "u", "v", "w", "af", "ah", "ab", "ao" },
                 Note = "双发：交双发逼对方交两张牌（全部 4 张双发 + 3 张防御光环）",
             },
 
@@ -240,11 +243,14 @@ namespace MagicBrawl.App.EditorTools
                 PoolFileName = "MonsterPool_Combo",
                 PoolDisplayName = "雷霆傀儡 · 卡池（连击）",
                 // 连击逻辑的档位顺序：连击卡 → 区域加速 → 加速 → 按力量。
-                // 卡池 = 全部 7 张连击卡（闪电 j / 电弧 k / 磁暴 l / 雷鸣 m / 引雷 n /
-                //          击穿 ap / 闪电球 ar）+ 1 张区域加速（海涌 q，同时是加速卡）。
+                // 卡池 = 全部 6 张连击卡（闪电 j / 电弧 k / 磁暴 l / 雷鸣 m / 引雷 n /
+                //          雷云 aq）+ 1 张区域加速（海涌 q，同时是加速卡）
+                //        + 1 张加速卡（充能 am：每冷却一张手牌再吃一次加速）。
                 // ⚠ 不放「过载 o」：它是回血卡（连击判定里被排除），且 1 血时
                 //   HealMinusMax 会削自己的生命上限 —— 1 血怪打它等于自杀。
-                PoolCardIds = new[] { "j", "k", "l", "m", "n", "ap", "ar", "q" },
+                // ⚠ 2026-10-29：原来的 ap 击穿 / ar 闪电球 已随卡表改版删除
+                //   （ap 变成火炬、ar 变成地刺，两者都不是连击卡），连击位由 aq 雷云顶上。
+                PoolCardIds = new[] { "j", "k", "l", "m", "n", "aq", "q", "am" },
                 Note = "连击：靠连击 / 区域加速打多次（全部 7 张连击卡）",
             },
 
@@ -261,11 +267,13 @@ namespace MagicBrawl.App.EditorTools
                 // 减速逻辑的档位顺序：区域减速（须满足开启条件：对方冷却 ≥3 且手牌 ≤3）
                 //   → 防御光环卡 → 连击 → 双发 → 加速 → 按力量。
                 // 卡池 = 3 张区域减速（暴风雪 a / 冰风暴 b / 雪崩 an）
-                //        + 3 张普通减速（凝固 c / 雷云 ad / 地震 i 的条件减速）
-                //        + 1 张「减速 + 防御光环」（冷冻核心 as）+ 1 张防御光环（冰封铠甲 af）。
+                //        + 3 张普通减速（凝固 c / 吞食 ad / 地震 i 的条件减速）
+                //        + 1 张「减速 + 削弱对方下一刀」（冰霜核心 ao）+ 1 张防御光环（冰封铠甲 af）。
+                // ⚠ 2026-10-29：原「冷冻核心 as」已删，由 ao 冰霜核心顶替；ad 改名为吞食
+                //   （效果一字未动：减速 + 查看对方 ≤4 的手牌送冷却）。
                 // ⚠ 条件不满足时区域减速会掉到最后一档 —— 那时它只是一张普通牌，
                 //   这是用户 2026-10-03 的明确口径（「使用之前必须先检查」）。
-                PoolCardIds = new[] { "a", "b", "an", "c", "ad", "i", "as", "af" },
+                PoolCardIds = new[] { "a", "b", "an", "c", "ad", "i", "ao", "af" },
                 Note = "减速：区域减速为核心拖节奏（开启条件不满足时按普通牌打）",
             },
 
@@ -278,7 +286,7 @@ namespace MagicBrawl.App.EditorTools
             //   · 血量 = BossHp（4），且 SyncHp = false（改血不会被构建器拉回）；
             //   · AI 档案留空 = 通用 HeuristicAgent（与「怪物按流派打分」同一套脑子）；
             //   · 行为留空（空数组 = 这条路径上确实没有行为，不是「没配」）；
-            //   · **卡池留空 = useAllCards = true**（全 45 张）—— 那是**占位**，
+            //   · **卡池留空 = useAllCards = true**（全 44 张）—— 那是**占位**，
             //     等用户打开 Pools/MonsterPool_Boss.asset 取消勾选再填 cardIds。
             //     ⚠ 不能留成「空卡池」：怪物开局要一次抽满 8 张（DealProfile.Monster），
             //     卡池不足 8 张不是"少发几张"，是进战斗当场抛异常（见 MinPoolCards）。
@@ -451,8 +459,7 @@ namespace MagicBrawl.App.EditorTools
             asset.cardIds = new string[0];
 
             asset.aiProfile = spec.AiProfile ?? string.Empty;
-            asset.upgrades = new CardUpgradeRecord[0];
-            asset.abilities = spec.Abilities ?? new CharacterAbilityConfig[0];
+                asset.abilities = spec.Abilities ?? new CharacterAbilityConfig[0];
             // 美术：本批怪共用 BattleArtLibrary 里那份（不勾自定义），
             // 将来要单独换图时在资产上勾上 useCustomArt 再填动作即可。
             asset.useCustomArt = false;

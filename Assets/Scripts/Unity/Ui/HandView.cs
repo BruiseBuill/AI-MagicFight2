@@ -28,7 +28,7 @@ namespace MagicBrawl.App
     /// 由后者去 <c>DecisionSnapshot.Options</c> 里找对应选项（铁律第 3 条：规则只收敛在引擎一处）。</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class HandView : MonoBehaviour, ICardGestureHost
+    public sealed class HandView : MonoBehaviour, ICardGestureHost, ICardSlideHost
     {
         public int LocalSeat { get; private set; }
         public int OpponentSeat { get; private set; } = 1;
@@ -119,6 +119,29 @@ namespace MagicBrawl.App
         /// 只把「玩家比划的方向」报回给 BattleUi 去对 Options（铁律第 3 条）。</para>
         /// </summary>
         private int _dropIntentSeat = -1;
+
+        // ── 滑动选牌（2026-10-30）──────────────────────────────
+        //
+        //  用户口径：像斗地主那样「按住手牌横向划过去，划到的牌依次选中」；
+        //  单选的那些拍（进攻 / 防御只能打一张）**后面划到的不顶掉前面的**。
+        //
+        //  与拖牌的关系：两者抢同一串指针事件，由 TryBeginSlide 按**主轴方向**分派 ——
+        //  向上（进判定区）= 出牌，横向 = 选牌。滑动期间牌不跟手、不重排。
+
+        /// <summary>正在滑动选牌。</summary>
+        private bool _sliding;
+
+        /// <summary>本次滑动已经处理过的牌（同一张划两次既不重复选、也不来回取消）。</summary>
+        private readonly HashSet<int> _slideTouched = new HashSet<int>();
+
+        /// <summary>本次滑动已作废（决策已经交出去了）—— 之后划到的牌一律不理。</summary>
+        private bool _slideDead;
+
+        /// <summary>横向位移至少这么多像素才可能是滑动（太小 = 手抖，交给点击 / 拖拽）。</summary>
+        private const float SlideMinPixels = 12f;
+
+        /// <summary>横向位移要超过纵向的多少倍才算「滑动选牌」，否则按向上拖牌出牌处理。</summary>
+        private const float SlideHorizontalRatio = 1.35f;
 
         // ── 拖拽状态 ─────────────────────────────────────────
         private readonly List<int> _order = new List<int>();
@@ -308,12 +331,163 @@ namespace MagicBrawl.App
         }
 
         // ══════════════════════════════════════════════════════
+        //  滑动选牌（2026-10-30 · ICardSlideHost）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 这一次拖拽算不算「滑动选牌」（见 <see cref="ICardSlideHost"/>）。
+        ///
+        /// <para><b>判据只看方向</b>：横向位移 ≥ <see cref="SlideMinPixels"/> 像素，
+        /// 且 ≥ 纵向位移的 <see cref="SlideHorizontalRatio"/> 倍。向上拖（出牌）天然
+        /// 不满足这两条，所以「拖进判定区」那条路一点都不受影响。</para>
+        ///
+        /// <para><b>起点牌算第一张</b>：按住那张立即被选中 —— 与斗地主的手感一致。
+        /// 「只能选一张」的拍由 <see cref="SlideTouch"/> 拦住后来的，所以不会出现
+        /// 「划过去一片、最后停在哪张就换成哪张」。</para>
+        /// </summary>
+        public bool TryBeginSlide(CardView card, Vector2 pressScreenPos, Vector2 screenPos)
+        {
+            if (card == null || !card.HasCard)
+            {
+                return false;
+            }
+
+            int index = _shown.IndexOf(card);
+            if (index < 0 || card.PresentationHidden)
+            {
+                return false;
+            }
+
+            Vector2 delta = screenPos - pressScreenPos;
+            float ax = Mathf.Abs(delta.x);
+            float ay = Mathf.Abs(delta.y);
+            if (ax < SlideMinPixels || ax < ay * SlideHorizontalRatio)
+            {
+                return false;
+            }
+
+            _sliding = true;
+            _slideDead = false;
+            _slideTouched.Clear();
+            _hoverIndex = -1;
+            HidePeek();
+
+            // 与拖牌同一条口径：手一动，上一次点击留下的辉光就该让位给这次手势。
+            _selectedUid = -1;
+
+            _slideTouched.Add(card.Card.Uid);
+            SlideTouch(card);
+            return true;
+        }
+
+        /// <summary>终止本次滑动（决策收尾 / 手牌重绑）。之后同一手势里划到的牌不再生效。</summary>
+        public void EndSlide()
+        {
+            _sliding = false;
+            _slideDead = true;
+            _slideTouched.Clear();
+        }
+
+        /// <summary>滑动中：把指针下面那张牌收进「本次已划到」，并交给 <see cref="SlideTouch"/>。</summary>
+        private void Slide(Vector2 screenPos)
+        {
+            if (!_sliding || _slideDead)
+            {
+                return;
+            }
+
+            CardView card = CardAt(screenPos);
+            if (card == null || !card.HasCard)
+            {
+                return;
+            }
+
+            if (!_slideTouched.Add(card.Card.Uid))
+            {
+                return;
+            }
+
+            SlideTouch(card);
+        }
+
+        /// <summary>
+        /// 滑动划到一张牌 → 与「点一下」同一套语义（<see cref="OnCardClicked"/> 的分发），
+        /// 只差两条：
+        /// <list type="number">
+        /// <item><b>只加不减</b>：划到已经选中的牌不会取消它（点击才会切换）；</item>
+        /// <item><b>不顶掉前面的</b>：双发满两张就不再加；出牌拍（只能打一张）
+        ///       第一张亮起后就固定住。替换 / 弹窗的上限由它们自己把着
+        ///       （<see cref="DealView.Toggle"/> / <see cref="HandPickView.Toggle"/>）。</item>
+        /// </list>
+        /// </summary>
+        private void SlideTouch(CardView card)
+        {
+            if (card == null || _slideDead)
+            {
+                return;
+            }
+
+            if (_accumulatePick)
+            {
+                // ⚠ 与点击那条**刻意不同**：点击满两张后再点第三张会顶掉最早那张
+                //   （保证「刚表达的那张」一定在集合里）；滑动按用户口径
+                //   「不得超过上限」，满了就不再接受新的。
+                if (_picked.Contains(card.Card.Uid) || _picked.Count >= MaxPicked)
+                {
+                    return;
+                }
+
+                AddPick(card.Card.Uid);
+                if (CardClicked != null)
+                {
+                    CardClicked(card);
+                }
+
+                return;
+            }
+
+            // 出牌拍（SetDropIntent 给了方向）：点击本来就不提交、也只能打一张 ——
+            // 第一张划到的那张固定，后面的划过不顶掉它。
+            if (_dropIntentSeat >= 0 && _selectedUid >= 0 && _selectedUid != card.Card.Uid)
+            {
+                return;
+            }
+
+            OnCardClicked(card);
+        }
+
+        /// <summary>屏幕点上压着的那张手牌（没有 → null）。倒序找 = 取画在最上面的那张。</summary>
+        private CardView CardAt(Vector2 screenPos)
+        {
+            for (int i = _shown.Count - 1; i >= 0; i--)
+            {
+                CardView v = _shown[i];
+                if (v == null || !v.isActiveAndEnabled || !v.HasCard)
+                {
+                    continue;
+                }
+
+                RectTransform rt = (RectTransform)v.transform;
+                if (RectTransformUtility.RectangleContainsScreenPoint(rt, screenPos, null))
+                {
+                    return v;
+                }
+            }
+
+            return null;
+        }
+
+        // ══════════════════════════════════════════════════════
         //  绑定
         // ══════════════════════════════════════════════════════
 
         /// <summary>按快照重建手牌。会尽量复用同一张牌已有的 <see cref="CardView"/>（按 Uid 配对），避免闪。</summary>
         public void Bind(IReadOnlyList<CardSnapshot> hand, HashSet<int> playableUids)
         {
+            // 手牌重绑（新一拍 / 牌进出）→ 上一下滑动手势作废：
+            // 它对应的是旧的那一排牌，继续按坐标判定只会划到不该选的牌。
+            EndSlide();
+
             CardView dragged = _dragIndex >= 0 && _dragIndex < _shown.Count ? _shown[_dragIndex] : null;
             int draggedUid = dragged == null ? -1 : dragged.Card.Uid;
             _incomingUids.Clear();
@@ -571,6 +745,10 @@ namespace MagicBrawl.App
 
         public void ClearSelection()
         {
+            // 决策已经交出去了 → 本次滑动到此为止。否则手指还在划，
+            // 会把下一拍的牌也一路点亮（而那一拍玩家根本没在选牌）。
+            EndSlide();
+
             _selectedUid = -1;
             _picked.Clear();
             _multi.Clear();
@@ -775,6 +953,19 @@ namespace MagicBrawl.App
 
                 case CardGesture.DragEnd:
                     EndDrag(screenPos);
+                    break;
+
+                case CardGesture.SlideBegin:
+                    // 起点牌已经在 TryBeginSlide 里处理过了（那时才拿得到按下位置）
+                    break;
+
+                case CardGesture.Slide:
+                    Slide(screenPos);
+                    break;
+
+                case CardGesture.SlideEnd:
+                    _sliding = false;
+                    _slideTouched.Clear();
                     break;
             }
         }

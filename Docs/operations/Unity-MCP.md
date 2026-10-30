@@ -1,4 +1,4 @@
-# Unity 与 MCP 运行指南
+﻿# Unity 与 MCP 运行指南
 
 ## 项目与前置条件
 
@@ -98,6 +98,6 @@ if (!scene.isDirty) UnityEditor.SceneManagement.EditorSceneManager.CloseScene(sc
 
 ## 本次验证
 
-2026-09-18 已通过 MCP 实际读取目标项目、场景和编辑器状态，并运行 Unity 测试。开始任务时服务已运行，没有重复启动第二个服务。具体回归结果见 [验证报告](../validation/2026-09-18-交互与光环回归.md)。
+2026-09-18 已通过 MCP 实际读取目标项目、场景和编辑器状态，并运行 Unity 测试。开始任务时服务已运行，没有重复启动第二个服务。具体回归结果见 [验证报告](../archive/202609-初版验证/validation/2026-09-18-交互与光环回归.md)。
 
 离线入口实际验证：上述 `--help` 命令退出码为 0；`Start-UnityMcp.ps1` 检测到现有 8080 监听，按预期退出，没有启动第二个服务。

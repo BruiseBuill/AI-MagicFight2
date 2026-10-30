@@ -109,11 +109,12 @@ namespace MagicBrawl.SelfTest
             ok &= CoolHandScenario.Run(report);
             Prune(report);
 
-            // 2026-09-22：漩涡改成「从冷却区当中选、强制选择一张」。界面上「强制」只有两个
-            // 来源：MinSelect / MaxSelect 与「有没有 Skip 选项」—— 写错了就只表现为
-            // 「确认键该亮不亮」「能一张都不选」，万局统计里同样无声。
-            ok &= RemoveFromGameScenario.Run(report);
-            Prune(report);
+            // 2026-09-22：漩涡那一拍的形状（**2026-10-29 起停用**）。
+            //   EffectOp.RemoveFromGame 现在全卡表一张卡都不用了 —— 漩涡改成
+            //   「加速 + 快速回填光环」，引擎永远发不出 ChooseRemoveFromGame 决策，
+            //   这份场景只会 0 命中报红。算子本身留在 Core（将来再加牌可以直接复用）。
+            // ok &= RemoveFromGameScenario.Run(report);
+            // Prune(report);
 
             // 2026-09-23：地震（i）从「无条件减速」改成「若这是你的最后两张手牌，减速」。
             // 条件判反 / 判在错的时机 / 归类落到 ① 阶段，在万局统计里全是无声的 ——
@@ -151,26 +152,18 @@ namespace MagicBrawl.SelfTest
             ok &= WeakenScenario.Run(report);
             Prune(report);
 
-            // 2026-10-01：卡牌强化（基础力量 +2 / 封顶 9）。它**完全发生在战斗之外**
-            // （强化场景），万局随机对局一个缺陷也抓不到；而失效方式全是无声的
-            // （判据反了 → 点了没反应；封顶写错 → 8 变成 10；后缀不去重 → 暴风雪++）。
-            ok &= CardUpgradeScenario.Run(report);
-            Prune(report);
+            // 2026-10-01：卡牌强化（**2026-10-29 起停用**）。强化系统在 2026-10-28 的大改里
+            // 整个删掉（Core 里的 CardUpgrade 不复存在），这份场景从此编译不过。
+            // ok &= CardUpgradeScenario.Run(report);
+            // Prune(report);
 
-            // 2026-10-01：女巫的工坊（特殊强化）—— 献祭一张牌换另一张牌的强化。
-            // 它与 CardUpgrade 是**两套并存**的口径（那个不消耗牌），同样完全在战斗之外。
-            // 无声失效的样子：卡池门槛写成 > 8 → 起始 8 张也能开工；
-            // 「单效果」判成「不含光环」→ 纯光环牌被误拒；
-            // 漏判「两张不能相同」→ 玩家把同一张牌填进两个空位，确认后牌没了、什么也没得到。
-            ok &= WitchWorkshopScenario.Run(report);
-            Prune(report);
+            // 2026-10-01：女巫的工坊（**2026-10-29 起停用**）—— 随 2026-10-28 大改一起删了。
+            // ok &= WitchWorkshopScenario.Run(report);
+            // Prune(report);
 
-            // 2026-10-06：石台强化改成「**必须献祭一张牌**才能力量 +2」（用户口径，
-            // 对齐女巫）。它同样完全在战斗之外，万局统计一个缺陷也抓不到；失效方式
-            // 无声：门槛写反 → 只剩 1 张牌也能开工；「两张不能相同」只按卡面 ID 比
-            // → 同一张牌的 a 与 a+ 填进两个位置，确认后牌没了、力量没加。
-            ok &= AltarRiteScenario.Run(report);
-            Prune(report);
+            // 2026-10-06：石台强化（**2026-10-29 起停用**）—— 随 2026-10-28 大改一起删了。
+            // ok &= AltarRiteScenario.Run(report);
+            // Prune(report);
 
             // 2026-10-01：三张新卡（水之形 aq / 闪电球 ar / 冷冻核心 as）。
             // 水之形带进内核里**第一处写在牌实例上、跨回合不消失**的力量改动
@@ -179,21 +172,21 @@ namespace MagicBrawl.SelfTest
             ok &= NewCardsScenario.Run(report);
             Prune(report);
 
-            // 2026-10-02：多轴强化（力量 / 冷却 / 词条）与强化册（配方叠卡目录）。
-            // 强化从「落盘一张新卡资产」改成「存档里的配方 + 读的时候合成」之后，
-            // 无声失效的面变宽了：漏累加一根轴（力量涨了冷却没降）、ArtId 没沿用
-            // （强化后的牌变纯色板）、卡面 ID 越挂越多（a++）、光环词条的符号跟卡面
-            // 已有的光环不一致（AuraResolver 会取到另一条光环）、存档类型的字段
-            // 不合 JsonUtility 的形状（静默丢字段）。万局统计一个也抓不到。
-            ok &= UpgradeBookScenario.Run(report);
+            // 2026-10-30：44 张卡逐张核对（描述 ↔ 卡表 ↔ 引擎），
+            // 外加「卡面写『可以』⇒ 这一拍必须能放弃」这一条用户口径。
+            ok &= CardAuditScenario.Run(report);
             Prune(report);
 
-            // 2026-10-02：冒险地图生成器。它同样**完全不进战斗**，而且失效方式极隐蔽：
-            // 某条边的两端行号差变成 2 → 版式上那两个节点之间**画不出桥**（地图上少一根线，
-            // 零报错）；出现交叉边 → 两条路线视觉上穿过对方；某个中间节点只有进边没有出边
-            // → 走进去就卡死。这些全都只能在生成器这一层用 1000 个种子钉住。
-            ok &= MapScenario.Run(report);
-            Prune(report);
+            // 2026-10-02：多轴强化与强化册（**2026-10-29 起停用**）—— 随 2026-10-28 大改一起删了。
+            // ok &= UpgradeBookScenario.Run(report);
+            // Prune(report);
+
+            // 2026-10-02：冒险地图生成器（**2026-10-29 起停用**）。
+            //   2026-10-28 的大改已经把整个冒险模式（地图 / 商店 / 石台 / 工坊 …）删掉，
+            //   Core 里的 MapGraph / MapNodeType 也随之消失 —— MapScenario.cs 从此
+            //   编译不过，整份自测跟着挂掉。这里把这一节摘掉，文件留在原地当历史记录。
+            // ok &= MapScenario.Run(report);
+            // Prune(report);
 
             // 2026-10-03：启发式 AI（四流派）。万局统计里跑的是 SimpleAiAgent —— 新 AI
             // 在那一万局里**一次都不会被走到**。而它的失效方式又全是无声的（优先级档位写反
@@ -211,18 +204,18 @@ namespace MagicBrawl.SelfTest
             ok &= MonsterScenario.Run(report);
             Prune(report);
 
-            // 2026-10-05：卡牌获取池（已获得 = 0 / 曾展示 = 减半 / 其余等概率）。
-            // 概率写错永远是无声的 —— 只有把「几千次抽样的频率比值」钉住才抓得到。
-            ok &= CardAcquisitionScenario.Run(report);
-            Prune(report);
+            // 2026-10-05：卡牌获取池（**2026-10-29 起停用**）—— CardAcquisition 随
+            // 2026-10-28 大改（卡池 / 强化册 / 冒险全删）一起消失。
+            // ok \&= CardAcquisitionScenario.Run(report);
+            // Prune(report);
 
-            // 2026-10-07：**刻印**（Sigil）+ 两张新卡（火炬 at / 海啸 au）。
-            // 刻印由三件互不相干的事拼起来（打出去那一拍只**点亮** / 之后按 SigilTiming
-            // 反复触发 / 回手熄灭），缺哪一件都**不报错**：漏了点亮 = 永远不触发；
-            // 漏了「不当拍结算」= 打出去当拍白拿一次（只表现为强度偏高）；
-            // 漏了触发点 = 亮了但不生效。万局统计里一个都抓不到，只能脚本化钉住。
-            ok &= SigilScenario.Run(report);
-            Prune(report);
+            // 2026-10-07：**刻印**（Sigil）+ 两张新卡（**2026-10-29 起停用**）。
+            //   刻印的三处触发点（点亮 / 按 SigilTiming 重放 / 回手熄灭）仍在 Core 里，
+            //   但提供刻印的那两张卡（火炬 at / 海啸 au）在 2026-10-29 的卡表改版里已经删除，
+            //   且新卡表**没有任何一张卡带刻印** —— 这份场景只能拿真实卡池扫种子，
+            //   于是永远 0 命中。将来再加刻印卡时，把本文件与 csproj 那行一起恢复即可。
+            // ok &= SigilScenario.Run(report);
+            // Prune(report);
 
             // 2026-10-08：**手写出牌优先级**（卡池 SO 上的 useManualPriority + priorities）。
             // 它的失效方式全是无声的：方向写反只表现为「怪打得不合我写的顺序」；

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using MagicBrawl.App;
@@ -135,7 +135,6 @@ namespace MagicBrawl.App.EditorTools
         /// <summary>其它归位：旧路径 → 新路径（含改名）。</summary>
         private static readonly string[][] RenameMoves =
         {
-            new[] { ArtRoot + "/dungeon_background_clean.png", BgDir + "/Bg_Dungeon.png" },
             new[] { ArtRoot + "/Reference.png", RefDir + "/Reference.png" },
             // 2026-09-21：「查看手牌」弹窗的第二张参考图（同样是别的游戏的运行截图，
             // 只用来看那个弹窗长什么样，不进游戏）。
@@ -149,45 +148,14 @@ namespace MagicBrawl.App.EditorTools
             //     否则一张 1536×1024 的源图留在 Art 根目录，会被当成散落图反复提醒。
             new[] { ArtRoot + "/Type.png", IconsDir + "/_Source/Type.png" },
 
-            // 2026-09-26 · **商店场景的成品背景**（木质内景，无任何烘焙 UI）。
-            //     ⚠ 文件名 `ReferenceShop.png` 有误导性 —— 它不是参考图，
-            //     它是商店唯一在用的背景（`UiLayout.ShopBgSpritePath` 指向这里）。
-            //     真正的「商店版式参考」是上面的 `d30f41c7-…`。
-            new[] { ArtRoot + "/ReferenceShop.png", BgDir + "/Bg_Shop.png" },
 
-            // 2026-09-30 · **强化场景（卡牌强化）的成品背景**（石质台面 + 悬浮石板 + 蓝晶，1671×941，无烘焙 UI）。
-            //     ⚠ 落到 Art 根目录时叫光秃秃的 `Background.png` —— 那个名字进 Backgrounds/ 会
-            //     变成「第二张 Background」，跟已有的 Bg_Dungeon / Bg_Shop 不是一个口径，
-            //     所以归类时一并按 `<用途>_背景` 规范成 `Bg_Upgrade.png`。
-            new[] { ArtRoot + "/Background.png", BgDir + "/Bg_Upgrade.png" },
 
             // 2026-09-30 · 强化场景的**版式参考图**（同一张背景 + 左下角站着的巫师 = 目标构图）。
             //     与 Reference / Reference-2 / Reference-3 同族，编号接着排。
             new[] { ArtRoot + "/Reference4.png", RefDir + "/Reference-4.png" },
 
-            // 2026-10-01 · **女巫工坊场景的成品背景**（帐篷内景：女巫 + 中央水晶球 + 两侧货架，
-            //     1672×941，无任何烘焙 UI）。拖进来时是 Unity 给的 UUID 文件名
-            //     （和 `d30f41c7-….png` 那批一样，说明是直接拖进 `Art/` 根目录的），
-            //     按 `<用途>_背景` 的既有口径规范成 `Bg_WitchWorkshop.png`。
-            new[] { ArtRoot + "/2529ac9f-48ea-442c-8c58-760b693787ba.png",
-                    BgDir + "/Bg_WitchWorkshop.png" },
 
-            // 2026-10-09 · **休息事件的地图图标**（帐篷 + 篝火，315×281）。
-            //     落到 Art 根目录时叫 `08_camp.png` —— ⚠ 那个编号与 `Map/08_bridge_straight.png`
-            //     <b>撞号</b>（`Map/` 里 08 / 09 是两张桥），而它跟起点那张 `06_camp.png`
-            //     也不是一回事（起点是「铺盖卷 + 篝火」，这张多一顶帐篷），
-            //     所以按「编号_用途」规范成 `Map/11_rest.png`（编号接着 10_treasure 排）。
-            new[] { ArtRoot + "/08_camp.png", ArtRoot + "/Map/11_rest.png" },
 
-            // 2026-10-09 · **宝箱场景的成品背景**（藏宝洞窟，1024×577）。
-            //     落到 Art 根目录时叫 `bg.jpg` —— 连文件名都没有语义。用户指定
-            //     「这张 bg 应该是开启宝箱的背景」→ 归类成 `Backgrounds/Bg_Treasure.png`
-            //     并让 `UiLayout.TreasureBgSpritePath` 指过去（原来用的是 `Bg_Dungeon`）。
-            //     ⚠ 它是 **jpg → png 转码**，不是改名：归位是在会话里用 PIL 做的
-            //     （见 `Docs/implementation/2026-10-09-休息事件与美术归类.md` §3），
-            //     下面这一行只是登记「源已不在、正本在哪里」—— 重跑时 `MoveOne`
-            //     会走「已在位」那条分支，是幂等的。
-            new[] { ArtRoot + "/bg.jpg", BgDir + "/Bg_Treasure.png" },
         };
 
         // ── 菜单入口（带确认弹窗，不能给脚本化调用）─────────────────────
@@ -201,9 +169,6 @@ namespace MagicBrawl.App.EditorTools
                     "① 把 UUID 源表移进 Ui/_Source 与 Chars/_Source\n" +
                     "② 第二批主角动画源表（Idle / Attack / defense / BeHit / Death）\n" +
                     "    → Chars/_Source/Hero_Anim_*.png\n" +
-                    "③ 战斗背景 → Backgrounds/" + BattleBgFile + "、商店背景 → Backgrounds/Bg_Shop.png、\n" +
-                    "    强化背景 → Backgrounds/Bg_Upgrade.png、\n" +
-                    "    女巫工坊背景 → Backgrounds/Bg_WitchWorkshop.png，参考图 → _Reference/\n" +
                     "④ 清掉 Art 根目录上与已归档正本重复的散图（搬进 Artifacts/backups/）\n" +
                     "⑤ 重设全部新图的导入参数\n" +
                     "⑥ 重建 Assets/Resources/BattleArtLibrary.asset\n\n" +

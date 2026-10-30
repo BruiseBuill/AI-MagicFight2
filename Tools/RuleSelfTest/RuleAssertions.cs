@@ -24,12 +24,11 @@ namespace MagicBrawl.SelfTest
             bool ok = true;
             report.Add("── 数据类断言 ──");
 
-            // 2026-09-29：40 → 42（新增 ao 毒刺 / ap 击穿）；
-            // 2026-10-01：42 → 45（新增 aq 水之形 / ar 闪电球 / as 冷冻核心）；
-            // 2026-10-07：45 → 47（新增 at 火炬 / au 海啸 · 刻印）。总数一旦变化，
-            // 下面的力量 / 冷却分布断言必须同步 —— 否则报的是「分布不符」，
+            // 2026-10-29：47 → **44**（全卡表改版：删 冷冻核心 as / 海啸 au，
+            //   火炬 at 改挂 ap，新增 吞食 ad / 冰霜核心 ao / 地刺 ar，雷云 ad → aq）。
+            // 总数一旦变化，下面的力量 / 冷却分布断言必须同步 —— 否则报的是「分布不符」，
             // 看不出到底是哪一步错了。
-            ok &= Check(report, CardLibrary.Count == 47, "卡表共 47 张（实为 " + CardLibrary.Count + "）");
+            ok &= Check(report, CardLibrary.Count == 44, "卡表共 44 张（实为 " + CardLibrary.Count + "）");
 
             string powerReport;
             bool powerOk = CardLibrary.ValidatePowerDistribution(out powerReport);
@@ -99,7 +98,7 @@ namespace MagicBrawl.SelfTest
                 }
             }
 
-            ok &= Check(report, namesOk, "47 张卡的 ID 均可查到非空中文名，且与卡表逐字一致");
+            ok &= Check(report, namesOk, "44 张卡的 ID 均可查到非空中文名，且与卡表逐字一致");
 
             // 双光环卡：af / aj 的指示物数为 2
             bool afOk = CardLibrary.Get("af").AuraTokenCount == 2;
@@ -274,9 +273,14 @@ namespace MagicBrawl.SelfTest
             bool ok = true;
             report.Add("── 规则类断言（结构性反查）──");
 
-            // R1 · 「有牌时不能主动放弃进攻」：ChooseAttackCard 一律不给 Skip，且 MinSelect = 1
+            // R1 · 进攻决策的「能不能收尾」—— **2026-10-29 口径翻转**：
+            //   原先是「有牌时不能主动放弃进攻」（断言要求不给 Skip），
+            //   当天用户改成「进攻是一次决策，不是义务」：**有牌也必须有一条「结束进攻」**
+            //   （连击打了一半不想再打也要能收尾）。手牌为空时不发这一拍（由
+            //   DoAnnounceHalfTurn 按「无法攻击 → 掉 1 点」处理，不能让点一下 Skip 白嫖掉伤害）。
+            //   所以现在的判据是：**有出牌选项 ⇒ 必须带 Skip**；MinSelect 仍 ≥ 1（空提交不合法）。
             bool sawAttackRequest = false;
-            bool attackNoSkip = true;
+            bool attackSkipOk = true;
 
             for (int seed = 9000; seed < 9060; seed++)
             {
@@ -286,10 +290,14 @@ namespace MagicBrawl.SelfTest
                     if (req.Kind == RequestKind.ChooseAttackCard)
                     {
                         sawAttackRequest = true;
-                        if (req.SkipOption != null || req.ContextNoSkip == false || req.MinSelect < 1)
+                        bool hasPlayCard = false;
+                        for (int i = 0; i < req.Options.Count; i++)
                         {
-                            attackNoSkip = false;
+                            if (req.Options[i].Kind == OptionKind.PlayCard) { hasPlayCard = true; break; }
                         }
+
+                        if (hasPlayCard && req.SkipOption == null) attackSkipOk = false;
+                        if (req.MinSelect < 1) attackSkipOk = false;
                     }
 
                     return new SimpleAiAgent().Decide(req);
@@ -299,7 +307,8 @@ namespace MagicBrawl.SelfTest
             }
 
             ok &= Check(report, sawAttackRequest, "样本中出现过进攻选牌决策");
-            ok &= Check(report, attackNoSkip, "规则 19：有牌时进攻决策不提供「放弃进攻」选项");
+            ok &= Check(report, attackSkipOk,
+                "规则 19（2026-10-29 口径）：有出牌选项时必须带一条「结束进攻」，且 MinSelect ≥ 1");
 
             // R2 · 「防御方不允许打出挡不住的牌」：使用本次已投入的防御光环加成，校验每个非 Skip 选项都够挡
             bool sawDefenseRequest = false;
@@ -620,10 +629,20 @@ namespace MagicBrawl.SelfTest
                     Violations.Add("防御选项合法性被破坏（出现挡不住的牌）");
                 }
 
-                if (request.Kind == RequestKind.ChooseAttackCard
-                    && (request.SkipOption != null || !request.ContextNoSkip))
+                // 2026-10-29 口径翻转：进攻是一次决策、不是义务 —— 有牌时**必须**能「结束进攻」。
+                // （旧口径是「有牌时不许放弃」，那段历史见 RunRuleAssertions 里 R1 的注释。）
+                if (request.Kind == RequestKind.ChooseAttackCard)
                 {
-                    Violations.Add("进攻决策出现了「放弃进攻」选项 —— 违反规则 19");
+                    bool hasPlayCard = false;
+                    for (int i = 0; i < request.Options.Count; i++)
+                    {
+                        if (request.Options[i].Kind == OptionKind.PlayCard) { hasPlayCard = true; break; }
+                    }
+
+                    if (hasPlayCard && request.SkipOption == null)
+                    {
+                        Violations.Add("有牌却没能「结束进攻」—— 违反 2026-10-29 的进攻口径");
+                    }
                 }
 
                 // 光环选项（2026-09-18 起与出牌同拍）：

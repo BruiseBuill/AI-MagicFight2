@@ -302,8 +302,14 @@ namespace MagicBrawl.SelfTest
                 }
 
                 // 「每冷却一张结算一次」= 磁暴（+力量）与充能（+加速）；
-                //         电弧是「换一次连击」，必须恰好 1 张，不在此列。
+                //         电弧是「换一次连击」，上限只有 1 张，不在此列。
                 bool multiOk = op == EffectOp.CoolHandForAtk || op == EffectOp.CoolHandForHaste;
+
+                // ⚠ 2026-10-30：**能不能一张都不选**（MinSelect = 0）与「能不能多选」是两件事。
+                //   电弧的卡面写「可以将手中一张其它法术进入冷却，获得连击」——「可以」= 可放弃，
+                //   所以它也算「可空确认」，只是上限仍是 1。三条选牌效果的判据因此不再一致：
+                //   磁暴 / 充能 = 多选 + 可空；电弧 = 单选 + 可空。
+                bool canDecline = multiOk || op == EffectOp.CoolHandForCombo;
 
                 Probe.Asked = true;
                 Probe.Op = op;
@@ -323,7 +329,7 @@ namespace MagicBrawl.SelfTest
                 bool unknownSource = op == EffectOp.None;
 
                 int expectMax = unknownSource ? req.MaxSelect : (multiOk ? candidates : 1);
-                int expectMin = unknownSource ? req.MinSelect : (multiOk ? 0 : 1);
+                int expectMin = unknownSource ? req.MinSelect : (canDecline ? 0 : 1);
 
                 if (unknownSource)
                 {
@@ -363,7 +369,8 @@ namespace MagicBrawl.SelfTest
                     Probe._shapeOk = true;
                 }
 
-                // 提交：选满（多选那种）或恰选一张（电弧）。
+                // 提交：选满（多选那种）或恰选一张（电弧 —— 它能空确认，但这里故意选一张，
+                // 顺带把「选了之后确实生效」那一半也跑到）。
                 // 取样只取一次 —— 选满之后这一拍就结束了，不会反复进来。
                 Stop = true;
 

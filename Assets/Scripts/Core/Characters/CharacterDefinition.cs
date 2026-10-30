@@ -161,6 +161,20 @@ namespace MagicBrawl.Core
                 MinimumCardCount, _pool, Abilities, AiProfile, Deal, CardPriorities);
         }
 
+        /// <summary>
+        /// 换一套<b>发牌口径</b>（2026-10-28 · 大改）。
+        ///
+        /// <para><b>为什么要有它</b>：口径挂在角色资产上（怪物资产是 Monster、
+        /// 玩家资产是 EngineDefault），而两种玩法的口径必须<b>完全一致</b> ——
+        /// 在战斗组装处统一覆盖一次，比去挨个改资产可靠：资产漏改一个，症状是
+        /// 「那只怪开局 6 张、别的怪 8 张」，零报错也不容易发现。</para>
+        /// </summary>
+        public CharacterDefinition WithDeal(DealProfile deal)
+        {
+            return new CharacterDefinition(Id, Name, Kind, InitialHp, MaxHp, MinimumCardCount,
+                _pool, Abilities, AiProfile, deal, CardPriorities);
+        }
+
         public static CharacterDefinition DefaultPlayer()
         {
             return new CharacterDefinition("player.default", "你", CharacterKind.Player, 4, 4, 8, CardPool.AllCards(),

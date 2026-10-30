@@ -61,22 +61,6 @@ namespace MagicBrawl.App
         [Tooltip("填了就以此卡池资产为准；留空才用下面的 useAllCards / cardIds。")]
         public CardPoolConfig cardPool;
 
-        /// <summary>
-        /// <b>这个角色自带的强化配方</b>（2026-10-02 · 多轴强化）——
-        /// <b>怪物也能强化</b>这件事的落点。
-        ///
-        /// <para>玩家的强化册在存档里（<c>PlayerData.upgrades</c>，随存档走）；
-        /// 怪物没有存档，它的强化属于<b>角色配置</b>（精英怪 / Boss 强化就是这一格）。
-        /// 两者是同一个类型、同一套合成规则（<see cref="UpgradeBook.BuildCatalog"/>），
-        /// 结算侧完全不知道区别 —— 一张牌被强化成什么样，只取决于「它挂在谁的册子上」。</para>
-        ///
-        /// <para><b>⚠ 这里填的是<b>基础 ID</b></b>（<c>a</c> 而不是 <c>a+</c>）：
-        /// 和存档同口径，强化版永远是读的时候合成出来的。</para>
-        ///
-        /// <para>例：给「滚石冲击 f」加一条 <c>Power +2</c> 与一条 <c>Cooldown −1</c>；</para>
-        /// </summary>
-        [Tooltip("这个角色自带的强化（怪物 / 精英 / Boss 用）。baseId 填基础 ID（a，不是 a+）。")]
-        public CardUpgradeRecord[] upgrades = new CardUpgradeRecord[0];
 
         /// <summary>
         /// <b>发牌口径</b>（2026-10-03）—— 开局抽几张、之后补不补、能换几张。
@@ -141,10 +125,8 @@ namespace MagicBrawl.App
                 definitions.Add(ability.CreateDefinition());
             }
 
-            // ⚠ 先把强化册叠到卡目录上，再去建卡池 —— 顺序反了的话
-            //   `cardPool.CreatePool` 里的 `PreferUpgraded` 在目录里找不到 `a+`，
-            //   强化版静默退回基础版（与 SaveStore.TryLoadCardPool 是同一条口径）。
-            ICardCatalog effective = SaveStore.WithUpgrades(catalog, UpgradeBook.FromRecords(upgrades));
+            // 2026-10-28：强化册已随冒险删除 —— 卡目录就是传进来的那一份（为空才兜底内置表）。
+            ICardCatalog effective = catalog ?? CardCatalog.Builtin();
             CardPool pool = cardPool != null
                 ? cardPool.CreatePool(effective)
                 : (useAllCards ? CardPool.AllCards(effective) : new CardPool(cardIds, effective));

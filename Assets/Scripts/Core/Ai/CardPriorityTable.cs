@@ -8,14 +8,14 @@ namespace MagicBrawl.Core
     ///
     /// <para><b>⚠ 它必须能被 Unity 序列化</b>（卡池是 <c>ScriptableObject</c>、字段直接摆在
     /// Inspector 上）：<c>[Serializable]</c> + <b>public 字段</b> + <b>无参构造</b>。
-    /// 与 <see cref="CardUpgradeRecord"/> 同一条约束（那边是被 <c>JsonUtility</c> 读，
+    /// 与存档里那些「按基础 ID 记」的旧记录同一条约束（
     /// 这边是被 Unity 自己的序列化读），差别只是「属性 / 只读字段会被静默丢掉」这条陷阱
     /// 在两边都成立。</para>
     ///
     /// <para>本类型住在 Core（不是 App）的理由：吃它的是 <see cref="HeuristicAgent"/>，
     /// 而 AI 在 Core，它没有 UnityEngine、也就拿不到 <c>CardPoolConfig</c> ——
     /// 所以「表」这个形状必须在 Core，资产的类型才能在 App 层直接引用它
-    /// （与 <c>CharacterConfig.upgrades</c> 引用 Core 的 <see cref="CardUpgradeRecord"/> 同一手法）。</para>
+    /// </para>
     /// </summary>
     [Serializable]
     public sealed class CardPriorityEntry
@@ -23,7 +23,7 @@ namespace MagicBrawl.Core
         /// <summary>
         /// 卡 ID —— 填<b>基础 ID</b>（<c>a</c> 而不是 <c>a+</c>）。
         ///
-        /// <para>⚠ 比对时两边都过 <see cref="CardUpgrade.BaseIdOf"/>，所以写了 <c>a+</c> 也能命中
+        /// <para>⚠ 比对时两边都过 <see cref="CardIds.BaseOf"/>，所以写了 <c>a+</c> 也能命中
         /// <c>a</c>；但推荐写基础 ID —— 强化版是「读时合成」出来的，存档 / 卡池里存的一律是基础 ID。</para>
         /// </summary>
         public string cardId = string.Empty;
@@ -65,7 +65,7 @@ namespace MagicBrawl.Core
     /// 想只调几张、其余沿用自动 —— 那就别勾开关（这是刻意的二选一，不做「混两种刻度」
     /// 那种没人算得清的折衷）。</para>
     ///
-    /// <para><b>不可变</b>：与 <see cref="UpgradeBook"/> 同理 —— 表会被多个座位 / 多次
+    /// <para><b>不可变</b>：表会被多个座位 / 多次
     /// <c>BattleSetup</c> 共享，可变对象一改全改。</para>
     /// </summary>
     public sealed class CardPriorityTable
@@ -96,7 +96,7 @@ namespace MagicBrawl.Core
                     continue;
                 }
 
-                string baseId = CardUpgrade.BaseIdOf(entry.cardId);
+                string baseId = CardIds.BaseOf(entry.cardId);
                 if (baseId.Length == 0)
                 {
                     continue;   // 空 ID = 那一行还没填完，忽略（不落成一条「空卡的优先级」）
@@ -127,12 +127,12 @@ namespace MagicBrawl.Core
 
         /// <summary>
         /// 查一张牌的优先级。吃基础 ID 或解析后的 ID 都行（内部过
-        /// <see cref="CardUpgrade.BaseIdOf"/> —— 「仍然能被识别为同一张卡」这条口径在这里也必须成立，
+        /// <see cref="CardIds.BaseOf"/> —— 「仍然能被识别为同一张卡」这条口径在这里也必须成立，
         /// 否则手牌里那张 <c>a+</c> 会查不到 <c>a</c> 的优先级）。
         /// </summary>
         public bool TryGet(string idOrBaseId, out int priority)
         {
-            string baseId = CardUpgrade.BaseIdOf(idOrBaseId);
+            string baseId = CardIds.BaseOf(idOrBaseId);
             if (baseId.Length > 0 && _byBaseId.TryGetValue(baseId, out priority))
             {
                 return true;

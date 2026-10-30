@@ -158,16 +158,17 @@ namespace MagicBrawl.Core
         /// <summary>区域减速：选定某一方冷却区中剩余冷却 = k 的牌全体 +1。</summary>
         SlowZone = 4,
         /// <summary>
-        /// 雪崩：<b>强制</b>把双方冷却区中剩余冷却 = A 的牌全体 +1。<b>不发决策、不给放弃</b>。
+        /// 雪崩（an）：把<b>双方</b>冷却区中剩余冷却 = A 的牌全体 +1。A = 阈值（本卡为 1）。
         ///
-        /// <para><b>2026-09-25 口径变更</b>：原先它和区域加速 / 减速共用一个「选一个剩余冷却值」
-        /// 的决策（<see cref="RequestKind.ChooseZoneValue"/>），玩家可以选「不执行」。现在雪崩是
-        /// 「先强制减速、再快速回填」的双效果，减速这一半<b>没有可选项</b> ——
-        /// 于是它从 <see cref="NeedsDecision"/> 里摘掉了，引擎在 ③ 阶段直接作用双方冷却区
-        /// （<c>BattleEngine.StartStage3Decision</c> 里单独一条分支）。</para>
+        /// <para><b>2026-10-29 口径变更（全卡表改版）</b>：卡面改成
+        /// 「<b>可以选择</b>使你和对方的冷却区中剩余冷却为 1 的法术都被减速」——「可以选择」
+        /// 就是<b>可以放弃</b>，于是它重新发一条 <see cref="RequestKind.ChooseZoneValue"/> 决策
+        /// （带「跳过」）。这与 2026-09-25 那一版的「强制、不发决策」正好相反，
+        /// 两处断言（<c>Tools/RuleSelfTest/AvalancheScenario.cs</c>）必须跟着翻面。</para>
         ///
-        /// <para>「强制」这件事<em>不需要</em> <see cref="EffectDef.Mandatory"/>：那个字段表达的是
-        /// 「这个决策不可选择不执行」，而这里根本没有决策可发。仍然只保留 A = 阈值。</para>
+        /// <para>选项只有一个（阈值由卡表定死，玩家选的不是 k 而是「执不执行」），
+        /// 它的 <c>Seat = -1</c> 表示<b>双方</b> —— 与区域加速 / 减速「某一方」的语义不同，
+        /// 所以处理器拿到选项后<b>不看 Seat</b>，直接对 <c>TargetSeats</c> 逐个施放。</para>
         /// </summary>
         SlowZoneBoth = 5,
         /// <summary>使目标立即冷却完成（剩余归 0 → 立即回手）。</summary>
@@ -326,6 +327,56 @@ namespace MagicBrawl.Core
         /// 一样是「防御侧查询」，真正读它的是 <c>DefenseResolver</c>，处理器是空实现。</para>
         /// </summary>
         DefPlusPerHand = 35,
+
+        // -- 2026-10-29 全卡表改版（44 张）新增 ----------------------
+        /// <summary>
+        /// 火炬（ap）γ：<b>每当你生命值减少时，此光环将恢复到可用状态</b>。
+        ///
+        /// <para><b>它不是新的一类光环</b>：火炬的 α 是一条普通的
+        /// <see cref="AuraKind.AtkPower"/> 光环（打出去点亮 1 枚、用掉就没了）；
+        /// 本算子只是给那张牌加一条<b>补货规则</b> —— 拥有者掉血时把指示物补回满。</para>
+        ///
+        /// <para><b>为什么是一个算子而不是卡牌上的一个布尔</b>：卡面这一行是独立的 γ 效果
+        /// （有自己的符号、自己的文案），并且它<b>有自己的触发点</b>（掉血）——
+        /// 按本作「算子即规则」的口径，一个触发点一个算子。</para>
+        ///
+        /// <para><b>触发方式</b>：<see cref="EffectTrigger.Special"/> +
+        /// <c>specialEvent = "owner.hp.lost"</c>（与潮汐 γ 的 <c>"cooldown.completed"</c>
+        /// 同一条管线）。<c>BattleEngine.ApplyDamage</c> / <c>CutMaxHp</c> 在真正扣血之后
+        /// 把该座位冷却区的每张牌按这个事件过一遍；处理器只做「补满指示物」。</para>
+        /// </summary>
+        RestoreAuraOnHpLoss = 36,
+
+        /// <summary>
+        /// 地刺（ar）：「<b>如果这是你手中的最后一张牌，进攻打出之后自动回手</b>」。
+        ///
+        /// <para>条件由 <see cref="EffectDef"/> 构造时自动挂 <c>hand-at-play = 1</c>
+        /// （与 <see cref="ComboIfLastHand"/> / <see cref="SlowIfLastTwoHand"/> 同源，
+        /// 阈值 1 = 出牌那一刻手上只有这一张）。条件不满足 → <b>整条不结算</b>，
+        /// 不弹决策、不消耗任何东西。</para>
+        ///
+        /// <para>归 <see cref="EffectStage.AfterCooldown"/>：第 4 步牌已经进了冷却区，
+        /// 此时把剩余冷却刷到 0 走的就是「冷却完毕回手」那条现成路径
+        /// （<c>CooldownOps.Refresh</c> -> <c>ReturnToHand</c>），
+        /// 所以光环指示物作废、刻印熄灭、<c>cooldown.completed</c> 事件全都自动成立。</para>
+        /// </summary>
+        ReturnToHandIfLastHand = 37,
+
+        /// <summary>
+        /// <b>纯卡面声明</b>：有这一行文字、但<b>不产生任何结算</b>（处理器是空实现）。
+        ///
+        /// <para>用在「卡面要单独占一行、但规则上由别的算子兑现」的说明性文字上 ——
+        /// 目前只有模仿（x）的 γ「未复制或防御时力量视为 1」：那条规则的落点是
+        /// <see cref="Copy"/>（未复制 -> 不改 <c>EffectivePower</c>）与
+        /// <c>CardInstance.PowerLabelText</c>（隐藏力量恒显示 X），
+        /// 卡面这一行只是把它写明白。</para>
+        ///
+        /// <para>它是 <see cref="EffectTrigger.Special"/> + <c>specialEvent = "rule.note"</c>
+        /// —— 那个事件<b>永远没有人发布</b>，所以这条效果永远不会被排进特殊效果队列。
+        /// 之所以仍要一个事件 id：<c>EffectRegistry.Validate</c> 硬性要求 γ 效果必须有它
+        /// （见 EffectRegistry.cs），没有就是编译期能过、进战斗当场抛。</para>
+        /// </summary>
+        RuleNote = 38,
     }
 
     /// <summary>Immutable, serializable effect recipe. Handler identity is independent of card identity.</summary>
@@ -362,7 +413,13 @@ namespace MagicBrawl.Core
             string distinctTargetGroup = null, System.Collections.Generic.IEnumerable<EffectCondition> conditions = null,
             EffectTargetScope targets = EffectTargetScope.Participants, SigilTiming sigil = SigilTiming.None)
             : this(trigger, op.ToString(), LegacyArguments(op, a, b, c), aura, text,
-                op == EffectOp.ReadyRefresh ? "cooldown.completed" : null,
+                // 两个 gamma 算子自带「永远由引擎发的事件 id」（与潮汐的 cooldown.completed 同一套）：
+                //   RestoreAuraOnHpLoss -> ApplyDamage / CutMaxHp 扣完血就发；
+                //   RuleNote            -> 纯声明，永远没人发（但 Validate 要求 gamma 必须有 id）。
+                op == EffectOp.ReadyRefresh ? "cooldown.completed"
+                    : op == EffectOp.RestoreAuraOnHpLoss ? "owner.hp.lost"
+                    : op == EffectOp.RuleNote ? "rule.note"
+                    : null,
                 targets, distinctTargetGroup, conditions, mandatory, sigil)
         { }
 
@@ -391,6 +448,10 @@ namespace MagicBrawl.Core
             // 闪电球（ar）：条件连击 = 「出牌那一刻手上只有这一张」。口径与 SlowIfLastTwoHand
             // 同源（HandCountAtPlay 已经含正在打出的这一张），只是阈值从 2 变成 1。
             if (legacy == EffectOp.ComboIfLastHand && !rules.Exists(r => r.Id == "hand-at-play"))
+                rules.Add(new EffectCondition("hand-at-play", 1));
+            // 地刺（ar）：条件回手 = 「出牌那一刻手上只有这一张」。口径与闪电球完全同源
+            // （HandCountAtPlay 已经含正在打出的这一张），只是后果从「获得连击」换成「打完回手」。
+            if (legacy == EffectOp.ReturnToHandIfLastHand && !rules.Exists(r => r.Id == "hand-at-play"))
                 rules.Add(new EffectCondition("hand-at-play", 1));
             if (rules.Contains(null)) throw new System.ArgumentException("Null effect condition.");
             Conditions = rules.AsReadOnly();

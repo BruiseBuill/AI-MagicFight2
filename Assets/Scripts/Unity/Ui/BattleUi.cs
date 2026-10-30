@@ -48,8 +48,9 @@ namespace MagicBrawl.App
         [SerializeField] private StageView _stage;
         [SerializeField] private TargetPicker _picker;
 
-        [Header("M11 美术层（顶部状态栏 / 舞台角色 / 能量球）")]
-        [SerializeField] private HudView _hud;
+        [Header("M11 美术层（右侧动作区 / 舞台角色）")]
+        [Tooltip("ArtLayer/ActionDock（M11 构建器生成）。结束进攻 / 放弃防御都走这一个键。")]
+        [SerializeField] private BattleDockView _dock;
         [SerializeField] private CharacterView _hero;
         [SerializeField] private CharacterView _monster;
 
@@ -61,20 +62,13 @@ namespace MagicBrawl.App
         [Tooltip("Canvas/PreparedAura（M8 构建器预建）。判定区矩形在接线时向 HandView 实时取。")]
         [SerializeField] private PreparedAuraView _preparedBar;
 
-        [Header("屏幕中央行动提示（轮到你进攻 / 进攻结束 / 防御结果）")]
-        [Tooltip("Canvas/ActionBanner（M8 构建器预建）。闪一下就走，不吃射线。")]
-        [SerializeField] private ActionBannerView _banner;
+        // ⚠ 2026-10-29：中央行动横幅（_banner / Canvas/ActionBanner）已退役 ——
+        //   事件短语改走 StageView.Flash（顶部字幕条原位替换、1.2 秒后回到底稿）。
+        //   中央那一块留给两个角色，不再被 54pt 大字压住。
 
         [Header("M36 屏幕中央浮字（「该牌无法被加速 / 减速」这类一句话回答）")]
         [Tooltip("Canvas/FloatTip（M8 构建器预建）。中间弹出 → 向上移动 → 迅速透明消失，不吃射线。")]
         [SerializeField] private FloatTipView _floatTip;
-
-        [Header("M41 点击怪物的「思考框」（元素预告）")]
-        [Tooltip("Canvas/ThinkBubble（构建器预建）。点怪物时弹出它下一张会打出的牌的元素符号，约 2 秒后渐隐。")]
-        [SerializeField] private ThinkBubbleView _thinkBubble;
-
-        [Tooltip("ArtLayer/Char_Monster_Click 上的点击接收器（M11 构建器建节点 + 挂组件；留空则运行时自动去捞）。")]
-        [SerializeField] private MonsterClickCatcher _monsterClick;
 
         [Header("飞牌动画层（手牌 ↔ 冷却区）")]
         [Tooltip("Canvas/CardTransitLayer（M8 构建器预建）。")]
@@ -137,24 +131,6 @@ namespace MagicBrawl.App
         [SerializeField] private ResultLoseView _resultLose;
 
         /// <summary>
-        /// 这一局铺给玩家的三张候选牌（<see cref="ShowResultWin"/> 里现抽）。
-        /// 玩家没点「继续」之前不产生任何副作用 —— 只有
-        /// <see cref="HandleResultWinContinue"/> 会把它写进卡池。
-        /// </summary>
-        private CardDef[] _rewardChoices;
-
-        /// <summary>
-        /// 这一局的结算键是不是「回到地图」（2026-10-02）。
-        ///
-        /// <para>为真 = 这一局是从冒险地图的<b>战斗节点</b>走进来的。
-        /// 于是结算面板上那个键的语义从「再来一局」变成「回到地图」——
-        /// 玩家在冒险里打输了不该能原地重开一局（<c>冒险模式实施规格.md</c> §7.4 是「重开本场」，
-        /// 那是设置面板里的事，不是结算面板）。</para>
-        /// </summary>
-        private bool _mapBattleReturn;
-
-        /// <summary>这一局赢了没有（只在 <see cref="_mapBattleReturn"/> 为真时有意义）。</summary>
-        private bool _mapBattleWin;
 
         [Header("战斗日志（规划 §7：默认关闭，M10 从设置里开）")]
         [SerializeField] private GameObject _logPanel;
@@ -164,27 +140,9 @@ namespace MagicBrawl.App
         // 种子由 BattleDriver 决定并公开（BattleDriver.LastSeed）——
         // 本类不再自己算种子：那会和 driver 的「随机 / 固定」开关形成第二套口径。
 
-        /// <summary>
-        /// 怪物点击面的节点名（M41）。<b>与 <c>BattleArtLayerBuilder</c> 里的字面量必须一致</b> ——
-        /// 它建节点时用这个名字，本类在<see cref="Awake"/>里按名字去捞那枚
-        /// <see cref="MonsterClickCatcher"/>（防漏配）。改名要两处一起改。
-        /// </summary>
-        private const string MonsterClickNodeName = "Char_Monster_Click";
-
         // ── 缓冲（避免每拍分配）──────────────────────────────
         private readonly List<CardSnapshot> _handBuf = new List<CardSnapshot>();
 
-        /// <summary>
-        /// <b>本局已经抽到过手牌的卡</b>（基础 ID）—— 卡池面板据此把它们压暗（M44）。
-        ///
-        /// <para><b>口径</b>（用户 2026-10-05 选定「本局抽到过手牌」）：每拍把玩家手牌快照里的
-        /// 卡 ID 归一成基础 ID 累加进去，<b>只增不减</b> —— 「曾经抽到过、后来被打出 / 换走」
-        /// 的牌也算，因为玩家问的是「这局见过这张没有」。开局发的那几张就在手牌里，
-        /// 所以第一拍就把它们都记上了。</para>
-        ///
-        /// <para>⚠ 它<b>不参与任何规则结算</b>，纯粹是卡池面板的展示态。</para>
-        /// </summary>
-        private readonly HashSet<string> _drawnCardBaseIds = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>打开设置面板之前的暂停态（关掉时要还回去，别把本来就在暂停的对局弄成继续）。</summary>
         private bool _overlayPauseBefore;
@@ -406,8 +364,6 @@ namespace MagicBrawl.App
             //   ② 卡池面板里把「本局已经抽到过手牌」的牌压暗。
             if (_overlay != null)
             {
-                _overlay.DimmedProvider = GetDrawnCardBaseIds;
-                _overlay.CardsProvider = GetBattleCardPoolCards;
                 _overlay.SettingsVisibilityChanged = OnOverlaySettingsVisibilityChanged;
             }
 
@@ -465,19 +421,6 @@ namespace MagicBrawl.App
             {
                 _monsterHandHold.Pressed += OnMonsterHandPressed;
                 _monsterHandHold.Released += OnMonsterHandReleased;
-            }
-
-            // M41：点怪物模型 → 弹「思考框」告诉玩家它下一张会打什么系。
-            // 点击面是 ArtLayer/Char_Monster_Click（BattleArtLayerBuilder 建节点），
-            // 组件挂在那个节点自己身上（谁建节点谁挂组件 —— 见 M28 那条账）；
-            // 这里没接上就去捞一把，省得漏配后点了没反应。
-            if (_monsterClick == null)
-            {
-                _monsterClick = FindMonsterClickCatcher();
-            }
-            if (_monsterClick != null)
-            {
-                _monsterClick.Owner = this;
             }
 
             // M15：光环图标的手势 —— 拖动期间点亮判定区落区，松手时判落点
@@ -550,11 +493,11 @@ namespace MagicBrawl.App
 
         private void WireArtLayer()
         {
-            // 齿轮与右上角那枚「设置」键打开的是同一块面板（M44 起统一为 GlobalOverlayView）；
-            // 「退出到主菜单」在面板里，卡池键在右下角。
-            if (_hud != null)
+            // 设置齿轮只剩全局覆盖层右上角那一枚（M44）—— 顶栏随 2026-10-29 的重构退役。
+            // 这里接动作键：点它 = 提交本拍的「结束 / 放弃」选项。
+            if (_dock != null)
             {
-                _hud.GearClicked += OnSettingsClicked;
+                _dock.Clicked += OnDockClicked;
             }
 
             BattleArtLibrary art = BattleArtLibrary.Instance;
@@ -693,9 +636,7 @@ namespace MagicBrawl.App
             _actorSeat = LocalSeat;
             _attacksRemaining = 0;
 
-            // M44：新一局 = 「本局抽到过」的账要重新记（上一局的牌不该在新一局里是灰的），
-            //   同时把结算时收起来的两枚键放回来（重试 / 再来一局都会走到这里）。
-            _drawnCardBaseIds.Clear();
+            // M44：把结算时收起来的两枚键放回来（重试 / 再来一局都会走到这里）。
             if (_overlay != null)
             {
                 _overlay.SetButtonsVisible(true);
@@ -722,11 +663,7 @@ namespace MagicBrawl.App
                 _resultLose.Hide();
             }
 
-            _rewardChoices = null;
-
-            // 2026-10-02：新一局开始 → 结算键回到「再来一局」。
-            // 上一局要是从地图走进来的，标签会被改成「回到地图」，不收回来下一局就错着。
-            _mapBattleReturn = false;
+            // 新一局开始 → 结算键回到「再来一局」。
             SetAgainLabel("再来一局");
 
             // M35：新一局开始 → 两侧头顶的牌（以及在册名单）一起清掉
@@ -742,12 +679,6 @@ namespace MagicBrawl.App
             if (_floatTip != null)
             {
                 _floatTip.Hide();
-            }
-
-            // M41：上一局可能正好停在思考框弹着的那一刻 —— 新一局必须立刻干净。
-            if (_thinkBubble != null)
-            {
-                _thinkBubble.Hide();
             }
 
             // M25：上一局没收干净的查看浮层。正常路径上它自己会淡出（1.4 s 内），
@@ -1164,7 +1095,8 @@ namespace MagicBrawl.App
             else if (e is AttackDeclaredEvent && ((AttackDeclaredEvent)e).Seat == LocalSeat)
                 _attacksRemaining = 0;
             else if (e is GameOverEvent) _attacksRemaining = 0;
-            if (_hud != null) _hud.SetAttacksRemaining(_attacksRemaining);
+            // 剩余进攻次数（动作区上方的 pips）。这里只重画，是否露出来由本拍决策决定。
+            ApplyDock();
             // 演出先跑 —— 角色的插播动作不该因为「提示条没接上」就一起失效
             PlayCharacterBeats(e);
             PlayActionBanner(e);
@@ -1431,80 +1363,6 @@ namespace MagicBrawl.App
             }
         }
 
-        // ══════════════════════════════════════════════════════
-        //  M41 点怪物 → 思考框（元素预告）
-        // ══════════════════════════════════════════════════════
-
-        /// <summary>
-        /// 捞出怪物点击面上的 <see cref="MonsterClickCatcher"/>（M41 防漏配兜底）。
-        ///
-        /// <para><b>为什么从怪物的父节点找</b>：点击面 <c>Char_Monster_Click</c> 与怪物
-        /// <c>Char_Monster</c> 都是 <c>ArtLayer</c> 的<b>直接子节点</b>
-        /// （见 <c>BattleArtLayerBuilder.RunAll</c>）—— 所以「怪物的父节点」就是 ArtLayer，
-        /// <see cref="Transform.Find"/> 一次就命中，不用递归全树。
-        /// 怪物自己没绑上时退回「本组件所在的 Canvas 根」，两种路径都只是找一层。</para>
-        ///
-        /// <para>返回 null 是合法情况（老场景没重跑 M11）—— 调用方由
-        /// <see cref="Awake"/> 静默跳过，点怪物就是没提示，不影响出牌。</para>
-        /// </summary>
-        private MonsterClickCatcher FindMonsterClickCatcher()
-        {
-            Transform host = _monster != null ? _monster.transform.parent : null;
-            if (host == null)
-            {
-                host = transform;
-            }
-
-            Transform face = host.Find(MonsterClickNodeName);
-            return face == null ? null : face.GetComponent<MonsterClickCatcher>();
-        }
-
-        /// <summary>
-        /// 玩家点了怪物模型（由 <see cref="MonsterClickCatcher"/> 转发）：弹一个「思考框」，
-        /// 里面是它<b>下一次进攻会打出的那张牌的元素符号</b>，约两秒后渐隐（2026-09-26 用户口径）。
-        ///
-        /// <para><b>只给元素、不给牌</b>：口径是「不需要显示出这是哪一张，只需要显示出这张牌
-        /// 对应的元素的符号」。这条约束在 <see cref="BattleDriver.ForecastAttackElement"/>
-        /// 的返回类型上就已经收死了 —— 这里拿到的是一个 <see cref="CardElement"/>，
-        /// 想多显示也拿不到牌名。</para>
-        ///
-        /// <para><b>预判口径</b>由 <see cref="HeuristicAgent"/> / <c>AttackForecast</c> 负责
-        /// （2026-10-03 起与四流派 AI 同源），本类不做任何规则判断（铁律 3）。
-        /// 以下几种情况<b>静默不出提示</b>：</para>
-        /// <list type="bullet">
-        /// <item>对局还没开始 / 已经结束（<see cref="_driver"/> 为空或引擎已收场）；</item>
-        /// <item>还在发牌台选替换牌的那几拍（<b>那时候「下一次进攻」根本无从谈起</b>，
-        ///       而且发牌台的面板正占着画面中央右侧，弹出来会和它挤在一起）；</item>
-        /// <item>怪物手上没牌（元素为 <see cref="CardElement.None"/>）；</item>
-        /// <item>该元素缺图 —— 宁可不出，也不弹一个空框或错的符号。</item>
-        /// </list>
-        ///
-        /// <para><b>不阻塞驱动</b>：这是一个纯展示的回话（跟 M28 按住看手牌同一性质），
-        /// 不能占住 <c>_pendingHold</c>，否则玩家点一下怪物就出不了牌了。</para>
-        /// </summary>
-        public void NotifyMonsterClicked()
-        {
-            if (_thinkBubble == null || _driver == null)
-            {
-                return;
-            }
-
-            // 发牌台还开着（对局没真正开始）→ 这一拍不存在「下一次进攻」，不出提示。
-            if (_deal != null && _deal.IsOpen)
-            {
-                return;
-            }
-
-            // 结算浮层已经铺上来时不再弹 —— 那时候这一拍已经不属于对局了。
-            if (_resultRoot != null && _resultRoot.activeSelf)
-            {
-                return;
-            }
-
-            CardElement element = _driver.ForecastAttackElement(OpponentSeat);
-            _thinkBubble.Show(element);
-        }
-
         /// <summary>
         /// 把一张怪物手牌记为「玩家已知」（幂等）。
         /// 只登记 uid，不存引用 —— 牌回手、换牌都不影响。
@@ -1528,7 +1386,7 @@ namespace MagicBrawl.App
         /// </summary>
         private void PlayActionBanner(BattleEvent e)
         {
-            if (_banner == null)
+            if (_stage == null)
             {
                 return;
             }
@@ -1538,11 +1396,11 @@ namespace MagicBrawl.App
                 var ts = (TurnStartedEvent)e;
                 if (ts.Seat == LocalSeat)
                 {
-                    _banner.Show(ts.IsComboFollowUp ? "连击 · 追加进攻" : "轮到你进攻");
+                    _stage.Flash(ts.IsComboFollowUp ? "连击 · 追加进攻" : "轮到你进攻");
                 }
                 else
                 {
-                    _banner.Show(ts.IsComboFollowUp ? "对手连击追加进攻" : "对手进攻回合");
+                    _stage.Flash(ts.IsComboFollowUp ? "对手连击追加进攻" : "对手进攻回合");
                 }
             }
             else if (e is AttackDeclaredEvent)
@@ -1551,13 +1409,13 @@ namespace MagicBrawl.App
                 // 挡没挡住是结算的事，下一拍 DefenseResolved 会说。
                 if (((AttackDeclaredEvent)e).Seat == LocalSeat)
                 {
-                    _banner.Show("进攻结束");
+                    _stage.Flash("进攻结束");
                 }
             }
             else if (e is DefenseResolvedEvent)
             {
                 var dr = (DefenseResolvedEvent)e;
-                _banner.Show(dr.Success
+                _stage.Flash(dr.Success
                     ? "防御成功"
                     : (dr.GaveUp ? "放弃防御 · 掉 1 点" : "防御失败 · 掉 1 点"));
             }
@@ -1640,12 +1498,12 @@ namespace MagicBrawl.App
         /// </summary>
         private void PlayEffectBanner(string line)
         {
-            if (_banner == null || string.IsNullOrEmpty(line) || _actorSeat != OpponentSeat)
+            if (_stage == null || string.IsNullOrEmpty(line) || _actorSeat != OpponentSeat)
             {
                 return;
             }
 
-            _banner.Show(line);
+            _stage.Flash(line);
         }
 
         /// <summary>
@@ -1713,16 +1571,45 @@ namespace MagicBrawl.App
 
         private void HandleDecision(DecisionSnapshot snap)
         {
-            if (snap.Seat != LocalSeat) return;
+            // ══════════════════════════════════════════════════════
+            //  2026-10-30：热座（玩家对玩家）—— 这一拍该操作的是本机的另一个人
+            // ══════════════════════════════════════════════════════
+            //
+            //  AI 座位的决策照旧不进界面（返回即可 —— driver 会自己等它的 AI 应答）。
+            //  人类座位则要**先把视角切过去**再渲染：
+            //    ① driver 的 LocalSeat 换成他（OpponentSeat 由模式算，自动跟着变）；
+            //    ② 手牌 / 冷却区 / 飞行层三处的座位号重绑；
+            //    ③ 整屏重算（RefreshAll 里所有「我方」都读 LocalSeat）。
+            //
+            //  ⚠ 必须先 ClearDecision：上一拍留下的 _pendingValid / _handPlayable
+            //    会被 RefreshAll 当成「这一拍还能点那几张」重新点亮 ——
+            //    症状是「轮到对手时，你上一拍能打的牌还亮着」。
+            if (snap.Seat != LocalSeat)
+            {
+                if (_driver == null || !_driver.IsHumanSeat(snap.Seat))
+                {
+                    return;
+                }
+
+                ClearDecision();
+                _driver.SetLocalSeat(snap.Seat);
+                BindSeats();
+                RefreshAll();
+            }
+
             _pendingValid = true;
             _pendingKind = snap.Kind;
             ClassifyOptions(snap);
 
+            // 动作区要在浮层之前定下来：浮层靠 _dockSubmit 判断「这一拍的结束键是不是
+            // 已经被右下角那个键接走了」，接走了就不再在屏幕中央列一遍。
+            SetDockState(snap);
+
             // 防御拍不会发 TurnStarted（那是「进攻回合」的开场事件）——
             // 玩家只有在被问到的这一刻才知道「该我挡了」，所以在中央补一声。
-            if (_banner != null && snap.Kind == RequestKind.ChooseDefense)
+            if (_stage != null && snap.Kind == RequestKind.ChooseDefense)
             {
-                _banner.Show("轮到你防御");
+                _stage.Flash("轮到你防御");
             }
 
             // M13：把「这一拍问的是哪件事」翻成拖拽出牌的方向 ——
@@ -1825,8 +1712,19 @@ namespace MagicBrawl.App
                     //
                     // ⚠ 例外：若本拍**只有**「双方」档（雪崩 SlowZoneBoth），没有任何侧别可点，
                     //   那就没有「点哪一格」这回事，只能把档列出来让玩家挑。
-                    if (snap.Kind == RequestKind.ChooseCooldownEffects) _picker.Show(string.Empty, _flatOptions);
-                    else _picker.ShowSkipOnly(snap.Options);
+                    if (snap.Kind == RequestKind.ChooseCooldownEffects)
+                    {
+                        _picker.Show(string.Empty, _flatOptions);
+                    }
+                    else if (_dockSubmit != null)
+                    {
+                        // 「不执行」已经由右下角的动作键承担 → 浮层不再开第二个入口
+                        _picker.Hide();
+                    }
+                    else
+                    {
+                        _picker.ShowSkipOnly(snap.Options);
+                    }
 
                     if (_zoneBySeat.Count == 0)
                     {
@@ -1848,15 +1746,26 @@ namespace MagicBrawl.App
                 }
                 else
                 {
-                    // 标题不重复：决策文案已经由顶部提示条显示（它在最上方、全宽、更醒目），
-                    // 浮层只留按钮。
-                    _picker.Show(string.Empty, _flatOptions);
+                    // 标题不重复：短句已经由顶部字幕条显示，浮层只留按钮。
+                    // ⚠ 2026-10-29：动作区接走的那个选项（结束 / 放弃 / 不选）要从列表里摘掉 ——
+                    //   否则屏幕中央会多出一个和右下角一模一样的键（用户第一眼就看到了）。
+                    List<Option> rest = WithoutDockOption(_flatOptions);
+                    if (rest.Count == 0)
+                    {
+                        _picker.Hide();
+                    }
+                    else
+                    {
+                        _picker.Show(string.Empty, rest);
+                    }
                 }
             }
 
             if (_stage != null)
             {
-                _stage.SetPrompt(snap.Prompt);
+                // 2026-10-29：不再把引擎那句整话（「选择本次进攻打出的法术（有牌时必须进攻）」）
+                // 铺在屏幕顶上 —— 只留 ≤10 字的阶段字幕，细节交给动作区与卡面本身。
+                _stage.SetPrompt(CaptionFor(snap));
             }
 
             RefreshAll();
@@ -1874,22 +1783,6 @@ namespace MagicBrawl.App
         {
             bool win = winnerSeat == LocalSeat;
             bool draw = winnerSeat < 0;
-
-            // 2026-10-05 · 带伤入场：这一局结束、玩家<b>还活着</b> → 把当前生命带回局外，
-            // 下一场就带着这一场剩下的血进场（战斗内回血的增量一并带走）。
-            // ⚠ 只在「玩家赢」时写：输 / 平局时玩家生命是 0，写回去等于给失败编一个血量，
-            //   而失败已经由 ReportBattle(false) 表达；更关键的是「重试」需要的正是
-            //   局外那份<b>入场前</b>的值 —— 写回 0 会让重试变成 1 血开局。
-            if (win && !draw && _driver != null)
-            {
-                MapRun.SetPlayerHp(_driver.GetPlayer(LocalSeat).Hp);
-            }
-
-            // 2026-10-05：这一局是不是从冒险地图的**战斗节点**走进来的 ——
-            // 两条结算路（胜利 / 失败）都要用它，统一在这里算一次，
-            // 免得只有其中一条算过、另一条的「继续 / 退出」把人送错地方。
-            _mapBattleReturn = MapRun.HasActiveRun && MapRun.InMapBattle;
-            _mapBattleWin = win;
 
             // M44：结算界面铺开之后，右上角那两枚常驻键（设置 / 卡池）没有意义 ——
             //   对局已经结束，而且它们排在结算界面之后会盖在结算画面上。收起来；
@@ -1946,13 +1839,6 @@ namespace MagicBrawl.App
 
             _resultRoot.SetActive(true);
 
-            // 2026-10-02：这一局是从冒险地图的战斗节点走进来的话，
-            // 结算键换成「回到地图」—— 点它就带着胜负回地图层，而不是在这儿再打一局。
-            if (_mapBattleReturn)
-            {
-                SetAgainLabel("回到地图");
-            }
-
             ShutdownAfterFinish();
         }
 
@@ -2002,13 +1888,6 @@ namespace MagicBrawl.App
                 _monsterHandHold.ResetState();
             }
 
-            // M41：终局时把思考框收掉 —— 它不吃射线、不会挡住结算面板，
-            // 但让一个「预告下一张牌」的泡停在终局画面上是纯噪音。
-            if (_thinkBubble != null)
-            {
-                _thinkBubble.Hide();
-            }
-
             ClearDecision();
         }
 
@@ -2017,20 +1896,21 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
 
         /// <summary>
-        /// 铺开胜利结算界面：按<b>卡牌获取池</b>抽三张候选牌，交给 <see cref="ResultWinView.Show"/>。
+        /// 铺开胜利结算界面（2026-10-28 · 大改：奖励与金币已随冒险一起删掉）。
         ///
-        /// <para><b>这一刻唯一的副作用是「记账」</b>：这三张被摆出来了，
-        /// 于是它们被记进存档的「曾展示过」单子（下次出现概率减半）——
-        /// 卡池与金币则要等玩家点「继续」才变（见 <see cref="HandleResultWinContinue"/>）。</para>
+        /// <para>只剩「徽记 + 战斗胜利横幅 + 再来一局」。奖励区（分隔线 / 三张卡 / 金币）
+        /// 由 <see cref="ResultWinView"/> 在候选为空时整组收起来 —— 这样不必重跑
+        /// M7→M8→M11 就能把那一块从画面上拿掉。</para>
         /// </summary>
         private void ShowResultWin()
         {
-            // 与旧面板同一处判据：这一局是不是从冒险地图的战斗节点走进来的。
-            // 是 → 「继续」= 回地图；不是（单场景调试）→ 「继续」= 再来一局。
-            _mapBattleReturn = MapRun.HasActiveRun && MapRun.InMapBattle;
+            if (_resultWin == null)
+            {
+                return;
+            }
 
-            _rewardChoices = RollRewardChoices(UiLayout.ResultWinCardCount);
-            _resultWin.Show(_rewardChoices, UiLayout.ResultWinGoldReward);
+            _resultWin.SetContinueLabel("再来一局");
+            _resultWin.Show(null, 0);
         }
 
         /// <summary>
@@ -2079,20 +1959,10 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 玩家点了失败界面上的「退出」（2026-10-05 改：<b>一律回到游戏开始场景</b>）。
+        /// 玩家点了失败界面上的「退出」—— <b>一律回到主菜单</b>（2026-10-28 · 大改）。
         ///
-        /// <para><b>用户口径</b>：「当玩家在战斗当中失败，点击退出时，也是返回该界面（开始场景）」。
-        /// 所以这里不再分「冒险里回地图 / 单场景停战」两条路 —— 两处都切到
-        /// <see cref="MapRoutes.HomeScene"/>，让玩家重新选存档。</para>
-        ///
-        /// <para><b>⚠ 为什么要 <see cref="MapRun.Clear"/></b>：<see cref="MapRun"/> 是静态的、
-        /// 换场景不会重置。不清的话，玩家回到主菜单再点「进入游戏」会掉进刚刚已经打输的那趟冒险
-        /// （地图那边会直接铺出「旅程结束」），等于「退出」没退出。</para>
-        ///
-        /// <para><b>⚠ 兜底</b>：若 <c>Home</c> 场景还没构建（没跑过
-        /// <c>魔法乱斗/P0 · 构建 Home 场景</c>），<c>LoadScene</c> 会当场抛错、把玩家卡在失败界面。
-        /// 所以先用 <see cref="Application.CanStreamedLevelBeLoaded"/> 判一下，
-        /// 不在 Build Settings 里就退回旧行为（回地图 / 停战）并打一条警告。</para>
+        /// <para>冒险已经删掉了，所以这里不再有「回地图 / 停战」两条路：停掉本局、切到
+        /// <see cref="SceneRoutes.HomeScene"/>，玩家重新选玩法。</para>
         /// </summary>
         private void HandleQuitBattle()
         {
@@ -2101,25 +1971,14 @@ namespace MagicBrawl.App
                 return;
             }
 
-            if (Application.CanStreamedLevelBeLoaded(MapRoutes.HomeScene))
-            {
-                MapRun.Clear();
-                UnityEngine.SceneManagement.SceneManager.LoadScene(MapRoutes.HomeScene);
-                return;
-            }
-
-            Debug.LogWarning("[MagicBrawl] 找不到 Home 场景（先跑 `魔法乱斗/P0 · 构建 Home 场景`），"
-                             + "「退出」暂时沿用旧行为。");
-
-            if (_mapBattleReturn)
-            {
-                MapRun.ReportBattle(false);
-                UnityEngine.SceneManagement.SceneManager.LoadScene(MapRoutes.MapScene);
-                return;
-            }
-
             _driver.StopBattle();
 
+            if (SceneRoutes.LoadHome())
+            {
+                return;
+            }
+
+            Debug.LogWarning("[MagicBrawl] 找不到 Home 场景（先跑 `魔法乱斗/P0 · 构建 Home 场景`）。");
             if (_stage != null)
             {
                 _stage.SetPrompt("已退出战斗");
@@ -2127,100 +1986,23 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 玩家点了「继续」：把选中的牌写进卡池、加金币，然后走人。
+        /// 玩家点了胜利界面上的「再来一局」（2026-10-28 · 大改）。
         ///
-        /// <para><paramref name="picked"/> 为 −1 = 一张都没选 = 放弃卡牌奖励，
-        /// 金币照给（参考图里金币是「过关奖励」，不是「选牌奖励」）。</para>
+        /// <para>不再有卡牌奖励与金币 —— 冒险和它的卡池已经删掉了。这个键就是
+        /// 「用新的种子再打一局」：标准战斗会重新随机两副 8 张；自定义战斗沿用玩家
+        /// 挑好的那两套（牌组来自 <see cref="BattleLaunch"/>，不由本类决定）。</para>
+        ///
+        /// <para><paramref name="picked"/> 只为兼容 <see cref="ResultWinView.ContinueClicked"/>
+        /// 的签名保留 —— 这块界面已经没有任何可选的东西了。</para>
         /// </summary>
         private void HandleResultWinContinue(int picked)
         {
-            // ① 选中的牌 → 本局读的那个存档档位的卡池（同时记进「曾获得」，
-            //    从此它<b>永远</b>不会再出现在奖励 / 商店里，哪怕以后被消耗掉）。
-            if (_driver != null && picked >= 0 && _rewardChoices != null
-                && picked < _rewardChoices.Length && _rewardChoices[picked] != null)
+            if (_driver == null)
             {
-                string error;
-                if (!SaveStore.TryGrantCard(_driver.ActiveSaveSlot, _rewardChoices[picked].Id, out error))
-                {
-                    Debug.LogWarning("[MagicBrawl] 战利品没能写进卡池：" + error);
-                }
-            }
-
-            // ② 金币 —— 只有冒险里才有「金币」这个概念（单场景调试时 MapRun 是空的）
-            if (MapRun.HasActiveRun)
-            {
-                MapRun.SetGold(MapRun.Gold + UiLayout.ResultWinGoldReward);
-            }
-
-            // ③ 走人
-            if (_mapBattleReturn)
-            {
-                MapRun.ReportBattle(true);
-                UnityEngine.SceneManagement.SceneManager.LoadScene(MapRoutes.MapScene);
                 return;
             }
 
             _driver.StartBattle();
-        }
-
-        /// <summary>
-        /// 抽 <paramref name="count"/> 张<b>互不相同</b>的奖励候选牌，并<b>把这次展示记进存档</b>
-        /// （2026-10-05 · 卡牌获取池）。
-        ///
-        /// <para><b>规则</b>（用户口述）：候选只从「这个玩家还<b>没获得过</b>的牌」里出
-        /// （含获得之后又被消耗掉的）；<b>曾经展示过但没拿的</b>牌，出现概率减半；
-        /// 其余等概率。这套口径的唯一实现是 <see cref="CardAcquisition.Draw"/>。</para>
-        ///
-        /// <para><b>⚠ 从 <see cref="CardCatalog.Builtin"/> 抽，不从场景的
-        /// <c>CardCatalogAsset</c> 抽</b>：后者会把已经落盘的强化版也当成一张独立的牌
-        /// （<c>"a+"</c>）—— 抽到它就等于凭空多发一张强化牌，而基础版 <c>"a"</c>
-        /// 反而不在池里。与 <c>SaveStore.CreateMainStartingPlayer</c> 同一口径。</para>
-        ///
-        /// <para><b>⚠ 读的是「本局那个存档档位」的状态</b>（<c>_driver.ActiveSaveSlot</c>，
-        /// 2026-10-05 起默认 = 主存档）：只有和商店 / 女巫工坊读同一份，排除名单才是同一份。
-        /// 读档失败时退化成「没有任何限制」（只是这一轮多刷几张，不会卡住界面），并打一条警告。</para>
-        /// </summary>
-        private CardDef[] RollRewardChoices(int count)
-        {
-            SaveSlot slot = _driver != null ? _driver.ActiveSaveSlot : SaveSlot.Main;
-
-            HashSet<string> acquired;
-            HashSet<string> offered;
-            string error;
-            if (!SaveStore.TryLoadAcquisition(slot, out acquired, out offered, out error))
-            {
-                Debug.LogWarning("[MagicBrawl] 读卡牌获取状态失败，本局奖励不做排除：" + error);
-                acquired = new HashSet<string>(StringComparer.Ordinal);
-                offered = new HashSet<string>(StringComparer.Ordinal);
-            }
-
-            // 种子取「本局种子」——「重试本场」时同一颗种子会给出同一批候选，
-            // 这与「重试 = 回到最开始的状态」是一致的；而每一局新战斗的种子不同，
-            // 所以串起来打一局冒险时该变的还是会变。
-            int seed = _driver != null
-                ? unchecked(_driver.LastSeed * 397 ^ count * 31 ^ 0x5A17)
-                : unchecked(Environment.TickCount);
-
-            List<CardDef> picks = CardAcquisition.Draw(
-                CardCatalog.Builtin(), acquired, offered, count, new Rng(seed));
-
-            // 记账：这三张已经摆到玩家眼前了 → 进「曾展示过」单子（下次概率减半）。
-            // ⚠ 必须**在 Show 之前**写：万一玩家直接关掉游戏，牌也已经展示过了。
-            if (picks.Count > 0)
-            {
-                var shown = new List<string>(picks.Count);
-                for (int i = 0; i < picks.Count; i++)
-                {
-                    shown.Add(picks[i].Id);
-                }
-
-                if (!SaveStore.TryRecordOffered(slot, shown, out error))
-                {
-                    Debug.LogWarning("[MagicBrawl] 「曾展示」没能写进存档：" + error);
-                }
-            }
-
-            return picks.ToArray();
         }
 
         // ══════════════════════════════════════════════════════
@@ -2237,7 +2019,6 @@ namespace MagicBrawl.App
             // M35：两侧冷却区都要参与配对 —— 玩家的牌与怪物的牌都会从头顶飞向各自的槽
             if (_transit != null) _transit.CaptureBeforeBind(_handBuf, _playerCoolingBuf, _enemyCoolingBuf);
             _driver.CollectHand(LocalSeat, _handBuf);
-            AccumulateDrawnCards(_handBuf);      // M44：记「本局抽到过手牌」，供卡池面板压暗
             _driver.CollectCooling(LocalSeat, _playerCoolingBuf);
             _driver.CollectCooling(OpponentSeat, _enemyCoolingBuf);
 
@@ -2555,13 +2336,8 @@ namespace MagicBrawl.App
             PlayerSnapshot me = _driver.GetPlayer(LocalSeat);
             PlayerSnapshot foe = _driver.GetPlayer(OpponentSeat);
 
-            if (_hud != null)
-            {
-                _hud.Bind(me, _handBuf.Count, _attacksRemaining);
-                // M15：原来这里还会调 BindBuffSlots 去点亮顶栏下面那排占位图标 ——
-                // 那排假图标已经删掉，真正的光环改由 _hudBuff 承载（见 RefreshAuraIcons）。
-            }
-
+            // 2026-10-29：顶栏没了 —— 生命读数只走头顶宝石（CharacterView.SetHpBadge），
+            // 手牌数、光环数、出牌次数都不再需要第二处显示。
             Sprite heart = BattleArtLibrary.Instance != null ? BattleArtLibrary.Instance.HudAvatar : null;
 
             if (_hero != null)
@@ -2721,6 +2497,13 @@ namespace MagicBrawl.App
         private void ClearDecision(bool keepReturning)
         {
             _pendingValid = false;
+
+            // 2026-10-29：本拍结束 → 动作区一起收起（下一拍由 SetDockState 重新摆）。
+            _dockSubmit = null;
+            if (_dock != null)
+            {
+                _dock.Hide();
+            }
 
             // 没有待决策时把类型打成一个不可能的值：拖拽落点那处只看 _pendingValid，
             // 但留一个「上一次是什么决策」的残值给下一个读代码的人添堵不值得。
@@ -3524,9 +3307,10 @@ namespace MagicBrawl.App
         /// <summary>
         /// M27 选牌弹窗「确认」：把选中的多个选项序号<strong>一次性</strong>回填给引擎。
         ///
-        /// <para><b>一张没选也照样提交</b>（空数组）—— 磁暴 / 充能的 <c>MinSelect = 0</c>，
-        /// 「什么都没选」本身就是合法答案；电弧的 <c>MinSelect = 1</c> 由弹窗自己拦住
-        /// （选够之前确认键是按不动的），所以这里不重复判断。</para>
+        /// <para><b>一张没选也照样提交</b>（空数组）—— 磁暴 / 充能 / 电弧的 <c>MinSelect</c> 都是 0
+        /// （2026-10-30 起电弧也允许「一张都不送」，卡面写的是「<b>可以</b>」），
+        /// 「什么都没选」本身就是合法答案。能不能按由弹窗按 <c>MinSelect</c> 自己决定，
+        /// 这里不重复判断。</para>
         /// </summary>
         private void OnHandPickConfirmed(List<int> optionIndices)
         {
@@ -3540,6 +3324,199 @@ namespace MagicBrawl.App
 
             ClearDecision();
             _driver.SubmitPlayerDecision(picks);
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  右侧动作区（2026-10-29）
+        // ══════════════════════════════════════════════════════
+        //
+        //  它只做一件事：把本拍引擎**已经给出的** Skip / Done 序号回填上去
+        //  （铁律 3：界面不拼选项）。没有可交的选项 → 自己隐藏，不会出现死键。
+
+        /// <summary>本拍动作键要提交的那个选项（null = 不摆键）。</summary>
+        private Option _dockSubmit;
+
+        /// <summary><see cref="WithoutDockOption"/> 的复用缓冲（每拍都要筛一次，别每帧 new）。</summary>
+        private readonly List<Option> _dockFilterBuf = new List<Option>();
+
+        private string _dockLabel;
+        private string _dockSub;
+        private bool _dockDanger;
+
+        /// <summary>按本拍决策摆好动作区：文案 / 代价 / 是否危险态。</summary>
+        private void SetDockState(DecisionSnapshot snap)
+        {
+            _dockSubmit = null;
+            _dockLabel = null;
+            _dockSub = null;
+            _dockDanger = false;
+
+            Option skip = FindOption(snap, OptionKind.Skip);
+            Option done = FindOption(snap, OptionKind.Done);
+
+            switch (snap.Kind)
+            {
+                case RequestKind.ChooseAttackCard:
+                    // 有牌也可以不出（引擎 2026-10-29 起给这一拍补了 Skip）。
+                    // ⚠ 2026-10-30：不出牌要掉 1 点 —— 与「放弃防御」一样是危险键，
+                    //   所以副标签必须把代价写出来，否则玩家会以为它是免费的。
+                    if (skip != null)
+                    {
+                        _dockLabel = "结束进攻";
+                        _dockSub = "−1";
+                        _dockDanger = true;
+                        _dockSubmit = skip;
+                    }
+                    break;
+
+                case RequestKind.ChooseDefense:
+                    if (skip != null)
+                    {
+                        _dockLabel = "放弃防御";
+                        _dockSub = "−1";
+                        _dockDanger = true;
+                        _dockSubmit = skip;
+                    }
+                    break;
+
+                case RequestKind.ChooseCoolHandCards:
+                case RequestKind.ChooseRemoveFromGame:
+                case RequestKind.ChooseReplace:
+                    // 这几拍各有自己的确认口（选牌弹窗 / 发牌台），动作区不摆第二个入口
+                    break;
+
+                default:
+                    if (skip != null)
+                    {
+                        _dockLabel = "放弃";
+                        _dockSubmit = skip;
+                    }
+                    else if (done != null)
+                    {
+                        _dockLabel = "不选";
+                        _dockSubmit = done;
+                    }
+                    break;
+            }
+
+            ApplyDock();
+        }
+
+        /// <summary>把 <see cref="SetDockState"/> 记下的状态落到屏幕上。</summary>
+        private void ApplyDock()
+        {
+            if (_dock == null)
+            {
+                return;
+            }
+
+            if (_dockSubmit == null)
+            {
+                _dock.Hide();
+                return;
+            }
+
+            bool attack = _pendingKind == RequestKind.ChooseAttackCard;
+            int pips = attack ? Mathf.Clamp(_attacksRemaining, 0, UiLayout.DockPipSlots) : 0;
+            int slots = attack ? 1 : 0;
+            _dock.Bind(true, _dockLabel, _dockSub, _dockDanger, pips, slots);
+        }
+
+        private void OnDockClicked()
+        {
+            Option option = _dockSubmit;
+            if (option == null)
+            {
+                return;
+            }
+
+            _dockSubmit = null;
+            if (_dock != null)
+            {
+                _dock.Hide();
+            }
+
+            Pick(option);
+        }
+
+        /// <summary>把动作区已经接走的那个选项从浮层列表里摘掉（其余原样保留）。</summary>
+        private List<Option> WithoutDockOption(List<Option> source)
+        {
+            _dockFilterBuf.Clear();
+            if (source == null)
+            {
+                return _dockFilterBuf;
+            }
+
+            for (int i = 0; i < source.Count; i++)
+            {
+                if (source[i] != _dockSubmit)
+                {
+                    _dockFilterBuf.Add(source[i]);
+                }
+            }
+
+            return _dockFilterBuf;
+        }
+
+        private static Option FindOption(DecisionSnapshot snap, OptionKind kind)
+        {
+            if (snap.Options == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < snap.Options.Count; i++)
+            {
+                if (snap.Options[i] != null && snap.Options[i].Kind == kind)
+                {
+                    return snap.Options[i];
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 顶部字幕那一句（≤10 字）。
+        ///
+        /// <para><b>为什么不直接用引擎的 <c>Prompt</c></b>：那是给人读规则用的整句
+        /// （「选择本次进攻打出的法术（有牌时必须进攻）」），28pt 横在屏幕顶上等于把
+        /// 玩家已经看得见的三件事再说一遍。这里只回答「现在轮到谁做什么」。</para>
+        /// </summary>
+        private string CaptionFor(DecisionSnapshot snap)
+        {
+            switch (snap.Kind)
+            {
+                case RequestKind.ChooseAttackCard:
+                    if (snap.ContextNoSkip)
+                    {
+                        return "手上没牌 · 无法进攻";
+                    }
+                    return "你的进攻";
+
+                case RequestKind.ChooseDefense:
+                    if (snap.ContextDouble)
+                    {
+                        return "双发 · 需要两张";
+                    }
+                    return "对手打出 " + snap.ContextPower + " 点";
+
+                case RequestKind.ChooseReplace:
+                    return "换牌 · 至多 3 张";
+
+                case RequestKind.ChooseCoolHandCards:
+                case RequestKind.ChooseRemoveFromGame:
+                case RequestKind.ChoosePeekCard:
+                    return string.IsNullOrEmpty(snap.Title) ? "选择一张牌" : snap.Title;
+
+                default:
+                    if (!string.IsNullOrEmpty(snap.Title))
+                    {
+                        return snap.Title;
+                    }
+                    return _pendingDouble ? "双发 · 需要两张" : "选择目标";
+            }
         }
 
         private void Pick(Option option)
@@ -3666,58 +3643,6 @@ namespace MagicBrawl.App
             if (_overlay != null) _overlay.OpenSettings();
         }
 
-        /// <summary>把「本局已经抽到过手牌的卡」交给卡池面板（只读，不参与规则）。</summary>
-        private ICollection<string> GetDrawnCardBaseIds()
-        {
-            return _drawnCardBaseIds;
-        }
-
-        /// <summary>
-        /// <b>本局实际在用的那份卡池</b>（M44）—— 战斗里的卡池面板显示它，
-        /// 而不是让面板自己去读一遍存档。
-        ///
-        /// <para><b>⚠ 为什么不能各读各的</b>：面板读的是存档，而本局牌堆读的是
-        /// <c>BuildSetup</c> 那一步解析出来的角色定义 —— 当存档<b>还不存在</b>时后者会回退到
-        /// 角色自带的卡池（全 45 张），两者就不是同一份了；再加上「读主存档」在文件缺失时
-        /// 会<b>当场新建一个</b>，于是面板会显示一份玩家从没见过的牌。
-        /// 本方法让两边同源：<c>GetLocalCharacterDefinition()</c> 正是
-        /// <c>BuildSetup</c> 里 <c>WithCardPool</c> 之后的那份。</para>
-        /// </summary>
-        private IReadOnlyList<CardDef> GetBattleCardPoolCards()
-        {
-            CharacterDefinition definition = _driver != null ? _driver.GetLocalCharacterDefinition() : null;
-            if (definition == null)
-            {
-                return null;
-            }
-
-            return definition.CreateCardPool().Resolve();
-        }
-
-        /// <summary>
-        /// 把这一拍手牌里的卡记进「本局抽到过」（M44）。
-        ///
-        /// <para><b>⚠ 两边都要归一成基础 ID</b>：手牌里可能是强化版（<c>a+</c>），
-        /// 而卡池面板里显示的也可能是强化版 —— 不归一的话，强化过的牌两边永远对不上，
-        /// 症状是「它明明已经抽到手上了，卡池里还是亮的」且零报错。</para>
-        /// </summary>
-        private void AccumulateDrawnCards(List<CardSnapshot> hand)
-        {
-            if (hand == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < hand.Count; i++)
-            {
-                string id = hand[i].CardId;
-                if (!string.IsNullOrEmpty(id))
-                {
-                    _drawnCardBaseIds.Add(CardUpgrade.BaseIdOf(id));
-                }
-            }
-        }
-
         /// <summary>
         /// 设置面板开着的时候引擎不该继续推进（与 M39 那块设置面板同一口径：
         /// 暂停靠 <c>BattleDriver.SetPaused</c>，不走 <c>Time.timeScale</c>）。
@@ -3743,15 +3668,6 @@ namespace MagicBrawl.App
         {
             if (_driver == null)
             {
-                return;
-            }
-
-            // 2026-10-02：冒险里的战斗节点 —— 结算键是「回到地图」。
-            // 先把胜负交给 MapRun（地图那边 MapSceneEntry.Awake 会据它结算这一步），再切场景。
-            if (_mapBattleReturn)
-            {
-                MapRun.ReportBattle(_mapBattleWin);
-                UnityEngine.SceneManagement.SceneManager.LoadScene(MapRoutes.MapScene);
                 return;
             }
 

@@ -29,6 +29,9 @@ namespace MagicBrawl.App.EditorTools
         private const string MiniCardPrefabPath = HandCardPrefabPath;
 
         private const string BodyFontPath = "Assets/Art/Fonts/Black/Google-Regular.asset";
+
+        /// <summary>顶部字幕条的底图（生成的美术；缺图时构建器退回深色块）。</summary>
+        private const string StageCaptionSpritePath = "Assets/Art/Ui/Ui_StageCaption.png";
         private const string TitleFontPath = "Assets/Art/Fonts/BlackLike/站酷仓耳渔阳体-W03 SDF.asset";
 
         /// <summary>M8 / M9 / M13 / M15 / M16 新增的根节点（幂等重建时先整体删掉这些）。</summary>
@@ -48,8 +51,8 @@ namespace MagicBrawl.App.EditorTools
             "PreparedAura", "CardTransitLayer", "ActionBanner",
             // M36：屏幕中央的「一句话浮字」（回答「这张牌为什么点不动」）
             "FloatTip",
-            // M41：点怪物 → 元素预告的「思考框」
-            "ThinkBubble",
+            // M41 的「思考框」与怪物点击面（2026-10-30 功能移除，节点一并收掉）
+            "ThinkBubble", "Char_Monster_Click",
             // M25：查看对方手牌弹窗（雷云 / 狂躁蘑菇的第 2 个 α 效果）
             "PeekLayer",
             // M25b：AI 偷看手牌时的眼睛提示（2026-10-08）
@@ -161,12 +164,10 @@ namespace MagicBrawl.App.EditorTools
             // 顺序 = 绘制顺序（后面的压前面的）：飞牌层 → 行动提示 → 光环标记条。
             // 标记条必须在最上 —— 拖拽中的光环图标不能被任何东西盖住。
             CardTransitView transit = BuildTransitLayer(canvas.transform);
-            ActionBannerView actionBanner = BuildActionBanner(canvas.transform, title);
+            // 2026-10-29：中央行动横幅（ActionBanner）退役 —— 事件短语改用顶部字幕条的
+            //   StageView.Flash（同一块底板、同一个位置），中央那一片留给两个角色。
+            //   节点名仍留在 OwnedNodes 里，重跑本菜单会把老场景里的它清掉。
             FloatTipView floatTip = BuildFloatTip(canvas.transform, title);
-            // M41：点怪物的「思考框」（元素预告）。排在 FloatTip 之后建 —— 两者都在中央，
-            // 但绝不会同屏（一个回答「这张牌为什么点不动」、一个是「点了怪物」），
-            // 顺手把「后建 = 画在上」这条守住。
-            ThinkBubbleView thinkBubble = BuildThinkBubble(canvas.transform);
             PreparedAuraView preparedBar = BuildPreparedBar(canvas.transform);
 
             // M25b：AI 偷看手牌的眼睛提示（2026-10-08）。
@@ -223,30 +224,6 @@ namespace MagicBrawl.App.EditorTools
                                  + "先跑「M11 · 构建 BattleArtLayer」再跑本菜单。");
             }
 
-            // ── M41：捞一下 ArtLayer/Char_Monster_Click 上的「点怪物」接收器 ──
-            // ⚠ 与上面 M28 同一条账：组件本体由 BattleArtLayerBuilder.BuildMonsterClickFace 挂，
-            //   本构建器只做接线 —— 否则先跑本菜单、再跑 M11 会被 DestroyImmediate 抹掉。
-            MonsterClickCatcher monsterClick = null;
-            Transform clickFace = FindDeep(canvas.transform, "Char_Monster_Click");
-            if (clickFace != null)
-            {
-                monsterClick = clickFace.GetComponent<MonsterClickCatcher>();
-                if (monsterClick == null)
-                {
-                    monsterClick = clickFace.gameObject.AddComponent<MonsterClickCatcher>();
-                }
-
-                // ⚠ 这里**不**设 monsterClick.Owner —— `ui` 要到下面几行才声明，
-                //   而且归属本来也不该序列化进 Prefab：它是个运行时引用，
-                //   BattleUi.Awake 里会自己 `Owner = this`（比存一份过期引用更可靠）。
-            }
-            else
-            {
-                Debug.LogWarning("[BattleUi] 没找到 ArtLayer/Char_Monster_Click —— "
-                                 + "M41 的「点怪物看元素预告」没接上。"
-                                 + "先跑「M11 · 构建 BattleArtLayer」再跑本菜单。");
-            }
-
             var dragSo = new SerializedObject(handView);
             dragSo.FindProperty("_playZone").objectReferenceValue = playZone;
             dragSo.FindProperty("_arrow").objectReferenceValue = dropArrow;
@@ -296,15 +273,13 @@ namespace MagicBrawl.App.EditorTools
             uso.FindProperty("_deal").objectReferenceValue = deal;
             uso.FindProperty("_transit").objectReferenceValue = transit;
             uso.FindProperty("_preparedBar").objectReferenceValue = preparedBar;
-            uso.FindProperty("_banner").objectReferenceValue = actionBanner;
+            // ⚠ 2026-10-29：_banner 字段已删（事件短语并入 StageView.Flash）。
             uso.FindProperty("_floatTip").objectReferenceValue = floatTip;
-            uso.FindProperty("_thinkBubble").objectReferenceValue = thinkBubble;
             uso.FindProperty("_peek").objectReferenceValue = peek;
             uso.FindProperty("_peekEye").objectReferenceValue = peekEye;
             uso.FindProperty("_handPick").objectReferenceValue = handPick;
             uso.FindProperty("_monsterHand").objectReferenceValue = monsterHand;
             uso.FindProperty("_monsterHandHold").objectReferenceValue = monsterHandHold;
-            uso.FindProperty("_monsterClick").objectReferenceValue = monsterClick;
             uso.FindProperty("_resultRoot").objectReferenceValue = resultRoot;
             uso.FindProperty("_resultTitle").objectReferenceValue = resultTitle;
             uso.FindProperty("_resultSub").objectReferenceValue = resultSub;
@@ -341,7 +316,7 @@ namespace MagicBrawl.App.EditorTools
             //    留着没有意义。Ensure 会顺手把 Canvas 上那份旧设置层删掉
             //    （判据 = 同名节点且挂着 SettingsView，避免误删同名装饰节点），
             //    并把这一层接到 `BattleUi._overlay`。
-            GlobalOverlayBuilder.Ensure(canvas, true, SaveSlot.Main);
+            GlobalOverlayBuilder.Ensure(canvas);
 
             // ── 保存 ──────────────────────────────────────────
             PrefabUtility.SaveAsPrefabAssetAndConnect(canvas, PrefabDir + "/" + CanvasName + ".prefab",
@@ -385,11 +360,27 @@ namespace MagicBrawl.App.EditorTools
             GameObject prompt = NewUi("PromptBar", topArea);
             Box(Rt(prompt), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(0f, -UiLayout.PromptTop), new Vector2(UiLayout.PromptWidth, UiLayout.PromptHeight));
-            AddImage(prompt, UiTheme.PromptBackdrop);
-            MakeFrame(prompt.transform, 2f, UiTheme.OverlayEdge);
+
+            // 2026-10-29：底板由「深灰半透明块 + 描边」换成生成的象牙石字幕条（九宫格）。
+            //   缺图时退回原来的深色块 —— 少了美术也不至于变成一条空白。
+            var plateImg = prompt.AddComponent<Image>();
+            plateImg.raycastTarget = false;
+            Sprite caption = AssetDatabase.LoadAssetAtPath<Sprite>(StageCaptionSpritePath);
+            plateImg.sprite = caption;
+            if (caption != null)
+            {
+                plateImg.type = Image.Type.Sliced;
+                plateImg.pixelsPerUnitMultiplier =
+                    Mathf.Max(1f, caption.rect.height / UiLayout.PromptHeight);
+            }
+            else
+            {
+                plateImg.color = UiTheme.PromptBackdrop;
+            }
 
             GameObject promptText = NewUi("Text", prompt.transform);
-            Stretch(Rt(promptText), 16f, 4f, 16f, 4f);
+            // 内缩 60：九宫格的左右端帽各占 40 px，文字压进圆头里会糊
+            Stretch(Rt(promptText), 60f, 6f, 60f, 6f);
             TMP_Text promptLabel = AddText(promptText, title, UiLayout.FontSizePrompt,
                 UiTheme.TextPrimary, TextAlignmentOptions.Center);
 
@@ -538,48 +529,6 @@ namespace MagicBrawl.App.EditorTools
             return view;
         }
 
-        /// <summary>
-        /// 屏幕中央的行动提示横幅（「轮到你进攻」/「进攻结束」）。
-        ///
-        /// <para>不吃射线：它压着所有界面闪一下，但不会截走任何点击。
-        /// 默认 <c>alpha = 0</c>，由 <see cref="ActionBannerView"/> 在提示时淡入淡出。</para>
-        /// </summary>
-        private static ActionBannerView BuildActionBanner(Transform canvas, TMP_FontAsset title)
-        {
-            GameObject go = NewUi("ActionBanner", canvas);
-            RectTransform rt = Rt(go);
-            Box(rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, UiLayout.ActionBannerY),
-                new Vector2(UiLayout.ActionBannerWidth, UiLayout.ActionBannerHeight));
-
-            var group = go.AddComponent<CanvasGroup>();
-            group.interactable = false;
-            group.blocksRaycasts = false;
-            group.alpha = 0f;
-
-            GameObject backGo = NewUi("Backdrop", go.transform);
-            Stretch(Rt(backGo));
-            Image back = AddImage(backGo, UiTheme.ActionBannerBackdrop);
-            // 底衬用**卡框九宫格图**（CardBox，border 38）。⚠ 别用 PolySprite 的
-            // RoundedRectangle —— 那张图没有 border，Sliced 会退化成 Simple，
-            // 256×256 的方图拉到 560×104（5.4:1）会把圆角抻成一段椭圆。
-            // 运行时 Sprite.Create 出来的图不是 Asset，存进 Prefab 会被丢掉，所以只能取工程资源。
-            back.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Ui/CardBox.png");
-            back.type = Image.Type.Sliced;
-            back.raycastTarget = false;
-
-            GameObject labelGo = NewUi("Label", go.transform);
-            Stretch(Rt(labelGo));
-            TMP_Text label = AddText(labelGo, title, UiLayout.FontSizeActionBanner,
-                UiTheme.ActionBannerText, TextAlignmentOptions.Center);
-
-            var view = go.AddComponent<ActionBannerView>();
-            var so = new SerializedObject(view);
-            so.FindProperty("_group").objectReferenceValue = group;
-            so.FindProperty("_label").objectReferenceValue = label;
-            so.ApplyModifiedPropertiesWithoutUndo();
-            return view;
-        }
 
         /// <summary>
         /// M36：屏幕中央的「一句话浮字」—— 回答「这张牌为什么点不动」。
@@ -625,73 +574,6 @@ namespace MagicBrawl.App.EditorTools
             var view = go.AddComponent<FloatTipView>();
             view.Configure(group, label,
                 UiLayout.FloatTipSeconds, UiLayout.FloatTipFadeInSeconds, UiLayout.FloatTipRise);
-            return view;
-        }
-
-        /// <summary>
-        /// M41：点怪物的「思考框」—— 一个正方形气泡，里面是怪物下一张进攻牌的<b>元素符号</b>。
-        ///
-        /// <para><b>用户口径</b>：点怪物模型时弹出「思考框一样的提示」，告诉玩家它下一次进攻
-        /// 会打出哪张牌，<b>但不显示是哪一张，只显示元素符号</b>（图来自 <c>Art/Icons/Elements</c>），
-        /// 约两秒后渐隐消失。</para>
-        ///
-        /// <para><b>2026-09-27 改版（用户口径三条）</b></para>
-        /// <list type="number">
-        /// <item><b>位置</b>从「模型头顶正中」改成<b>模型偏右上角</b>
-        /// （<c>CharMonsterX + ThinkBubbleRightOffsetX</c> / <c>CharGroundY + ThinkBubbleUpperRightRiseY</c>，
-        /// 版式账在 <see cref="UiLayout.ThinkBubbleX"/> 那段注释里）；</item>
-        /// <item><b>去掉那块象牙白的泡体</b>（原来这里是 `Backdrop` + `CardBox.png` 九宫格，
-        /// 把血量徽标压掉了半边）—— 「不需要有白色的背景」，屏幕上只剩元素符号；</item>
-        /// <item><b>符号缩到 40%</b>（104 → 41.6），泡体同比例缩到 67.2 —— 后者已经看不见了，
-        /// 只剩「弹出动画的缩放原点」这一个作用。</item>
-        /// </list>
-        ///
-        /// <para><b>不吃射线</b>：它出现的时机正是玩家在点怪物，挡一下就把连点打断了。
-        /// <c>Image.raycastTarget</c> 关掉、<c>CanvasGroup.blocksRaycasts</c> 关掉，双保险。</para>
-        ///
-        /// <para><b>框里只有一张 <see cref="Image"/></b>，没有 TMP_Text —— 口径要的是符号本身，
-        /// 一张图比「冰」这个字更直观，也不吃字体 / 换行。图由
-        /// <see cref="ElementIconLibrary"/> 按元素在运行时加载（构建器不预绑哪一张）。</para>
-        ///
-        /// <para>⚠ 尺寸 / 坐标都是读 <see cref="UiLayout"/> 常量写进 prefab 的，
-        /// 而 `ThinkBubbleView.ApplyLayout()` 在运行时还会按同一批常量重申一次 ——
-        /// 所以**改常量立刻见效**，不必为了挪一个泡重跑构建器；重跑构建器也不会改回去。</para>
-        /// </summary>
-        private static ThinkBubbleView BuildThinkBubble(Transform canvas)
-        {
-            GameObject go = NewUi("ThinkBubble", canvas);
-            RectTransform rt = Rt(go);
-            // ⚠ 这两个常量都是**相对画面中心**的（节点锚在 0.5/0.5）——
-            //   别把底边口径的 CharMonsterX / 怪物脚底 y 填进来，那会把泡顶到屏幕外。
-            Box(rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(UiLayout.ThinkBubbleX, UiLayout.ThinkBubbleY),
-                new Vector2(UiLayout.ThinkBubbleWidth, UiLayout.ThinkBubbleHeight));
-
-            var group = go.AddComponent<CanvasGroup>();
-            group.interactable = false;
-            group.blocksRaycasts = false;
-            group.alpha = 0f;
-
-            // ⚠ 2026-09-27：这里**不再建 Backdrop**（用户口径「不需要有白色的背景」）。
-            //   历史：M41 第一版用 `CardBox.png` 九宫格 + UiTheme.ThinkBubbleBackdrop（象牙白）
-            //   做了一块泡体，理由是「浅底让七种颜色的元素符号都跳得出来，深底上深蓝的水几乎看不见」。
-            //   那条理由现在由「符号缩到 40%、只剩它自己」取代 —— 泡体一去掉，
-            //   元素符号直接压在场景上，靠它自身的描边与饱和度读。
-            //   `UiTheme.ThinkBubbleBackdrop` 与 `Art/Ui/CardBox.png` 的导入校验都保留
-            //  （CardBox 另有消费者；色值留着供将来想加回底衬时直接用）。
-            //
-            //   元素符号：唯一的显示内容。初始无图、不显示 —— 由 Show 时再绑。
-            GameObject iconGo = NewUi("Icon", go.transform);
-            Box(Rt(iconGo), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(UiLayout.ThinkBubbleIconSize, UiLayout.ThinkBubbleIconSize));
-            var icon = iconGo.AddComponent<Image>();
-            icon.preserveAspect = true;
-            icon.raycastTarget = false;
-            icon.enabled = false;
-
-            var view = go.AddComponent<ThinkBubbleView>();
-            view.Configure(group, rt, icon,
-                UiLayout.ThinkBubbleSeconds, UiLayout.ThinkBubblePopSeconds, UiLayout.ThinkBubbleRise);
             return view;
         }
 
@@ -1727,8 +1609,8 @@ namespace MagicBrawl.App.EditorTools
             bodyRt.anchoredPosition = Vector2.zero;
             bodyRt.sizeDelta = new Vector2(UiLayout.PickerWidth, 300f);
 
-            AddImage(bodyGo, UiTheme.OverlayPanel);
-            MakeFrame(bodyGo.transform, 2f, UiTheme.OverlayEdge);
+            AddImage(bodyGo, UiTheme.IvoryPanel);
+            MakeFrame(bodyGo.transform, 2f, UiTheme.IvoryEdge);
 
             // Body 用竖直布局 + 自适应高度：选项少的时候面板自己收起来
             var layout = bodyGo.AddComponent<VerticalLayoutGroup>();
@@ -1749,7 +1631,7 @@ namespace MagicBrawl.App.EditorTools
             var titleLe = titleGo.AddComponent<LayoutElement>();
             titleLe.preferredHeight = UiLayout.PickerTitleHeight;
             TMP_Text titleLabel = AddText(titleGo, title, UiLayout.FontSizePickerTitle,
-                UiTheme.TextSecondary, TextAlignmentOptions.Center);
+                UiTheme.InkMuted, TextAlignmentOptions.Center);
 
             GameObject rows = NewUi("Rows", bodyGo.transform);
             var rowsLayout = rows.AddComponent<VerticalLayoutGroup>();
@@ -1784,18 +1666,18 @@ namespace MagicBrawl.App.EditorTools
                 btn.transition = Selectable.Transition.ColorTint;
                 btn.targetGraphic = img;
                 var colors = btn.colors;
-                colors.normalColor = UiTheme.PickerRow;
-                colors.highlightedColor = UiTheme.PickerRowHot;
-                colors.pressedColor = UiTheme.OverlayEdge;
-                colors.selectedColor = UiTheme.PickerRow;
-                colors.disabledColor = UiTheme.PickerRow;
+                colors.normalColor = UiTheme.IvoryRow;
+                colors.highlightedColor = UiTheme.IvoryRowHot;
+                colors.pressedColor = UiTheme.IvoryEdge;
+                colors.selectedColor = UiTheme.IvoryRow;
+                colors.disabledColor = UiTheme.IvoryRow;
                 colors.fadeDuration = 0.08f;
                 btn.colors = colors;
 
                 GameObject labelGo = NewUi("Label", row.transform);
                 Stretch(Rt(labelGo), 10f, 0f, 10f, 0f);
                 TMP_Text label = AddText(labelGo, body, UiLayout.FontSizePickerRow,
-                    UiTheme.TextPrimary, TextAlignmentOptions.Center);
+                    UiTheme.InkOnIvory, TextAlignmentOptions.Center);
 
                 rowGos[i] = row;
                 buttons[i] = btn;
@@ -1884,11 +1766,11 @@ namespace MagicBrawl.App.EditorTools
             bodyRt.sizeDelta = new Vector2(UiLayout.DealWidth, UiLayout.DealHeight);
 
             GameObject backdrop = NewUi("Backdrop", bodyGo.transform);
-            AddImage(backdrop, UiTheme.OverlayPanel);
+            AddImage(backdrop, UiTheme.IvoryPanel);
             Stretch(Rt(backdrop));
             backdrop.AddComponent<LayoutElement>().ignoreLayout = true;
 
-            GameObject frame = MakeFrame(bodyGo.transform, 2f, UiTheme.OverlayEdge);
+            GameObject frame = MakeFrame(bodyGo.transform, 2f, UiTheme.IvoryEdge);
             frame.AddComponent<LayoutElement>().ignoreLayout = true;
 
             var layout = bodyGo.AddComponent<VerticalLayoutGroup>();
@@ -1908,13 +1790,13 @@ namespace MagicBrawl.App.EditorTools
             GameObject counterGo = NewUi("Counter", bodyGo.transform);
             counterGo.AddComponent<LayoutElement>().preferredHeight = UiLayout.DealCounterHeight;
             TMP_Text counter = AddText(counterGo, body, UiLayout.FontSizeDealCounter,
-                UiTheme.TextSecondary, TextAlignmentOptions.Center);
+                UiTheme.InkMuted, TextAlignmentOptions.Center);
             counter.text = "已选 0 / 3";
 
             GameObject hintGo = NewUi("Hint", bodyGo.transform);
             hintGo.AddComponent<LayoutElement>().preferredHeight = UiLayout.DealHintHeight;
             TMP_Text hint = AddText(hintGo, body, UiLayout.FontSizeDealHint,
-                UiTheme.TextSecondary, TextAlignmentOptions.Center);
+                UiTheme.InkMuted, TextAlignmentOptions.Center);
             hint.text = "点手牌标记要替换的牌";
 
             // 「确认替换」——主按钮，常态是青绿；一张没标记时不可点（disabledColor 给压暗态）。
@@ -1922,14 +1804,14 @@ namespace MagicBrawl.App.EditorTools
             TMP_Text confirmLabel;
             MakeDealButton(bodyGo.transform, "ConfirmButton", UiLayout.DealConfirmHeight, title,
                 "确认替换", UiTheme.DealConfirm, UiTheme.DealConfirmHot, UiTheme.DealConfirmOff,
-                out confirm, out confirmLabel);
+                UiTheme.TextPrimary, out confirm, out confirmLabel);
 
             // 「不替换 / 保留这张」——文案运行时由引擎的 Done 选项覆盖（开局与补牌后不一样）。
             Button skip;
             TMP_Text skipLabel;
             MakeDealButton(bodyGo.transform, "SkipButton", UiLayout.DealSkipHeight, title,
-                "不替换", UiTheme.PickerRow, UiTheme.PickerRowHot, UiTheme.PickerRow,
-                out skip, out skipLabel);
+                "不替换", UiTheme.IvoryRow, UiTheme.IvoryRowHot, UiTheme.IvoryRow,
+                UiTheme.InkOnIvory, out skip, out skipLabel);
 
             var view = panel.AddComponent<DealView>();
             var so = new SerializedObject(view);
@@ -1951,7 +1833,8 @@ namespace MagicBrawl.App.EditorTools
         /// 会在下一次状态切换被抹掉。
         /// </summary>
         private static void MakeDealButton(Transform parent, string name, float height, TMP_FontAsset font,
-            string label, Color normal, Color hot, Color off, out Button button, out TMP_Text labelText)
+            string label, Color normal, Color hot, Color off, Color labelColor,
+            out Button button, out TMP_Text labelText)
         {
             GameObject go = NewUi(name, parent);
             go.AddComponent<LayoutElement>().preferredHeight = height;
@@ -1975,7 +1858,7 @@ namespace MagicBrawl.App.EditorTools
             GameObject labelGo = NewUi("Label", go.transform);
             Stretch(Rt(labelGo));
             labelText = AddText(labelGo, font, UiLayout.FontSizeDealButton,
-                UiTheme.TextPrimary, TextAlignmentOptions.Center);
+                labelColor, TextAlignmentOptions.Center);
             labelText.text = label;
             // Done 的文案来自引擎，将来可能更长（现在最长是「不替换，开始对局」8 个字），
             // 留个换行兜底，别让它溢出按钮。

@@ -149,7 +149,7 @@ namespace MagicBrawl.App.EditorTools
                     }
 
                     valid++;
-                    string baseId = CardUpgrade.BaseIdOf(id);
+                    string baseId = CardIds.BaseOf(id);
                     CardDef def;
                     bool known = CardLibrary.TryGet(baseId, out def);
 

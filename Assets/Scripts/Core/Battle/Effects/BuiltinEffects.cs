@@ -23,9 +23,9 @@ namespace MagicBrawl.Core
             Register(registry, EffectOp.CoolHandForHaste, EffectStage.Cooldown, CoolHand);
             Register(registry, EffectOp.Copy, EffectStage.Power, Copy);
             Register(registry, EffectOp.LookAndCool, EffectStage.Cooldown, Peek);
-            Automatic(registry, EffectOp.SlowZoneBoth, EffectStage.Cooldown, (c, e) => {
-                foreach (int seat in c.TargetSeats(e)) c.ChangeZone(seat, e.Arg("threshold"), false);
-            });
+            // 雪崩（an）：2026-10-29 起回到「可选」—— 卡面写的是「可以选择使……都被减速」。
+            //   阈值由卡表定死，玩家选的不是 k 而是「执不执行」，所以选项只有一个（+ 跳过）。
+            Register(registry, EffectOp.SlowZoneBoth, EffectStage.Cooldown, SlowZoneBoth);
             Automatic(registry, EffectOp.AtkPlus, EffectStage.Power, (c, e) => c.AddAttackPower(e.Arg("amount")));
             Automatic(registry, EffectOp.AtkPlusPerCooling, EffectStage.Power, (c, e) => c.AddAttackPower(c.Owner.CoolingZone.Count * e.Arg("amount")));
             Automatic(registry, EffectOp.AtkPlusPerHpLoss, EffectStage.Power, (c, e) => {
@@ -98,6 +98,25 @@ namespace MagicBrawl.Core
             //  （手牌数由调用方给，因为「等于手牌数」这个量在卡表里取不到）。
             Automatic(registry, EffectOp.DefPlusPerHand, EffectStage.Defense, (c, e) => { });
             Automatic(registry, EffectOp.Guard, EffectStage.Defense, (c, e) => { });
+            // 地刺（ar）：「如果这是你手中的最后一张牌，进攻打出之后自动回手」。
+            //   条件 hand-at-play = 1 由 EffectDef 构造时自动挂上；不满足时 EffectWindow
+            //   根本不会执行这一条（不弹决策、不消耗任何东西）。
+            //   归 AfterCooldown = 第 4 步「牌已进冷却区」之后，此时把剩余冷却刷到 0 走的是
+            //   与「冷却完毕」完全相同的回手路径（CooldownOps.Refresh），
+            //   所以指示物作废 / 刻印熄灭 / cooldown.completed 事件全都自动成立。
+            Automatic(registry, EffectOp.ReturnToHandIfLastHand, EffectStage.AfterCooldown, (c, e) => {
+                if (c.Source.IsCooling) c.Refresh(c.Source);
+            });
+            // 火炬（ap）gamma：「每当你生命值减少时，此光环将恢复到可用状态」。
+            //   触发点在 BattleEngine.ApplyDamage / CutMaxHp —— 那里按 "owner.hp.lost"
+            //   把该座位冷却区的每张牌过一遍，真正补指示物的代码只有这里一处。
+            Automatic(registry, EffectOp.RestoreAuraOnHpLoss, EffectStage.Cooldown, (c, e) => {
+                if (!c.Source.IsCooling || !c.Source.RestoreAura()) return;
+                c.Emit(new AuraActivatedEvent { Seat = c.Seat, Card = c.Source, Tokens = 1 });
+            });
+            // RuleNote：纯卡面声明（模仿 gamma）。永远不结算 —— 处理器是空实现，
+            //   而且它的事件 id "rule.note" 没有任何发布者。
+            Automatic(registry, EffectOp.RuleNote, EffectStage.Power, (c, e) => { });
         }
         private static void Register(EffectRegistry r, EffectOp op, EffectStage stage,
             Func<EffectContext, EffectDef, IEnumerable<EffectChoice>> execute,
@@ -154,8 +173,22 @@ namespace MagicBrawl.Core
                             if (c.WasSelected(e.DistinctTargetGroup, card) || !haste && card.RemainingCooldown >= card.Def.Cooldown) continue;
                             if (zone)
                             {
-                                if (values.Add(card.RemainingCooldown)) options.Add(new Option { Kind = OptionKind.ZoneValue,
-                                    Seat = seat, Value = card.RemainingCooldown, Label = title + " " + card.RemainingCooldown });
+                                if (values.Add(card.RemainingCooldown))
+                                {
+                                    // Count = 这一档实际会命中几张。2026-10-29 补上：
+                                    //   ① AI 的「选数值最集中的那一档」全靠它打分（缺了就是全 0，等于乱选）；
+                                    //   ② 自测的 EventWatcher 会把 Count < 1 的 ZoneValue 判成非法选项
+                                    //      （那 12 条一直挂着的「区域类选项的 k 或匹配张数非法」就是它）。
+                                    int matched = 0;
+                                    foreach (CardInstance other in c.State.Of(seat).CoolingZone)
+                                    {
+                                        if (other.RemainingCooldown == card.RemainingCooldown) matched++;
+                                    }
+
+                                    options.Add(new Option { Kind = OptionKind.ZoneValue, Seat = seat,
+                                        Value = card.RemainingCooldown, Count = matched,
+                                        Label = title + " " + card.RemainingCooldown });
+                                }
                             }
                             else options.Add(CardOption(card));
                         }
@@ -223,11 +256,17 @@ namespace MagicBrawl.Core
                 var options = new List<Option>();
                 foreach (CardInstance card in c.Owner.Hand) if (card != c.Source) options.Add(CardOption(card));
                 // 磁暴 / 充能：一张都不选也是合法答案 —— 玩家可以直接点确认（2026-09-27 用户口径）。
-                // 电弧（CoolHandForCombo）是「冷却一张换一次连击」，必须恰好一张，所以不给 allowEmpty；
+                //
+                // ⚠ **2026-10-30 口径统一**：电弧（CoolHandForCombo）以前是「必须恰好一张」，
+                //   理由是「冷却一张换一次连击」；但卡面写的是「**可以**将手中一张其它法术
+                //   进入冷却，获得连击」—— 「可以」按用户口径就是**可以不执行**（不冷却、
+                //   也就不拿连击）。所以它和磁暴 / 充能一样给 allowEmpty（MinSelect = 0），
+                //   只是上限仍然是 1（多选没有意义：连击是一次性的）。
+                //   界面上「能空着确认」只由 MinSelect = 0 表达，不额外摆「跳过」按钮。
                 // 漩涡（RemoveFromGame）走的是完全独立的一条流程，2026-09-28 起它也给 allowEmpty
                 // —— 卡面写的是「<b>可</b>将……」（见 Remove 的注释）。
                 return Request(c, RequestKind.ChooseCoolHandCards, title, options,
-                    maximum: single ? 1 : options.Count, allowEmpty: !single);
+                    maximum: single ? 1 : options.Count, allowEmpty: true);
             });
             yield return choice;
             int count = 0;
@@ -257,6 +296,47 @@ namespace MagicBrawl.Core
             Option pick = Pick(choice);
             if (pick != null) c.CopyAttack(pick.Card.Def);
         }
+        /// <summary>
+        /// 雪崩（an）：双方冷却区中剩余冷却 = <c>threshold</c> 的牌全体 +1，<b>可以放弃</b>。
+        ///
+        /// <para><b>为什么选项的 Seat 是 -1</b>：它不是「选某一方」，而是「双方一起」——
+        /// <see cref="Option.Seat"/> 的 -1 本来就是「双方」（见 Decision.cs 的注释），
+        /// 所以处理器拿到选项后<b>不看 Seat</b>，直接对 <c>TargetSeats</c> 逐个施放。</para>
+        ///
+        /// <para><b>一方都减速不到时会怎样</b>：<c>options</c> 只剩「跳过」->
+        /// <see cref="EffectWindow"/> 认定这一条没有可执行目标（<c>hasTarget = false</c>），
+        /// 整条效果静静地跳过，不会再弹一个只有「跳过」的窗。</para>
+        /// </summary>
+        private static IEnumerable<EffectChoice> SlowZoneBoth(EffectContext c, EffectDef e)
+        {
+            int threshold = e.Arg("threshold");
+            var choice = new EffectChoice(() => {
+                var options = new List<Option>();
+                int matched = 0;
+                foreach (int seat in c.TargetSeats(e))
+                {
+                    foreach (CardInstance card in c.State.Of(seat).CoolingZone)
+                    {
+                        if (card.RemainingCooldown == threshold && card.RemainingCooldown < card.Def.Cooldown)
+                        {
+                            matched++;
+                        }
+                    }
+                }
+
+                // ⚠ Count 必须填：AI 的「选数值最集中的那一档」靠它打分，
+                //   自测的 EventWatcher 也会把 Count < 1 的 ZoneValue 选项判成非法。
+                if (matched > 0) options.Add(new Option { Kind = OptionKind.ZoneValue, Seat = -1,
+                    Value = threshold, Count = matched,
+                    Label = "双方减速 " + threshold + "（" + matched + " 张）" });
+                return Request(c, RequestKind.ChooseZoneValue, "区域减速", options, optional: true);
+            });
+            yield return choice;
+            Option pick = Pick(choice);
+            if (pick == null) yield break;
+            foreach (int seat in c.TargetSeats(e)) c.ChangeZone(seat, threshold, false);
+        }
+
         private static IEnumerable<EffectChoice> Peek(EffectContext c, EffectDef e)
         {
             var choice = new EffectChoice(() => {

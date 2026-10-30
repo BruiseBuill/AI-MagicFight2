@@ -109,5 +109,31 @@ namespace MagicBrawl.Core
         {
             return new DealProfile(BattleState.HandLimit, 0, 0, 0, 0, 0);
         }
+
+        /// <summary>
+        /// <b>对局口径</b>（2026-10-28 · 大改）—— <b>双方共用：开局 6 张，第 2、3 回合各补 1 张</b>。
+        ///
+        /// <para><b>用户口径（2026-10-28 第二次修正）</b>：「刚开始双方都是 6 张牌，
+        /// 第 2 回合和第 3 回合的时候会再补一张。」所以「随机发 8 张」指的是
+        /// <b>牌组 = 8 张</b>（从整张卡表抽 8 张），到手是分三次：<b>6 + 1 + 1</b>。</para>
+        ///
+        /// <para><b>⚠ 它与 <see cref="Human()"/> 是同一套数值</b>（6 张 / 可换 3 / 第 2–3 回合
+        /// 各补 1 / 补牌当拍可换 1）。之所以还单独留一个名字：语义上它是
+        /// 「两种玩法统一的那一套」，而 <see cref="Human()"/> 是历史口径 —— 改动节奏时
+        /// 只改这里，不要去向 <see cref="Monster()"/>（8 张不补）靠。</para>
+        ///
+        /// <para>战斗侧会用 <see cref="CharacterDefinition.WithDeal"/> 把场上每个角色都覆盖成它 ——
+        /// 所以角色资产上写的（玩家 EngineDefault / 怪物 Monster）在这条路上都不生效。</para>
+        /// </summary>
+        public static DealProfile Duel()
+        {
+            return new DealProfile(
+                BattleState.InitialHandSize,        // 6
+                BattleState.ReplaceLimitInitial,    // 可换 3
+                2,                                  // 从第 2 回合开始补
+                BattleState.DrawTurnsMax,           // 补到第 3 回合
+                1,                                  // 每回合补 1 张
+                1);                                 // 补牌当拍可换 1
+        }
     }
 }

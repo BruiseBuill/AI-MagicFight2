@@ -134,12 +134,8 @@ namespace MagicBrawl.App
             _save.interactable = _draft.Validate(_character.MinimumCardCount, out error);
             _count.text = "已选 " + _draft.Count + " / " + _driver.GetCardCatalog().All.Count + " 张    ·    至少 " + _character.MinimumCardCount + " 张";
 
-            // ⚠ 把「正在改哪一个存档」写出来：战斗可以指向两个档位（测试档 / 主存档），
-            //   不显示的话「保存并重开」到底写了哪一份完全看不出来 —— 而这两档
-            //   是两套独立的卡池，写错了不会报错、只会「换个场景发现牌不对」。
-            string save = "存档：" + SaveSlots.DisplayName(_driver.ActiveSaveSlot)
-                          + " · " + SaveSlots.FileName(_driver.ActiveSaveSlot);
-            _error.text = (error ?? "保存后立即重新开局，并从新卡池随机发牌。") + "\n" + save;
+            // 2026-10-28：冒险存档已删除，这里不再显示「正在改哪个档」。
+            _error.text = error ?? "保存后立即重新开局，并从新卡池随机发牌。";
         }
 
         private void SelectAll() { _draft = _driver.GetAllCardPool(); RefreshSelection(); }
@@ -167,11 +163,19 @@ namespace MagicBrawl.App
             _resume.Select();
         }
 
+        /// <summary>
+        /// 「保存并重开」（2026-10-28 · 大改）：<b>冒险的卡池与存档已经删除</b>，
+        /// 这张草稿不再有任何落盘去路。
+        ///
+        /// <para>节点与接线刻意留着（<c>SettingsUiBuilder</c> 还在建它们），
+        /// 但这里只给一句说明、不改对局 —— 想换牌请走主菜单的「自定义战斗」。</para>
+        /// </summary>
         private void Save()
         {
-            if (_draft == null || !_save.interactable) return;
-            string error;
-            if (!_driver.TrySaveCardPoolAndRestart(_draft, out error)) _error.text = error;
+            if (_error != null)
+            {
+                _error.text = "卡池保存已移除（冒险与存档已删除）—— 换牌请用主菜单的「自定义战斗」。";
+            }
         }
     }
 }

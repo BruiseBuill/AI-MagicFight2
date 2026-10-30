@@ -5,12 +5,12 @@ using MagicBrawl.Core;
 namespace MagicBrawl.SelfTest
 {
     /// <summary>
-    /// 2026-09-29 · 两张新卡的行为自测：毒刺（<c>ao</c>）的「虚弱」与击穿（<c>ap</c>）的「快速回填光环」。
+    /// 2026-09-29 · 两张新卡的行为自测：冰霜核心（<c>ao</c>）的「虚弱」与漩涡（<c>ap</c>）的「快速回填光环」。
     ///
     /// <para><b>为什么必须脚本化逼出来</b>：这两条都属于「卡面写了、引擎里没接上」的高危改动 ——</para>
     /// <list type="bullet">
     /// <item><b>虚弱</b>是内核里<b>全新</b>的一类状态（在此之前没有任何 per-player 减益载体）。
-    /// 漏接的表现是「毒刺打出去、对面下回合力量一点没少」：不报错、不崩、
+    /// 漏接的表现是「冰霜核心打出去、对面下回合力量一点没少」：不报错、不崩、
     /// 万局统计里连一条不变量都不会红。</item>
     /// <item><b>快速回填光环</b>是 <see cref="AuraKind"/> 里的第 7 种类型。它既不是力量加值
     /// （不能进防御预算）又不是免疫（不能即消耗），走的是「准备 → 随出牌提交」那条路 ——
@@ -20,7 +20,7 @@ namespace MagicBrawl.SelfTest
     /// <para><b>两层验证</b>：</para>
     /// <list type="number">
     /// <item><b>静态</b>：取整口径（×50% <em>之后</em>向上取整，7→4 而不是 3）与两张卡的卡表结构；</item>
-    /// <item><b>动态</b>：真打。分别在若干随机种子里把「手上正好有毒刺 / 击穿」的局面逼出来，
+    /// <item><b>动态</b>：真打。分别在若干随机种子里把「手上正好有冰霜核心 / 漩涡」的局面逼出来，
     /// 强制打出它，然后在事件流上核对 —— 施加层数、进攻力量被折半、进攻结束 −1 层、
     /// 光环点亮 → 消耗 → 那张牌进冷却区时剩余冷却 −1。</item>
     /// </list>
@@ -30,11 +30,14 @@ namespace MagicBrawl.SelfTest
     /// </summary>
     internal static class WeakenScenario
     {
-        /// <summary>毒刺。</summary>
+        /// <summary>冰霜核心（2026-10-29 起顶掉原 7/4 的那张虚弱卡，层数 2 → 1）。</summary>
         private const string PoisonId = "ao";
 
-        /// <summary>击穿。</summary>
-        private const string PierceId = "ap";
+        /// <summary>
+        /// 漩涡（2026-10-29 起它是全卡表**唯一**带「快速回填光环」的牌，
+        /// 顶掉了原 ap —— ap 现在是一张纯进攻光环的火炬）。
+        /// </summary>
+        private const string PierceId = "aa";
 
         /// <summary>每条要逼出几次完整样本才算证明。</summary>
         private const int NeededHits = 3;
@@ -48,9 +51,9 @@ namespace MagicBrawl.SelfTest
 
             ok &= CheckRounding(report);
             ok &= CheckCardDefs(report);
-            ok &= Scan(report, "毒刺（ao）的虚弱：施加 2 层 → 被施加者进攻力量折半（向上取整）→ 它进攻结束 −1 层",
+            ok &= Scan(report, "冰霜核心（ao）的虚弱：施加 1 层 → 被施加者进攻力量折半（向上取整）→ 它进攻结束 −1 层",
                 RunOneWeaken);
-            ok &= Scan(report, "击穿（ap）的快速回填光环：进冷却区点亮 → 消耗 → 那张牌进冷却区时剩余冷却 −1",
+            ok &= Scan(report, "漩涡（aa）的快速回填光环：进冷却区点亮 → 消耗 → 那张牌进冷却区时剩余冷却 −1",
                 RunOneRefill);
 
             return ok;
@@ -105,11 +108,14 @@ namespace MagicBrawl.SelfTest
         {
             var bad = new List<string>();
 
-            // ── 毒刺：草 · 力量 7 / 冷却 4，α 给**对手**挂 2 层虚弱 ──
+            // ── 冰霜核心：冰 · 力量 6 / 冷却 3，α 给**对手**挂 1 层虚弱 ──
+            //   （2026-10-29：原冰霜核心是草 7/4、2 层；新卡表换成冰 6/3、1 层 ——
+            //     卡面写的是「使对方下次进攻时，法术最终的力量值减半（向上取整）」，
+            //     正好是 Weakened() 的单层口径。）
             CardDef poison = CardLibrary.Get(PoisonId);
-            if (poison.Power != 7) bad.Add("毒刺力量应为 7，实为 " + poison.Power);
-            if (poison.Cooldown != 4) bad.Add("毒刺冷却应为 4，实为 " + poison.Cooldown);
-            if (poison.Element != CardElement.Grass) bad.Add("毒刺元素应为草，实为 " + poison.Element);
+            if (poison.Power != 6) bad.Add("冰霜核心力量应为 6，实为 " + poison.Power);
+            if (poison.Cooldown != 3) bad.Add("冰霜核心冷却应为 3，实为 " + poison.Cooldown);
+            if (poison.Element != CardElement.Ice) bad.Add("冰霜核心元素应为冰，实为 " + poison.Element);
 
             EffectDef weaken = null;
             for (int i = 0; i < poison.Effects.Count; i++)
@@ -122,24 +128,26 @@ namespace MagicBrawl.SelfTest
 
             if (weaken == null)
             {
-                bad.Add("毒刺缺 α 虚弱效果（EffectOp.Weaken）");
+                bad.Add("冰霜核心缺 α 虚弱效果（EffectOp.Weaken）");
             }
             else
             {
-                if (weaken.Trigger != EffectTrigger.Attack) bad.Add("毒刺的虚弱应挂在 α 上，实为 " + weaken.Trigger);
-                if (weaken.A != 2) bad.Add("毒刺应施加 2 层，实为 " + weaken.A);
+                if (weaken.Trigger != EffectTrigger.Attack) bad.Add("冰霜核心的虚弱应挂在 α 上，实为 " + weaken.Trigger);
+                if (weaken.A != 1) bad.Add("冰霜核心应施加 1 层，实为 " + weaken.A);
                 if (weaken.Targets != EffectTargetScope.Opponent)
                 {
-                    bad.Add("毒刺的虚弱目标必须是 Opponent（实为 " + weaken.Targets
+                    bad.Add("冰霜核心的虚弱目标必须是 Opponent（实为 " + weaken.Targets
                             + "）—— 写成 Participants 会连自己一起削");
                 }
             }
 
-            // ── 击穿：电 · 力量 3 / 冷却 4，α 光环（快速回填）+ α 连击 ──
+            // ── 漩涡：水 · 力量 5 / 冷却 3，α 加速 + α 光环（快速回填）──
+            //   （2026-10-29 全新：原来是「移出游戏 + 加速 ×3」，现在把「快速回填光环」
+            //     从删掉的漩涡 ap 手里接了过来。）
             CardDef pierce = CardLibrary.Get(PierceId);
-            if (pierce.Power != 3) bad.Add("击穿力量应为 3，实为 " + pierce.Power);
-            if (pierce.Cooldown != 4) bad.Add("击穿冷却应为 4，实为 " + pierce.Cooldown);
-            if (pierce.Element != CardElement.Electric) bad.Add("击穿元素应为电，实为 " + pierce.Element);
+            if (pierce.Power != 5) bad.Add("漩涡力量应为 5，实为 " + pierce.Power);
+            if (pierce.Cooldown != 3) bad.Add("漩涡冷却应为 3，实为 " + pierce.Cooldown);
+            if (pierce.Element != CardElement.Water) bad.Add("漩涡元素应为水，实为 " + pierce.Element);
 
             bool hasRefillAura = false;
             bool hasCombo = false;
@@ -151,18 +159,18 @@ namespace MagicBrawl.SelfTest
                     hasRefillAura = true;
                 }
 
-                if (ef.Op == EffectOp.Combo && ef.Trigger == EffectTrigger.Attack)
+                if (ef.Op == EffectOp.Haste && ef.Trigger == EffectTrigger.Attack)
                 {
-                    hasCombo = true;
+                    hasCombo = true;        // 漩涡的另一条 α 是「加速 ×1」（原来这里是漩涡的「连击」）
                 }
             }
 
-            if (!hasRefillAura) bad.Add("击穿缺 α 光环：快速回填（AuraKind.QuickRefill）");
-            if (!hasCombo) bad.Add("击穿缺 α 连击");
-            if (pierce.AuraTokenCount != 1) bad.Add("击穿应带 1 枚光环指示物，实为 " + pierce.AuraTokenCount);
+            if (!hasRefillAura) bad.Add("漩涡缺 α 光环：快速回填（AuraKind.QuickRefill）");
+            if (!hasCombo) bad.Add("漩涡缺 α 加速");
+            if (pierce.AuraTokenCount != 1) bad.Add("漩涡应带 1 枚光环指示物，实为 " + pierce.AuraTokenCount);
             if (!AuraResolver.UsableIn(AuraKind.QuickRefill, AuraContext.Attack))
             {
-                bad.Add("快速回填光环在进攻场合不可用 —— 击穿打出去会是一枚用不掉的死指示物");
+                bad.Add("快速回填光环在进攻场合不可用 —— 漩涡打出去会是一枚用不掉的死指示物");
             }
 
             if (AuraResolver.IsPowerBonus(AuraKind.QuickRefill))
@@ -171,8 +179,8 @@ namespace MagicBrawl.SelfTest
             }
 
             report.Add((bad.Count == 0 ? "  [PASS] " : "  [FAIL] ")
-                       + "新卡卡表结构：毒刺（草 7/4 · α 虚弱 ×2 给对手）、"
-                       + "击穿（电 3/4 · α 光环快速回填 + α 连击）"
+                       + "新卡卡表结构：冰霜核心（冰 6/3 · α 虚弱 ×1 给对手）、"
+                       + "漩涡（水 5/3 · α 光环快速回填 + α 加速）"
                        + (bad.Count == 0 ? string.Empty : "：" + string.Join(" / ", bad.ToArray())));
             return bad.Count == 0;
         }
@@ -232,7 +240,7 @@ namespace MagicBrawl.SelfTest
         }
 
         // ══════════════════════════════════════════════════════
-        //  3) 动态：毒刺的虚弱
+        //  3) 动态：冰霜核心的虚弱
         // ══════════════════════════════════════════════════════
 
         private static Outcome RunOneWeaken(int seed)
@@ -286,7 +294,7 @@ namespace MagicBrawl.SelfTest
             DecisionResponse Decide(DecisionRequest request);
         }
 
-        /// <summary>毒刺一局的观察器。</summary>
+        /// <summary>冰霜核心一局的观察器。</summary>
         private sealed class WeakenRun : IRunner
         {
             private readonly SimpleAiAgent _brain = new SimpleAiAgent();
@@ -355,7 +363,7 @@ namespace MagicBrawl.SelfTest
 
             public Outcome Result()
             {
-                // 没真的打出毒刺 → 这一局不构成样本（换种子）。
+                // 没真的打出冰霜核心 → 这一局不构成样本（换种子）。
                 if (!_sawApplied)
                 {
                     return new Outcome { Sampled = false };
@@ -369,31 +377,31 @@ namespace MagicBrawl.SelfTest
 
                 var bad = new List<string>();
 
-                if (_appliedAmount != 2)
+                if (_appliedAmount != 1)
                 {
-                    bad.Add("毒刺应施加 2 层，实为 " + _appliedAmount);
+                    bad.Add("冰霜核心应施加 1 层，实为 " + _appliedAmount);
                 }
 
-                if (_stacksAfterApply != 2)
+                if (_stacksAfterApply != 1)
                 {
-                    bad.Add("施加后应共 2 层，实为 " + _stacksAfterApply);
+                    bad.Add("施加后应共 1 层，实为 " + _stacksAfterApply);
                 }
 
-                if (_strikeStacks != 2)
+                if (_strikeStacks != 1)
                 {
-                    bad.Add("被施加者进攻时应带 2 层虚弱，实为 " + _strikeStacks);
+                    bad.Add("被施加者进攻时应带 1 层虚弱，实为 " + _strikeStacks);
                 }
 
-                int expect = PlayerState.Weakened(_strikeBase + _strikeBonus, 2);
+                int expect = PlayerState.Weakened(_strikeBase + _strikeBonus, 1);
                 if (_strikeFinal != expect)
                 {
                     bad.Add("被施加者进攻力量应为 " + expect
                             + "（基础 " + _strikeBase + " + " + _strikeBonus + " 后折半上取整），实为 " + _strikeFinal);
                 }
 
-                if (_stacksAfterDecay != 1)
+                if (_stacksAfterDecay != 0)
                 {
-                    bad.Add("被施加者进攻结束后应余 1 层，实为 " + _stacksAfterDecay);
+                    bad.Add("被施加者进攻结束后应归 0 层（只有 1 层，减完就没了），实为 " + _stacksAfterDecay);
                 }
 
                 return new Outcome { Sampled = true, Ok = bad.Count == 0, Why = string.Join(" / ", bad.ToArray()) };
@@ -401,7 +409,7 @@ namespace MagicBrawl.SelfTest
         }
 
         // ══════════════════════════════════════════════════════
-        //  4) 动态：击穿的快速回填光环
+        //  4) 动态：漩涡的快速回填光环
         // ══════════════════════════════════════════════════════
 
         private static Outcome RunOneRefill(int seed)
@@ -426,7 +434,7 @@ namespace MagicBrawl.SelfTest
             return run.Result();
         }
 
-        /// <summary>击穿一局的观察器。</summary>
+        /// <summary>漩涡一局的观察器。</summary>
         private sealed class RefillRun : IRunner
         {
             private readonly SimpleAiAgent _brain = new SimpleAiAgent();
@@ -481,7 +489,7 @@ namespace MagicBrawl.SelfTest
             {
                 if (request.Kind == RequestKind.ChooseAttackCard)
                 {
-                    // ① 先把击穿打出去（它一进冷却区就会点亮那枚快速回填指示物）。
+                    // ① 先把漩涡打出去（它一进冷却区就会点亮那枚快速回填指示物）。
                     if (!_piercePlayed)
                     {
                         int index = FindCardOption(request, PierceId);
@@ -495,7 +503,7 @@ namespace MagicBrawl.SelfTest
                     }
                     else if (!_haloUsed && request.Seat == _pierceSeat)
                     {
-                        // ② 击穿还在冷却区 → 把它的指示物「准备使用」，配一张本身不带快速回填的牌。
+                        // ② 漩涡还在冷却区 → 把它的指示物「准备使用」，配一张本身不带快速回填的牌。
                         int aura = FindAuraOption(request, AuraKind.QuickRefill);
                         int card = FindCardWithoutQuickRefill(request, _pierce);
 
@@ -527,7 +535,7 @@ namespace MagicBrawl.SelfTest
 
                 if (_tokenCount != 1)
                 {
-                    bad.Add("击穿进冷却区后应有 1 枚指示物，实为 " + _tokenCount);
+                    bad.Add("漩涡进冷却区后应有 1 枚指示物，实为 " + _tokenCount);
                 }
 
                 if (_tokenKind != AuraKind.QuickRefill)

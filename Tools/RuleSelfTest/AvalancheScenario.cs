@@ -42,14 +42,20 @@ namespace MagicBrawl.SelfTest
         /// <summary>本条要收集几次「布置成」的样本才算证明。</summary>
         private const int NeededHits = 3;
 
-        /// <summary>最多扫多少个种子去找可布置的局面。</summary>
-        private const int MaxSeeds = 400;
+        /// <summary>
+        /// 最多扫多少个种子去找可布置的局面。
+        ///
+        /// <para>2026-10-30：400 → 1200。进攻不出牌改成「掉 1 点」之后对局整体变短
+        /// （实测同一批种子的接受率降到约 2/400），400 个种子**凑不满 3 次样本**，
+        /// 这条断言会退化成「只逼出 2 次」。断言本身一个字没改，只是把搜索窗口放宽。</para>
+        /// </summary>
+        private const int MaxSeeds = 1200;
 
         public static bool Run(List<string> report)
         {
             bool defOk = CheckCardDef(out string defWhy);
             report.Add((defOk ? "  [PASS] " : "  [FAIL] ")
-                       + "雪崩（an）的 α = 强制区域减速（阈值 1）+ 快速回填（两条）" + defWhy);
+                       + "雪崩（an）的 α = 可选（可以跳过）的区域减速（阈值 1）+ 没有快速回填" + defWhy);
 
             var result = new CaseResult();
 
@@ -90,8 +96,8 @@ namespace MagicBrawl.SelfTest
             }
 
             report.Add((result.Ok ? "  [PASS] " : "  [FAIL] ")
-                       + "雪崩打出后：双方冷却区中剩余 = 1 的牌被强制 +1（不弹区域决策）、"
-                       + "剩余 = 2 的诱饵不动、本牌进冷却区时快速回填 −1"
+                       + "雪崩打出后：弹出一次「双方减速 / 跳过」决策并真的执行双方向减速、"
+                       + "剩余 = 2 的诱饵不动、本牌进冷却区时没有额外 −1"
                        + "（命中 " + result.Hits + " 次 / 扫了 " + result.Scanned + " 个种子）");
 
             for (int i = 0; i < result.Failures.Count; i++)
@@ -117,10 +123,12 @@ namespace MagicBrawl.SelfTest
         // ══════════════════════════════════════════════════════
 
         /// <summary>
-        /// 卡表这一处必须钉住：α 恰好是「区域减速（阈值 1）」+「快速回填」两条。
+        /// 卡表这一处必须钉住：α <b>只有</b>「区域减速（阈值 1）」一条。
         ///
-        /// <para>⚠ 卡面文字里不该再出现「<b>可</b>使…」—— 这一条已经是强制的，
-        /// 文案留着「可」会让玩家以为还能不执行。</para>
+        /// <para>⚠ <b>2026-10-29 口径翻面</b>：全卡表改版把雪崩改成
+        /// 「<b>可以选择</b>使你和对方的冷却区中剩余冷却为 1 的法术都被减速」——
+        /// ① 「快速回填」被删掉；② 「可以」= 可以放弃，引擎必须重新发一条决策。
+        /// 所以这一处现在反过来钉：<b>不许有 QuickRefill</b>、<b>文字必须写「可以」</b>。</para>
         /// </summary>
         private static bool CheckCardDef(out string why)
         {
@@ -159,19 +167,19 @@ namespace MagicBrawl.SelfTest
                 return false;
             }
 
-            if (!quick)
+            if (quick)
             {
-                why = "：缺少 α 的快速回填（QuickRefill）—— 双效果只落地了一半";
+                why = "：不该再有 α 的快速回填（2026-10-29 改版已删除这条效果）";
                 return false;
             }
 
-            if (slow.Text != null && slow.Text.IndexOf('可') >= 0)
+            if (slow.Text == null || slow.Text.IndexOf("可以") < 0)
             {
-                why = "：卡面文字仍写着「可…」（「" + slow.Text + "」）—— 这一条已经是强制的了";
+                why = "：卡面文字没有写「可以」（「" + slow.Text + "」）—— 可选口径没落地";
                 return false;
             }
 
-            why = "（阈值 A = " + slow.A + "，卡面「" + slow.Text + "」+「快速回填」）";
+            why = "（阈值 A = " + slow.A + "，卡面「" + slow.Text + "」）";
             return true;
         }
 
@@ -278,22 +286,24 @@ namespace MagicBrawl.SelfTest
             {
                 get
                 {
-                    return Armed && Observed && !ZoneAsked
+                    // 2026-10-29：ZoneAsked 从「不许出现」翻面成「必须出现」——
+                    //   卡面写的是「可以选择」，所以 ③ 阶段本来就该弹一次「双方减速 / 跳过」。
+                    return Armed && Observed && ZoneAsked
                            && SlowAttackerSide && SlowDefenderSide && !DecoySlowed
                            && AvalancheCd == ExpectedAvalancheCd;
                 }
             }
 
-            /// <summary>雪崩进冷却区时应有的剩余冷却 = 基础冷却 − 1（快速回填）。</summary>
+            /// <summary>雪崩进冷却区时应有的剩余冷却 = 基础冷却（2026-10-29 起没有快速回填）。</summary>
             public int ExpectedAvalancheCd = -1;
 
             public string Why
             {
                 get
                 {
-                    if (ZoneAsked)
+                    if (!ZoneAsked)
                     {
-                        return "雪崩仍然弹出了「选一个剩余冷却值」的区域决策 —— 强制化没落地";
+                        return "雪崩没有弹出「区域减速 / 跳过」的决策 —— 可选口径没落地（又回到强制了？）";
                     }
 
                     if (!SlowAttackerSide || !SlowDefenderSide)
@@ -310,7 +320,7 @@ namespace MagicBrawl.SelfTest
                     if (AvalancheCd != ExpectedAvalancheCd)
                     {
                         return "雪崩进冷却区的剩余冷却 = " + AvalancheCd
-                               + "，期望 " + ExpectedAvalancheCd + "（基础冷却 − 1）—— 快速回填没结算";
+                               + "，期望 " + ExpectedAvalancheCd + "（= 基础冷却，不该再有 −1）";
                     }
 
                     return "未知";
@@ -394,20 +404,26 @@ namespace MagicBrawl.SelfTest
 
                 if (_defenseDone && !Stop)
                 {
-                    // 防御结算之后的第一个决策 = ③④⑤ 都走完了。
-                    // 它竟然还是区域选值 → 雪崩没强制化。
+                    // 防御结算之后的第一个决策就是 ③ 冷却阶段 —— 雪崩的「双方减速」决策在这里。
+                    // 2026-10-29 起它是**可选**的，所以不但允许出现，还要求出现。
+                    // 出现时就选那条「双方减速 1」（非 Skip），让后面的减速 / 进冷却事件
+                    // 真的发生，再把窗口推进到下下个决策才收尾。
                     if (req.Kind == RequestKind.ChooseZoneValue)
                     {
                         Hit.ZoneAsked = true;
+                        for (int i = 0; i < req.Options.Count; i++)
+                        {
+                            if (!req.Options[i].IsSkip)
+                            {
+                                return DecisionResponse.Of(req.Seat, req.Options[i].Index);
+                            }
+                        }
+
+                        return DecisionResponse.Of(req.Seat);   // 只剩「跳过」—— 什么都不做
                     }
 
                     Hit.Observed = true;
                     Stop = true;
-                }
-                else if (_armed && req.Kind == RequestKind.ChooseZoneValue)
-                {
-                    // ③ 在防御之后，这里不该出现区域决策（留着兜底，防观察窗口提前断）
-                    Hit.ZoneAsked = true;
                 }
 
                 return First(req);
@@ -469,7 +485,7 @@ namespace MagicBrawl.SelfTest
 
                 _armed = true;
                 Hit.Armed = true;
-                Hit.ExpectedAvalancheCd = _card.Def.Cooldown - 1;
+                Hit.ExpectedAvalancheCd = _card.Def.Cooldown;   // 无快速回填：进冷却区 = 基础冷却
 
                 return DecisionResponse.Of(req.Seat, avalanche.Index);
             }

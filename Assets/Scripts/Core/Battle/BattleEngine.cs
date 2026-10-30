@@ -793,6 +793,22 @@ namespace MagicBrawl.Core
             //   那里才拿得到最终打出的牌（连击阈值、沉重打击的「力量不能增加」都依赖它）。
             AppendAuras(options, AuraResolver.BuildOptions(attacker, AuraContext.Attack));
 
+            // 2026-10-29：**有牌也可以不出**。用户口径：进攻是一次决策，不是义务 ——
+            //   「一张牌都还没打出」和「连击打了一半不想再打」都要能主动收尾。
+            //   所以只要手上有牌就补一条 Skip。
+            // 2026-10-30：这条 Skip 现在**要付代价**（掉 1 点，见 DoChooseAttackCard），
+            //   所以界面上必须把代价标出来（BattleUi 的动作区写「−1」）。手牌为空时仍不补
+            //   Skip —— 那一拍由 DoAnnounceHalfTurn 自动掉血，不该让玩家多点一次。
+            if (attacker.Hand.Count > 0)
+            {
+                options.Add(new Option
+                {
+                    Kind = OptionKind.Skip,
+                    Seat = attacker.Seat,
+                    Label = "结束进攻",
+                });
+            }
+
             for (int i = 0; i < options.Count; i++)
             {
                 options[i].Index = i;
@@ -802,12 +818,13 @@ namespace MagicBrawl.Core
             {
                 Seat = attacker.Seat,
                 Kind = RequestKind.ChooseAttackCard,
-                Prompt = "选择本次进攻打出的法术（有牌时必须进攻）"
-                         + PreparedHint(),
+                Prompt = attacker.Hand.Count > 0
+                    ? "选择本次进攻打出的法术（也可以结束进攻 · 掉 1 点）"
+                    : "手上无牌，无法进攻",
                 Options = options,
                 MinSelect = 1,
                 MaxSelect = 1,
-                ContextNoSkip = true,
+                ContextNoSkip = attacker.Hand.Count == 0,
             };
         }
 
@@ -826,15 +843,19 @@ namespace MagicBrawl.Core
                 }
             }
 
-            if (chosen == null && attacker.Hand.Count > 0)
-            {
-                // 兜底：非法回填 → 取第一张手牌（引擎不信任上层，绝不因此卡死）
-                chosen = new Option { Card = attacker.Hand[0], Seat = attacker.Seat };
-            }
-
+            // 2026-10-29：选项里既然给了「结束进攻」，**没选牌就等于结束进攻** ——
+            //   原来那条「兜底打第一张」必须删掉：它会让玩家点了「结束」却还是打出去一张，
+            //   而且零报错（上层看起来一切正常）。
+            //
+            // 2026-10-30 用户口径（回退 10-29 的「结束进攻不掉血」）：
+            //   **进攻半场一张牌都没打出 = 这次进攻失败，强制掉 1 点**。
+            //   所以「主动结束」与「手上无牌」现在走同一条结算，只是日志里的原因不同；
+            //   两处都是先扣血、再按终局与否决定收尾，光环不消耗（本拍根本没出牌）。
             if (chosen == null)
             {
-                ApplyDamage(_atk.AttackerSeat, 1, "手上无牌，无法攻击");
+                ApplyDamage(_atk.AttackerSeat, 1,
+                    attacker.Hand.Count > 0 ? "未出牌，进攻失败" : "手上无牌，无法攻击");
+                _preparedAuras.Clear();
                 _phase = State.IsOver ? Phase.Finished : Phase.EndHalfTurn;
                 return;
             }
@@ -1736,6 +1757,7 @@ namespace MagicBrawl.Core
             if (amount <= 0) return;
             p.Hp -= amount;
             Emit(new DamageTakenEvent { Seat = seat, Amount = amount, Source = source });
+            PublishHpLoss(seat);
             CheckDeath();
             if (!State.IsOver && !p.IsDead) ApplyAbilities(seat, AbilityTrigger.AfterDamage, amount);
         }
@@ -1779,12 +1801,48 @@ namespace MagicBrawl.Core
             if (p.Hp > p.MaxHp)
             {
                 p.Hp = p.MaxHp;
+                // 削上限把 Hp 一起拉下来的那一格同样是「生命值减少」-> 火炬（ap）的 gamma 要复位。
+                PublishHpLoss(seat);
             }
 
             CheckDeath();
         }
 
-        /// <summary>生命归零 → 立即判负；生命上限归零 → 即刻死亡（决策 C1，不锁底）。</summary>
+        /// <summary>
+        /// 拥有者生命值减少之后，把冷却区里「掉血就恢复」的光环补满（2026-10-29 · 火炬 ap）。
+        ///
+        /// <para><b>为什么在这里、而不是在效果处理器里轮询</b>：掉血有两条入口
+        /// （<see cref="ApplyDamage"/> 与 <see cref="CutMaxHp"/>），而「光环复位」的判定
+        /// 属于<b>状态变化</b>而不是某张牌的一次结算 —— 只有在两个入口各挂一次，
+        /// 才不会出现「被削上限弄掉血时光环不复活」这种一条路径漏掉的坑。</para>
+        ///
+        /// <para>走的是现成的 gamma 管线（<see cref="PublishEffectEvent"/> -> <c>_pendingSpecial</c>
+        /// -> <c>AdvanceSpecialEffects</c>），与潮汐 e 的「冷却完毕」完全同一条路 ——
+        /// 所以真正补指示物的代码只有 <c>BuiltinEffects</c> 那一处，AI / UI 两侧无感。</para>
+        /// </summary>
+        private void PublishHpLoss(int seat)
+        {
+            if (State.IsOver || seat < 0 || seat >= State.Players.Count)
+            {
+                return;
+            }
+
+            PlayerState p = State.Of(seat);
+            if (p.IsDead)
+            {
+                return;     // 已经出局：补光环没有任何意义，也避免在结算链尾节外生枝
+            }
+
+            // 先拷一份冷却区：PublishEffectEvent 只入队，但将来若有人在这里改成同步结算，
+            // 遍历一个正在被改的 List 会当场抛。
+            var cooling = new List<CardInstance>(p.CoolingZone);
+            for (int i = 0; i < cooling.Count; i++)
+            {
+                PublishEffectEvent("owner.hp.lost", cooling[i]);
+            }
+        }
+
+        /// <summary>生命归零 -> 立即判负；生命上限归零 -> 即刻死亡（决策 C1，不锁底）。</summary>
         private void CheckDeath()
         {
             if (State.IsOver) return;

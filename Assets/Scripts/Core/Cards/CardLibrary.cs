@@ -4,18 +4,19 @@ using System.Collections.Generic;
 namespace MagicBrawl.Core
 {
     /// <summary>
-    /// 47 张卡的静态定义表（a–au）。
+    /// <b>44 张卡</b>的静态定义表（a–ar）。
     ///
-    /// 录入依据：`Docs/rules/02-卡牌图鉴.md`。任何数值改动只改这一处。
+    /// 录入依据：`Docs/rules/02-卡牌图鉴.md`（2026-10-29 按用户给的
+    /// `Resource/MagicFight2/Magic.txt` 整体改版）。任何数值改动只改这一处。
     /// 校验钩子：<see cref="ValidatePowerDistribution"/> / <see cref="ValidateCooldownDistribution"/>
-    /// —— M11 自测会调用它们做「力量分布 = 1:4 / 2:4 / 3:6 / 4:5 / 5:6 / 6:6 / 7:7 / 8:4 / 9:2 / X:1」的断言。
+    /// —— M11 自测会调用它们做「力量分布 = 1:3 / 2:4 / 3:6 / 4:6 / 5:6 / 6:6 / 7:5 / 8:4 / 9:3 / X:1」的断言。
     /// </summary>
     public static class CardLibrary
     {
         private static readonly List<CardDef> Defs = new List<CardDef>();
         private static readonly Dictionary<string, CardDef> ById = new Dictionary<string, CardDef>(StringComparer.Ordinal);
 
-        /// <summary>全部 47 张卡，按卡表顺序（a → au）。</summary>
+        /// <summary>全部 44 张卡，按卡表顺序（a → ar）。</summary>
         public static IReadOnlyList<CardDef> All
         {
             get { return Defs; }
@@ -28,18 +29,20 @@ namespace MagicBrawl.Core
 
         static CardLibrary()
         {
-            // 元素（第 2 个参数组）按卡名 + 卡面美术的视觉主题归类（用户 2026-09-26 口径）。
-            // ⚠ 它不参与规则结算，只供「点击怪物 → 思考框」把预测出的牌翻译成元素符号。
+            // ─────────────────────────────────────────────────────────
+            // 2026-10-29 · 全卡表改版（用户口径：以 `Resource/MagicFight2/Magic.txt`
+            // 为唯一权威）。47 张 → **44 张**：
+            //   · 删掉 冷冻核心 as / 海啸 au，火炬 at 改挂到 ap（原「击穿」的编号）；
+            //   · 新增 吞食 ad（原 ad 雷云的位子）/ 冰霜核心 ao / 地刺 ar；
+            //   · 雷云的 ID 从 ad 挪到 aq（原「水之形」的位子），力量 6/3 → 4/4。
+            // 序号 = 卡表顺序 = 卡面文件名里的两位数字（Card_01_a_暴风雪 … Card_44_ar_地刺）。
+            // ─────────────────────────────────────────────────────────
 
             // ── 冰 / 水 ─────────────────────────────────────────────
             Add(0, "a", "暴风雪", 4, 4, CardElement.Ice,
                 A(EffectOp.Haste, 1, text: "加速"),
                 A(EffectOp.SlowZone, text: "区域减速"));
 
-            // ⚠ 2026-10-03（用户口径）：冰风暴的「α 光环：防御力量 +2」直接换成「β 守护」。
-            //   它从此**不再是防御光环卡** —— CardRole.HasDefenseAura / DefensePotential 归零，
-            //   AI 的「双发流派优先打防御光环卡」与「减速流派的 tier1」都不再把它算进去
-            //   （原本它就是靠「区域减速 + 防御光环」被流派 2 排除的，现在这条排除自然成立）。
             Add(1, "b", "冰风暴", 5, 4, CardElement.Ice,
                 A(EffectOp.SlowZone, text: "区域减速"),
                 D(EffectOp.Guard, text: "守护"));
@@ -51,10 +54,10 @@ namespace MagicBrawl.Core
                 A(EffectOp.ResetCooldown, 0, 1, text: "重置对方一个法术的冷却时间"));
 
             Add(4, "e", "潮汐", 1, 3, CardElement.Water,
-                S(EffectOp.ReadyRefresh, text: "本牌冷却完毕时，使一个法术立即冷却完毕"),
-                D(EffectOp.DefPlus, 1, text: "防御时力量 +1"));
+                S(EffectOp.ReadyRefresh, text: "此法术冷却完毕时，使一个法术也立即冷却完毕"),
+                D(EffectOp.DefPlus, 1, text: "防御时，力量 +1"));
 
-            // ⚠ 2026-10-03（用户口径）：滚石冲击移除「β 守护」，只剩 α 加速。
+            // ── 石 / 土 ─────────────────────────────────────────────
             Add(5, "f", "滚石冲击", 9, 4, CardElement.Stone,
                 A(EffectOp.Haste, 1, text: "加速"));
 
@@ -62,54 +65,54 @@ namespace MagicBrawl.Core
                 A(EffectOp.QuickRefill, text: "快速回填"));
 
             Add(7, "h", "沉重打击", 7, 3, CardElement.Stone,
-                A(EffectOp.ExtraDamageIfUnblocked, 1, 1, text: "对方无法防御时，额外减少 1 点生命值和生命上限"),
+                A(EffectOp.ExtraDamageIfUnblocked, 1, 1, text: "对方无法防御时，将额外减少 1 点生命值和生命上限"),
                 A(EffectOp.NoAtkBuff, text: "此法术的进攻力量不能增加"));
 
             Add(8, "i", "地震", 8, 3, CardElement.Stone,
                 A(EffectOp.SlowIfLastTwoHand, 1, text: "若这是你的最后两张手牌，减速"));
 
+            // ── 电 ──────────────────────────────────────────────────
             Add(9, "j", "闪电", 8, 4, CardElement.Electric,
                 A(EffectOp.Combo, text: "连击"));
 
             Add(10, "k", "电弧", 3, 2, CardElement.Electric,
-                A(EffectOp.CoolHandForCombo, 1, text: "攻击时可将手中一张其它法术进入冷却，获得连击"));
+                A(EffectOp.CoolHandForCombo, 1, text: "攻击时可以将手中一张其它法术进入冷却，获得连击"));
 
-            // ⚠ 2026-09-28（用户口径）：磁暴基础力量 3 → 2（与引雷对调）。注意下面那条
-            //   `CoolHandForAtk` 的 A = 3 是「每冷却一张的加值」，与基础力量是两回事，不动。
-            //   卡面 `Art/Cards/Card_12_l_磁暴.png` 的力量数字是烘焙在图上的一位数字，
-            //   已同步改成 2（见 `Artifacts/backups/2026-09-28-cardface-power/`）。
             Add(11, "l", "磁暴", 2, 3, CardElement.Electric,
-                A(EffectOp.CoolHandForAtk, 3, text: "攻击时可将手中其它法术进入冷却，每冷却一张进攻力量 +3"),
+                A(EffectOp.CoolHandForAtk, 3, text: "攻击时可以将手中其它法术进入冷却，每冷却一张进攻力量 +3"),
                 A(EffectOp.Combo, text: "连击"));
 
             Add(12, "m", "雷鸣", 1, 4, CardElement.Electric,
                 A(EffectOp.HasteZone, text: "区域加速"),
                 A(EffectOp.Combo, text: "连击"));
 
-            // ⚠ 2026-09-28（用户口径）：引雷基础力量 2 → 3（与磁暴对调）。光环阈值 A = 6
-            //   是「被打出那张牌的基础力量上限」，与引雷自身的力量无关，不动。
             Add(13, "n", "引雷", 3, 3, CardElement.Electric,
-                A(EffectOp.Aura, 6, aura: AuraKind.Combo, text: "光环：使本次打出的法术（基础力量 ≤6）获得连击"));
+                A(EffectOp.Aura, 6, aura: AuraKind.Combo,
+                    text: "光环：使你的基础力量 ≤6 的法术获得连击（不能叠加）"));
 
             Add(14, "o", "过载", 1, 4, CardElement.Electric,
                 A(EffectOp.HealMinusMax, 1, 1, mandatory: true, text: "[强制] 恢复 1 点生命值，减少 1 点生命上限"),
                 A(EffectOp.Combo, text: "连击"));
 
+            // ── 火 ──────────────────────────────────────────────────
             Add(15, "p", "自燃", 2, 2, CardElement.Fire,
                 A(EffectOp.HealMinusMax, 1, 1, mandatory: true, text: "[强制] 恢复 1 点生命值，减少 1 点生命上限"),
                 A(EffectOp.HasteZone, text: "区域加速"));
 
+            // ── 水 ──────────────────────────────────────────────────
             Add(16, "q", "海涌", 4, 4, CardElement.Water,
                 A(EffectOp.Haste, 1, text: "加速"),
                 A(EffectOp.HasteZone, text: "区域加速"));
 
-            Add(17, "r", "水刃", 5, 3, CardElement.Water,
+            // ⚠ 2026-10-29：水刃力量 5 → 4（新卡表）。
+            Add(17, "r", "水刃", 4, 3, CardElement.Water,
                 A(EffectOp.Refresh, text: "使一张法术立即冷却完成"));
 
             Add(18, "s", "喷泉", 3, 3, CardElement.Water,
                 A(EffectOp.HasteZone, text: "区域加速"),
                 A(EffectOp.QuickRefill, text: "快速回填"));
 
+            // ── 草 ──────────────────────────────────────────────────
             Add(19, "t", "荆棘", 3, 3, CardElement.Grass,
                 A(EffectOp.Double, text: "双发"),
                 A(EffectOp.CoolMinusIfUnblocked, 2, text: "对方无法防御时，此法术冷却时间 −2"));
@@ -127,21 +130,28 @@ namespace MagicBrawl.Core
                 A(EffectOp.LookAndCool, 7, EffectDef.LookAtLeast, -1,
                     text: "随机查看对方一张手牌，力量 ≥7 则立即进入冷却且冷却时间 −1"));
 
-            // 模仿：卡面是一张「套着别人外衣」的牌，元素按「无属性」处理 —— 归到诅咒系
-            // （符号已经切好备用）。⚠ 牌堆里目前没有诅咒系的卡，这一条是唯一的例外。
+            // 模仿：卡面力量写 X（HiddenPower），规则上的值恒为 1 —— 复制成功后才由 Copy 接管。
+            // γ 那一行是**纯卡面声明**（RuleNote，永不结算）：规则落点在 Copy 与 PowerLabelText。
             Add(23, "x", "模仿", 1, 4, true, CardElement.Curse,
-                A(EffectOp.Copy, 3, text: "复制你冷却区中一个「基础冷却 ≤ 3 且无光环」的法术的力量和进攻效果；未复制时力量视为 1"));
+                A(EffectOp.Copy, 3, text: "复制你冷却区中一个「基础冷却 ≤3 且无光环」的法术的力量和进攻效果"),
+                S(EffectOp.RuleNote, text: "未复制或防御时力量视为 1"));
 
             Add(24, "y", "瀑流", 6, 3, CardElement.Water,
                 new EffectDef(EffectTrigger.Attack, EffectOp.Haste, 1, text: "加速", distinctTargetGroup: "torrent"),
-                new EffectDef(EffectTrigger.Attack, EffectOp.HastePerHpLoss, 1, text: "你每损失 1 点生命值，加速一个不同的法术", distinctTargetGroup: "torrent"));
+                new EffectDef(EffectTrigger.Attack, EffectOp.HastePerHpLoss, 1,
+                    text: "你每损失 1 点生命值（相较初始值），额外加速一个不同的法术",
+                    distinctTargetGroup: "torrent"));
 
             Add(25, "z", "地动波", 7, 3, CardElement.Stone,
                 A(EffectOp.QuickRefill, text: "快速回填"),
-                D(EffectOp.DefPlus, 1, text: "防御时力量 +1"));
+                D(EffectOp.DefPlus, 1, text: "防御时，力量 +1"));
 
-            Add(26, "aa", "漩涡", 4, 2, CardElement.Water,
-                A(EffectOp.RemoveFromGame, 3, text: "可将冷却区中的一张法术永久移出游戏，获得加速 ×3"));
+            // 漩涡（2026-10-29 全面换掉）：原来是「移出游戏 + 加速 ×3」，现在是
+            // 「α 加速 + α 光环：使一个法术获得快速回填」。两条都是 α ——
+            // 光环必须与同一张牌上的其它光环同符号（ValidateAuraTriggers）。
+            Add(26, "aa", "漩涡", 5, 3, CardElement.Water,
+                A(EffectOp.Haste, 1, text: "加速"),
+                A(EffectOp.Aura, 1, aura: AuraKind.QuickRefill, text: "光环：使一个法术获得快速回填"));
 
             Add(27, "ab", "湍流", 5, 3, CardElement.Water,
                 A(EffectOp.Haste, 2, text: "加速 ×2"));
@@ -149,117 +159,78 @@ namespace MagicBrawl.Core
             Add(28, "ac", "雪球", 4, 2, CardElement.Ice,
                 A(EffectOp.AtkPlusPerCooling, 1, text: "你的冷却区每有一张牌，进攻力量 +1"));
 
-            Add(29, "ad", "雷云", 6, 3, CardElement.Electric,
+            // 吞食（原 ad 雷云改名，数值与效果一字未动）：减速 + 看对方 ≤4 的手牌送冷却。
+            Add(29, "ad", "吞食", 6, 3, CardElement.Grass,
                 A(EffectOp.Slow, 1, text: "减速"),
                 A(EffectOp.LookAndCool, 4, EffectDef.LookAtMost, 0,
                     text: "随机查看对方一张手牌，力量 ≤4 则立即进入冷却"));
 
+            // ── 火 / 石（光环族）────────────────────────────────────
             Add(30, "ae", "灼烧", 4, 2, CardElement.Fire,
-                A(EffectOp.AtkPlusPerHpLoss, 1, text: "你或对方每损失 1 点生命值，进攻力量 +1"));
+                A(EffectOp.AtkPlusPerHpLoss, 1, text: "你或对方每损失 1 点生命值（相较初始值），都会进攻力量 +1"));
 
             Add(31, "af", "冰封铠甲", 5, 3, CardElement.Ice,
-                A(EffectOp.Aura, 2, aura: AuraKind.DefPower, text: "光环：防御力量 +2"),
-                A(EffectOp.Aura, 2, aura: AuraKind.DefPower, text: "光环：防御力量 +2"));
+                A(EffectOp.Aura, 2, aura: AuraKind.DefPower, text: "光环：使法术附带防御力量 +2"),
+                A(EffectOp.Aura, 2, aura: AuraKind.DefPower, text: "光环：使法术附带防御力量 +2"));
 
             Add(32, "ag", "淬火", 7, 3, CardElement.Fire,
                 A(EffectOp.Slow, 1, text: "减速"),
-                A(EffectOp.Aura, 2, aura: AuraKind.AtkPower, text: "光环：进攻力量 +2"));
+                A(EffectOp.Aura, 2, aura: AuraKind.AtkPower, text: "光环：使法术附带进攻力量 +2"));
 
             Add(33, "ah", "烈焰斗篷", 5, 3, CardElement.Fire,
                 A(EffectOp.Haste, 1, text: "加速"),
-                A(EffectOp.Aura, 3, aura: AuraKind.AtkOrDefPower, text: "光环：进攻力量 +3 或防御力量 +3"));
+                A(EffectOp.Aura, 3, aura: AuraKind.AtkOrDefPower, text: "光环：使法术附带进攻力量 +3 或防御力量 +3"));
 
             Add(34, "ai", "爆燃", 6, 3, CardElement.Fire,
-                A(EffectOp.Aura, 4, aura: AuraKind.AtkPower, text: "光环：进攻力量 +4"));
+                A(EffectOp.Aura, 4, aura: AuraKind.AtkPower, text: "光环：使法术附带进攻力量 +4"));
 
             Add(35, "aj", "火灾", 8, 4, CardElement.Fire,
-                A(EffectOp.Aura, 1, aura: AuraKind.AtkPower, text: "光环：进攻力量 +1"),
-                A(EffectOp.Aura, 1, aura: AuraKind.AtkPower, text: "光环：进攻力量 +1"));
+                A(EffectOp.Aura, 1, aura: AuraKind.AtkPower, text: "光环：使法术附带进攻力量 +1"),
+                A(EffectOp.Aura, 1, aura: AuraKind.AtkPower, text: "光环：使法术附带进攻力量 +1"));
 
             Add(36, "ak", "石化", 6, 4, CardElement.Stone,
-                A(EffectOp.Aura, 6, aura: AuraKind.ImmuneHigh, text: "光环：免疫力量 ≥6 的攻击（含双发）"),
+                A(EffectOp.Aura, 6, aura: AuraKind.ImmuneHigh, text: "光环：免疫力量 ≥6 的攻击（包括双发）"),
                 D(EffectOp.Guard, text: "守护"));
 
             Add(37, "al", "石盾", 8, 4, CardElement.Stone,
-                A(EffectOp.Aura, 3, aura: AuraKind.ImmuneLow, text: "光环：免疫力量 ≤3 的攻击（含双发）"),
+                A(EffectOp.Aura, 3, aura: AuraKind.ImmuneLow, text: "光环：免疫力量 ≤3 的攻击（包括双发）"),
                 D(EffectOp.Guard, text: "守护"));
 
             Add(38, "am", "充能", 7, 3, CardElement.Electric,
                 A(EffectOp.Haste, 1, text: "加速"),
-                A(EffectOp.CoolHandForHaste, 1, text: "攻击时可将手中其它法术进入冷却，每冷却一张获得一次加速"));
+                A(EffectOp.CoolHandForHaste, 1, text: "攻击时可以将手中其它法术进入冷却，每冷却一张获得一次加速"));
 
-            // 雪崩（2026-09-25 用户口径）：从「可选的单效果」改成**双效果** ——
-            //   ① 强制区域减速：双方冷却区中剩余冷却 = 1 的牌全体 +1。**不给选择**，
-            //      所以 SlowZoneBoth 不再发决策（见 EffectDef / BattleEngine）。
-            //   ② 快速回填：本牌进冷却区时剩余冷却额外 −1（④ 阶段标记）。
+            // 雪崩（2026-10-29）：删掉「快速回填」，只剩可选的双向区域减速
+            //（发一条 ChooseZoneValue 决策 + 跳过，见 BuiltinEffects.SlowZoneBoth）。
             Add(39, "an", "雪崩", 6, 3, CardElement.Ice,
-                A(EffectOp.SlowZoneBoth, 1, text: "使双方冷却区中剩余冷却为 1 的法术全部减速"),
-                A(EffectOp.QuickRefill, text: "快速回填"));
+                A(EffectOp.SlowZoneBoth, 1,
+                    text: "可以选择使你和对方的冷却区中剩余冷却为 1 的法术都被减速"));
 
-            // ── 2026-09-29 新增（41–42）──────────────────────────
-            // 毒刺（草 · 力量 7 / 冷却 4）：α 给**被攻击的目标**挂 2 层虚弱
-            //（只削它的进攻力量：最终力量 ×50% 向上取整，它打完一次进攻后 −1 层）。
-            // ⚠ targets 必须是 Opponent —— 默认的 Participants 在 1v1 下会把施法者
-            //   自己也一起削（EffectSeats 口径），表现是「打完毒刺自己下回合也变虚」。
-            Add(40, "ao", "毒刺", 7, 4, CardElement.Grass,
-                A(EffectOp.Weaken, 2, targets: EffectTargetScope.Opponent, text: "使被攻击的目标虚弱 ×2"));
+            // ── 冰 / 火（新卡）──────────────────────────────────────
+            // 冰霜核心（原 ao 毒刺的位子，全新）：α 减速 + α 把「虚弱」挂给对方。
+            // `Weakened()` 的口径就是「最终力量 ×50% 向上取整」，与卡面「力量值减半（向上取整）」
+            // 同一条规则 —— 所以它复用 Weaken(1)，不再造一个「减半」算子。
+            // ⚠ targets 必须显式写 Opponent：默认的 Participants 在 1v1 下会把施法者
+            //   自己也一起削（EffectSeats 口径）。
+            Add(40, "ao", "冰霜核心", 6, 3, CardElement.Ice,
+                A(EffectOp.Slow, 1, text: "减速"),
+                A(EffectOp.Weaken, 1, targets: EffectTargetScope.Opponent,
+                    text: "使对方下次进攻时，法术最终的力量值减半（向上取整）"));
 
-            // 击穿（电 · 力量 3 / 冷却 4）：α 光环（赐予本次打出的牌「快速回填」）+ α 连击。
-            // 两条都是 α —— 满足「同一张牌的光环必须同符号」的硬约束（ValidateAuraTriggers）。
-            Add(41, "ap", "击穿", 3, 4, CardElement.Electric,
-                A(EffectOp.Aura, 1, aura: AuraKind.QuickRefill, text: "光环：使本次打出的法术获得快速回填"),
+            // 火炬（原 ap 击穿的位子，全新）：α 光环：进攻力量 +3；
+            // γ 掉血复位（RestoreAuraOnHpLoss，见 BuiltinEffects）。
+            Add(41, "ap", "火炬", 3, 4, CardElement.Fire,
+                A(EffectOp.Aura, 3, aura: AuraKind.AtkPower, text: "光环：使法术附带进攻力量 +3"),
+                S(EffectOp.RestoreAuraOnHpLoss, text: "每当你生命值减少时，此光环将恢复到可用状态"));
+
+            // 雷云（ID 从 ad 挪到 aq，力量 6/3 → 4/4）：减速 + 连击。
+            Add(42, "aq", "雷云", 4, 4, CardElement.Electric,
+                A(EffectOp.Slow, 1, text: "减速"),
                 A(EffectOp.Combo, text: "连击"));
 
-            // ── 2026-10-01 新增（43–45）──────────────────────────
-            // 水之形（水 · 力量 1 / 冷却 2）：α 每次进攻后本卡基础力量 +2、
-            // β 每次防御后本卡基础力量 +1。成长写在**这张牌的实例**上
-            // （CardInstance.BattlePowerBonus），只在本场战斗内有效 —— 进冷却区 / 回手都不清。
-            // 两条效果**必须同用一个算子**（GrowBasePower），由触发符号区分 α / β。
-            Add(42, "aq", "水之形", 1, 2, CardElement.Water,
-                A(EffectOp.GrowBasePower, 2, text: "每次进攻后，此卡的基础力量 +2（本场战斗内有效）"),
-                D(EffectOp.GrowBasePower, 1, text: "每次防御后，此卡的基础力量 +1（本场战斗内有效）"));
-
-            // 闪电球（电 · 力量 7 / 冷却 3）：α 加速；α **只有**「这是你的最后一张手牌」
-            // 时才连击（条件由 EffectDef 构造时自动挂 hand-at-play = 1）。
-            Add(43, "ar", "闪电球", 7, 3, CardElement.Electric,
-                A(EffectOp.Haste, 1, text: "加速"),
-                A(EffectOp.ComboIfLastHand, text: "若这是你的最后一张手牌，连击"));
-
-            // 冷冻核心（冰 · 力量 6 / 冷却 3）：α 减速；α 光环：防御力量 +3。
-            Add(44, "as", "冷冻核心", 6, 3, CardElement.Ice,
-                A(EffectOp.Slow, 1, text: "减速"),
-                A(EffectOp.Aura, 3, aura: AuraKind.DefPower, text: "光环：防御力量 +3"));
-
-            // ── 2026-10-07 新增（46–47）· 刻印 ────────────────────
-            // 「刻印」是新的**触发方式**而不是新算子：它像光环一样挂在提供它的那张牌上、
-            // **只有作为进攻牌打出时才点亮**、回手即熄灭（与光环完全相同的那三条），
-            // 差别只有一条 —— 点亮之后**每个回合都会自动再触发一次**自己的效果
-            // （光环是一次性指示物，用掉就没了）。卡表里就是在普通效果上加一个 `sigil:` 标记，
-            // 效果本身（Aura / Haste）一条都没改，见 Core/Cards/EffectDef.cs 的 SigilTiming。
-            //
-            // ⚠ **同一张牌的刻印必须同符号**（都是 α）—— 理由同光环：
-            //   `Sigil` 是「本牌作为进攻牌打出时才点亮」，混了 β 就会永远不亮。
-            //
-            // 火炬（火 · 力量 4 / 冷却 4）：α刻印 —— 每回合开始时获得光环：进攻力量 +2。
-            // ⚠ 与普通光环卡（ag 淬火等）的区别：那条 Aura 是「打出去当拍给 1 枚」，
-            //   这条是「打出去当拍**只点亮**，之后每回合开始各给 1 枚」—— 所以指示物会**累积**
-            //   （冷却 4 ⇒ 在冷却区期间最多堆到 3~4 枚，可分开用也可以一次全砸在一刀上）；
-            //   回手时未用的全部作废（用户 2026-10-07 口径：「累积叠加」）。
-            Add(45, "at", "火炬", 4, 4, CardElement.Fire,
-                A(EffectOp.Aura, 2, aura: AuraKind.AtkPower, sigil: SigilTiming.TurnStart,
-                    text: "刻印：每回合开始时获得光环：进攻力量 +2"));
-
-            // 海啸（水 · 力量 2 / 冷却 4）：
-            //   α刻印 —— 每次进攻结束时获得一次加速（触发口径见 SigilTiming.AttackEnd：
-            //            拥有者自己的进攻半场结束；点亮它的那一拍立刻触发）；
-            //   β      —— 防御时增加等于手牌数的力量值（**普通 β 效果，不是刻印** ——
-            //            刻印只有进攻时会点亮，一条 β 刻印永远不亮）。
-            // ⚠ α 那条 `mandatory: true`：刻印是**自动触发**的，不该再摆一个「跳过」按钮
-            //   （选完加速目标就结算；冷却区里没有合法目标时引擎静静地什么都不做）。
-            Add(46, "au", "海啸", 2, 4, CardElement.Water,
-                A(EffectOp.Haste, 1, sigil: SigilTiming.AttackEnd, mandatory: true,
-                    text: "刻印：每次进攻结束时获得一次加速"),
-                D(EffectOp.DefPlusPerHand, 1, text: "防御时增加等于手牌数的力量值"));
+            // 地刺（原 ar 闪电球的位子，全新）：条件回手 —— 手牌只剩这一张时打完自动回手。
+            Add(43, "ar", "地刺", 9, 4, CardElement.Stone,
+                A(EffectOp.ReturnToHandIfLastHand, text: "如果这是你手中的最后一张牌，进攻打出之后自动回手"));
         }
 
         // ── 查询 ────────────────────────────────────────────────
@@ -293,20 +264,16 @@ namespace MagicBrawl.Core
         // ── 校验 ────────────────────────────────────────────────
 
         /// <summary>
-        /// 力量分布校验：1:4 / 2:5 / 3:6 / 4:6 / 5:6 / 6:6 / 7:7 / 8:4 / 9:2 / X:1（共 47 张）。
+        /// 力量分布校验：1:3 / 2:4 / 3:6 / 4:6 / 5:6 / 6:6 / 7:5 / 8:4 / 9:3 / X:1（共 44 张）。
         ///
-        /// <para>前 40 张的一组数字来自原始文档、与逐卡录入完全吻合 —— 是最硬的数据断言。
-        /// 2026-09-29 新增毒刺（力量 7）/ 击穿（力量 3）之后，两档各 +1
-        /// （<b>3:5 → 3:6、7:5 → 7:6</b>，总数 40 → 42）；
-        /// 2026-10-01 新增水之形（力量 1）/ 闪电球（力量 7）/ 冷冻核心（力量 6），
-        /// 三档各 +1（<b>1:3 → 1:4、7:6 → 7:7、6:5 → 6:6</b>，总数 42 → 45）；
-        /// 2026-10-07 新增火炬（力量 4）/ 海啸（力量 2）之后两档各 +1
-        /// （<b>4:5 → 4:6、2:4 → 2:5</b>，总数 45 → 47）。
-        /// 加卡时忘了改这里，报出来的是「力量分布不符」，看不出问题在新卡上。</para>
+        /// <para><b>2026-10-29 全卡表改版</b>：47 → 44 张，这一组数字是从新卡表逐卡数出来的
+        /// （删 冷冻核心 6 / 海啸 2 / 攻 4 的火炬，新增 吞食 6 / 冰霜核心 6 / 地刺 9，
+        /// 雷云 6 → 4，水刃 5 → 4）。加卡 / 改力量时忘了同步这里，报出来的是
+        /// 「力量分布不符」，看不出问题在新卡上 —— 所以这里保留逐档清单。</para>
         /// </summary>
         public static bool ValidatePowerDistribution(out string report)
         {
-            int[] expected = { 4, 5, 6, 6, 6, 6, 7, 4, 2 };
+            int[] expected = { 3, 4, 6, 6, 6, 6, 5, 4, 3 };
             int[] actual = new int[9];
             int hidden = 0;
 
@@ -338,21 +305,20 @@ namespace MagicBrawl.Core
             }
 
             report = diffs.Count == 0
-                ? "力量分布 OK：1:4 2:5 3:6 4:6 5:6 6:6 7:7 8:4 9:2 X:1（共 47 张）"
+                ? "力量分布 OK：1:3 2:4 3:6 4:6 5:6 6:6 7:5 8:4 9:3 X:1（共 44 张）"
                 : "力量分布不符 → " + string.Join(" / ", diffs.ToArray());
             return diffs.Count == 0;
         }
 
         /// <summary>
-        /// 冷却分布校验：以逐卡数值为准 —— 2:8 / 3:23 / 4:16（共 47 张）。
-        /// （原始文档标注为 3:20 / 4:13，相差 1 张，见 `02-卡牌图鉴.md` §统计校验；
-        /// 2026-09-29 新增的毒刺 / 击穿都是冷却 4，所以 4:12 → 4:14；
-        /// 2026-10-01 新增水之形（冷却 2）/ 闪电球与冷冻核心（冷却 3），2:7 → 2:8、3:21 → 3:23；
-        /// 2026-10-07 新增火炬 / 海啸都是冷却 4，4:14 → 4:16。）
+        /// 冷却分布校验：以逐卡数值为准 —— 2:6 / 3:23 / 4:15（共 44 张）。
+        ///
+        /// <para><b>2026-10-29 全卡表改版</b>：47 → 44 张，从新卡表逐卡数出。
+        /// 改冷却时只改这一行 + 上面那段注释，别去动 <c>CardDef.Cooldown</c> 之外的东西。</para>
         /// </summary>
         public static bool ValidateCooldownDistribution(out string report)
         {
-            int[] expected = { 0, 0, 8, 23, 16 };  // 下标 0..4，只用 2/3/4
+            int[] expected = { 0, 0, 6, 23, 15 };  // 下标 0..4，只用 2/3/4
             int[] actual = new int[5];
             for (int i = 0; i < Defs.Count; i++)
             {
@@ -373,7 +339,7 @@ namespace MagicBrawl.Core
             }
 
             report = diffs.Count == 0
-                ? "冷却分布 OK：2:8 3:23 4:16（共 47 张，以逐卡数值为准）"
+                ? "冷却分布 OK：2:6 3:23 4:15（共 44 张，以逐卡数值为准）"
                 : "冷却分布不符 → " + string.Join(" / ", diffs.ToArray());
             return diffs.Count == 0;
         }

@@ -22,6 +22,19 @@ namespace MagicBrawl.App
         DragBegin = 5,
         Drag = 6,
         DragEnd = 7,
+
+        /// <summary>
+        /// <b>滑动选牌</b>开始（2026-10-30）：按住一张手牌<b>横向</b>划过，
+        /// 划过的牌依次被选中。牌不跟手 —— 与 <see cref="DragBegin"/> 互斥
+        /// （判据在 <see cref="ICardSlideHost.TryBeginSlide"/>，方向由手牌视图定）。
+        /// </summary>
+        SlideBegin = 8,
+
+        /// <summary>滑动中：参数是指针的屏幕坐标（不是某张牌，划到谁由接收方自己判）。</summary>
+        Slide = 9,
+
+        /// <summary>滑动结束（抬手）。</summary>
+        SlideEnd = 10,
     }
 
     /// <summary>接手势的一方（<see cref="HandView"/> / <see cref="CooldownView"/> 都实现它）。</summary>
@@ -29,6 +42,31 @@ namespace MagicBrawl.App
     {
         /// <param name="screenPos">指针屏幕坐标（Overlay 画布下等价于 Canvas 坐标 × CanvasScaler）。</param>
         void OnCardGesture(CardView card, CardGesture gesture, Vector2 screenPos);
+    }
+
+    /// <summary>
+    /// 「滑动选牌」的接收方 —— <b>只有手牌</b>实现它（2026-10-30）。
+    ///
+    /// <para><b>为什么单开一个接口</b>：<see cref="CooldownView"/> 也实现
+    /// <see cref="ICardGestureHost"/>，但冷却区没有「滑动选牌」这回事
+    /// （那里是点选目标 / 滑滚动条）。往共用接口上加一个只有手牌关心的方法，
+    /// 等于逼另一个实现方写一个空方法，还会让下一个人以为冷却区也能滑。</para>
+    ///
+    /// <para><b>为什么要先问方向再做拖拽</b>：手牌上是同一串指针事件在抢 ——
+    /// 「拖进判定区出牌」和「横向滑动选牌」都是按住 + 移动。只能由手牌视图按
+    /// <b>主轴方向</b>分派（向上 = 出牌，横向 = 选牌），所以判定必须发生在
+    /// 拖拽刚成立的那一刻，晚了牌就已经跟手飞出去了。</para>
+    /// </summary>
+    public interface ICardSlideHost
+    {
+        /// <summary>
+        /// 拖拽刚被 EventSystem 判定成立时问一次：<b>这一下算「滑动选牌」吗？</b>
+        /// 返回 <c>true</c> 之后本类<b>不再把牌拖起来</b>（牌保持原位），
+        /// 只按 <see cref="CardGesture.Slide"/> 继续报指针位置。
+        /// </summary>
+        /// <param name="pressScreenPos">按下时的屏幕坐标（<c>PointerEventData.pressPosition</c>）。</param>
+        /// <param name="screenPos">当前屏幕坐标（<c>PointerEventData.position</c>）。</param>
+        bool TryBeginSlide(CardView card, Vector2 pressScreenPos, Vector2 screenPos);
     }
 
     /// <summary>
@@ -76,6 +114,10 @@ namespace MagicBrawl.App
 
         private bool _pressed;
         private bool _dragging;
+
+        /// <summary>正在「滑动选牌」（见 <see cref="ICardSlideHost"/>）。与 <see cref="_dragging"/> 互斥。</summary>
+        private bool _sliding;
+
         private bool _longFired;
         private float _pressTime;
         private Vector2 _pressPos;
@@ -99,6 +141,7 @@ namespace MagicBrawl.App
 
             _pressed = false;
             _dragging = false;
+            _sliding = false;
             _longFired = false;
             _releaseHoldAtLateUpdate = false;
         }
@@ -194,9 +237,26 @@ namespace MagicBrawl.App
                 return;
             }
 
-            _dragging = true;
             _longFired = false;
             _pressed = false;
+
+            // 滑动选牌（2026-10-30）：横向按住划过手牌 = 连续勾选，牌**不跟手**。
+            // 方向与「这一拍能不能选」都由接收方判（手牌视图知道本拍上限、哪些能选）。
+            ICardSlideHost slideHost = Host as ICardSlideHost;
+            if (slideHost != null && slideHost.TryBeginSlide(Card, eventData.pressPosition, eventData.position))
+            {
+                _sliding = true;
+                if (Card != null)
+                {
+                    // 与拖拽同一条口径：手势一旦成立，Button 的 onClick 就不能再补发。
+                    Card.SetGestureHold(true);
+                }
+
+                Raise(CardGesture.SlideBegin, eventData.position);
+                return;
+            }
+
+            _dragging = true;
 
             if (Card != null)
             {
@@ -211,6 +271,12 @@ namespace MagicBrawl.App
             if (!Draggable)
             {
                 ForwardDragToScroll(DragPhase.Move, eventData);
+                return;
+            }
+
+            if (_sliding)
+            {
+                Raise(CardGesture.Slide, eventData.position);
                 return;
             }
 
@@ -232,6 +298,21 @@ namespace MagicBrawl.App
 
             if (!_dragging)
             {
+                return;
+            }
+
+            if (_sliding)
+            {
+                _sliding = false;
+                Raise(CardGesture.SlideEnd, eventData.position);
+
+                // 恢复 Button —— 与拖拽那条同一时刻（PointerUp 早于本回调，
+                // 那时 Button 还是停用的，所以不会补发一次「点一下」）。
+                if (Card != null)
+                {
+                    Card.SetGestureHold(false);
+                }
+
                 return;
             }
 

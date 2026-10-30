@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using MagicBrawl.Core;
 using TMPro;
 using UnityEngine;
@@ -17,10 +18,9 @@ namespace MagicBrawl.App
     ///
     /// <para><b>它不管什么</b>：奖励怎么落盘（加牌进卡池 / 加金币）不在这里 ——
     /// 那颗「继续」只把 <see cref="ContinueClicked"/> 连同「选了第几张」报出去，
-    /// 由 <see cref="BattleUi"/> 决定写到哪个存档、加多少金币、接下来切哪个场景。
+    /// 由 <see cref="BattleUi"/> 决定接下来切哪个场景 / 要不要重开一局。
     /// 这条分工与 <c>BattleUi</c> 一贯的「UI 不碰规则」一致。
-    /// <b>同样地，三张候选牌是「哪三张」也是外面算好传进来的</b>（<see cref="BattleUi.ShowResultWin"/>
-    /// 走 <c>CardAcquisition</c> 抽），本类不知道概率这回事。</para>
+    /// <b>同样地，三张候选牌是「哪三张」也是外面算好传进来的</b>，本类不知道概率这回事。</para>
     ///
     /// <para><b>节点由构建器建</b>（<c>BattleUiBuilder.BuildResultWin</c>）：整块 <c>ResultWinRoot</c>
     /// 连同三张卡位、金币行、继续键都是那趟构建出来的，本类只做「绑卡 / 选中 / 收工」。
@@ -70,6 +70,19 @@ namespace MagicBrawl.App
         /// <summary>三个卡位上的进场补间（构建器挂；没有就是 null = 不做动画）。</summary>
         private readonly TweenScale[] _slotScale = new TweenScale[UiLayout.ResultWinCardCount];
         private readonly TweenCanvasAlpha[] _slotAlpha = new TweenCanvasAlpha[UiLayout.ResultWinCardCount];
+
+        /// <summary>
+        /// 奖励区的三个根节点（「获得奖励」分隔线 / 三张卡 / 金币行）。
+        ///
+        /// <para><b>为什么按名字在运行时捞，而不是加三个序列化字段</b>：这三个节点是
+        /// <c>BattleUiBuilder</c> 建的，加字段就要改构建器并重跑整套战斗界面构建
+        /// （M7→M8→M11）。2026-10-28 的大改把「战斗奖励」整个去掉了，这里只要
+        /// <b>把它们收起来</b> —— 按构建器写死的节点名找一次，成本最低、也不动 Prefab。</para>
+        ///
+        /// <para>找不到就跳过（老 Prefab / 手工改过名字）：界面退化成「奖励区还在但空着」，
+        /// 不会报错，也不会把结算面板弄坏。</para>
+        /// </summary>
+        private GameObject[] _rewardNodes;
 
         private bool _homeRecorded;
         private bool _tweensBound;
@@ -269,10 +282,70 @@ namespace MagicBrawl.App
 
             if (_goldText != null)
             {
-                _goldText.text = "+ " + goldReward;
+                _goldText.text = goldReward > 0 ? "+ " + goldReward : string.Empty;
             }
 
+            // 2026-10-28 · 大改：没有候选牌 = 这一版没有「战斗奖励」这回事
+            //（冒险 / 商店 / 强化全删了）→ 把奖励区整组收起来，只留徽记 + 横幅 + 按钮。
+            SetRewardVisible(candidates != null && candidates.Length > 0);
+
             PlayEntrance();
+        }
+
+        /// <summary>
+        /// 改底部主键上的文字（「再来一局」/「继续」）。
+        ///
+        /// <para>与 <c>BattleUi.SetAgainLabel</c> 同一做法：文案写死在构建器里，
+        /// 这里只在运行时改 —— 不为两个字重跑一遍构建器。</para>
+        /// </summary>
+        public void SetContinueLabel(string text)
+        {
+            if (_continueButton == null)
+            {
+                return;
+            }
+
+            TMP_Text label = _continueButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.text = text ?? string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 奖励区（分隔线 / 三张卡 / 金币行）显示或隐藏。
+        ///
+        /// <para>节点名与 <c>BattleUiBuilder.BuildResultWin</c> 里的 <c>NewUi("…")</c>
+        /// 一一对应，改名要两处一起改。</para>
+        /// </summary>
+        private void SetRewardVisible(bool visible)
+        {
+            if (_rewardNodes == null)
+            {
+                var found = new List<GameObject>(3);
+                if (_root != null)
+                {
+                    string[] names = { "Divider", "Cards", "Gold" };
+                    for (int i = 0; i < names.Length; i++)
+                    {
+                        Transform node = _root.transform.Find(names[i]);
+                        if (node != null)
+                        {
+                            found.Add(node.gameObject);
+                        }
+                    }
+                }
+
+                _rewardNodes = found.ToArray();
+            }
+
+            for (int i = 0; i < _rewardNodes.Length; i++)
+            {
+                if (_rewardNodes[i] != null && _rewardNodes[i].activeSelf != visible)
+                {
+                    _rewardNodes[i].SetActive(visible);
+                }
+            }
         }
 
         /// <summary>立刻收掉（切场景前调一次；出错兜底也调它）。</summary>

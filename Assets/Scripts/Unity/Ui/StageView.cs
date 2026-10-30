@@ -72,8 +72,56 @@ namespace MagicBrawl.App
             SetMark(text, UiTheme.TextSecondary);
         }
 
-        /// <summary>顶部提示条（由决策请求的 Prompt 驱动）。</summary>
+        [Header("事件短语（2026-10-29：横幅并入字幕条）")]
+        [Tooltip("一句事件短语在字幕条上停留多久（秒）。")]
+        [SerializeField] private float _flashSeconds = 1.2f;
+
+        /// <summary>「底稿」文案：事件短语闪完之后要回到的那一句。</summary>
+        private string _baseText = string.Empty;
+
+        /// <summary>事件短语是否正在闪（闪的时候 SetPrompt 只记底稿、不抢屏）。</summary>
+        private bool _flashing;
+
+        private float _flashUntil;
+
+        /// <summary>
+        /// 顶部字幕（常驻那一句）。**短**：≤10 字，例如「你的进攻」「对手打出 6 点」。
+        ///
+        /// <para>2026-10-29：原来是引擎给的整句口径（「选择本次进攻打出的法术（有牌时必须进攻）」），
+        /// 28pt 横在屏幕顶上，说了三件玩家已经看得见的事 —— 现在由 <c>BattleUi</c> 派生短句。</para>
+        /// </summary>
         public void SetPrompt(string text)
+        {
+            _baseText = text ?? string.Empty;
+
+            if (_flashing)
+            {
+                return;
+            }
+
+            Apply(_baseText, UiTheme.InkOnIvory);
+        }
+
+        /// <summary>一句话事件（轮到你进攻 / 进攻结束 / 防御失败）。停 <see cref="_flashSeconds"/> 秒后回到底稿。</summary>
+        public void Flash(string text)
+        {
+            Flash(text, UiTheme.InkOnIvoryAccent);
+        }
+
+        /// <inheritdoc cref="Flash(string)"/>
+        public void Flash(string text, Color color)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            _flashing = true;
+            _flashUntil = Time.unscaledTime + Mathf.Max(0.1f, _flashSeconds);
+            Apply(text, color);
+        }
+
+        private void Apply(string text, Color color)
         {
             if (_promptRoot != null)
             {
@@ -83,7 +131,24 @@ namespace MagicBrawl.App
             if (_prompt != null)
             {
                 _prompt.text = text ?? string.Empty;
+                _prompt.color = color;
             }
+        }
+
+        private void Update()
+        {
+            if (!_flashing)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime < _flashUntil)
+            {
+                return;
+            }
+
+            _flashing = false;
+            Apply(_baseText, UiTheme.InkOnIvory);
         }
     }
 }

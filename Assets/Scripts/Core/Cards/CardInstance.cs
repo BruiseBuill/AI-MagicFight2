@@ -88,6 +88,29 @@ namespace MagicBrawl.Core
         internal void AddAura(EffectDef effect)
         { ActiveAuras.Add(new AuraToken(_nextAuraId++, effect)); AuraLive = true; }
 
+        /// <summary>
+        /// 把光环指示物<b>补满</b>（火炬 ap 的 gamma：「每当你生命值减少时，此光环将恢复到可用状态」）。
+        ///
+        /// <para>走的是 <see cref="AuraTokens"/> 的 setter —— 它按卡面光环效果列表的<b>尾部</b>
+        /// 重建指示物，与「一开始就有的那几枚」完全等价（双光环卡也因此语义一致）。
+        /// 已经满的时候什么都不做，返回 false（免得重复发 <c>AuraActivatedEvent</c>）。</para>
+        ///
+        /// <para>只应在牌<b>确实在冷却区</b>时调用（引擎侧已经先判 <see cref="IsCooling"/>）——
+        /// 手牌 / 牌池里的牌不该有指示物，那是光环「进冷却区才激活」这条规则的落点。</para>
+        /// </summary>
+        internal bool RestoreAura()
+        {
+            int total = Def.AuraTokenCount;
+            if (total <= 0 || AuraTokens >= total)
+            {
+                return false;
+            }
+
+            AuraTokens = total;
+            AuraLive = true;
+            return true;
+        }
+
         /// <summary>光环是否已激活 —— 本牌进入冷却区之后才为 true（免疫只对之后的防御生效）。</summary>
         public bool AuraLive { get; internal set; }
 

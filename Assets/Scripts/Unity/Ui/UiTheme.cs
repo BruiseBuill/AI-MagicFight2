@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace MagicBrawl.App
 {
@@ -23,6 +23,39 @@ namespace MagicBrawl.App
         public static readonly Color TextPrimary = Hex("EEF2F8");
         public static readonly Color TextSecondary = Hex("96A3B8");
         public static readonly Color TextOnArt = Hex("FFFFFF");
+
+        /// <summary>
+        /// 压在新 UI（象牙石底）上的墨色字。**2026-10-29**：字幕条 / 动作键的底图换成了
+        /// 米白石材，原来的 <see cref="TextPrimary"/>（接近白）压上去等于看不见。
+        /// </summary>
+        public static readonly Color InkOnIvory = Hex("21312F");
+
+        /// <summary>同上，但用于「有代价」的提示（放弃防御 −1）。</summary>
+        public static readonly Color InkOnIvoryWarm = Hex("8E2A26");
+
+        /// <summary>事件短语压在象牙底上的琥珀棕 —— 比正文醒目，又不至于刺眼。</summary>
+        public static readonly Color InkOnIvoryAccent = Hex("A8641A");
+
+        /// <summary>米白底上的次级字（说明行 / 计数行）。</summary>
+        public static readonly Color InkMuted = Hex("5A6A66");
+
+        // ── 战斗界面的「米白面板」一套（2026-10-29）───────
+        //
+        //  用户口径：战斗 UI 要贴合场景（水城米白石材 + 金饰 + 青绿），旧的深灰蓝面板
+        //  （OverlayPanel #141A25）太跳。真美术还没出，先用纯色占位 —— 出图后只换
+        //  这几条常量对应的 Image 底图，其余不动。
+
+        /// <summary>面板底（象牙石，略透，能看到背后的场景）。</summary>
+        public static readonly Color IvoryPanel = new Color(0.961f, 0.937f, 0.878f, 0.97f);
+
+        /// <summary>面板描边（柔金）。</summary>
+        public static readonly Color IvoryEdge = Hex("C9A25E");
+
+        /// <summary>面板里的行 / 按钮常态（比面板底再深一档，才看得出是可按的）。</summary>
+        public static readonly Color IvoryRow = Hex("EFE7D6");
+
+        /// <summary>行 / 按钮悬停态。</summary>
+        public static readonly Color IvoryRowHot = Hex("E2D6BE");
 
         /// <summary>
         /// 剩余冷却数字专用色。取卡面右上角那个冷却圆点的浅蓝 ——
@@ -510,43 +543,8 @@ namespace MagicBrawl.App
         /// <summary>商店标题的文字色（暖金，压在内景木色背景上最稳）。</summary>
         public static readonly Color ShopTitleText = Hex("FFE9A8");
 
-        /// <summary>价格数字色（近白，压在深棕木质价格牌上）。</summary>
-        public static readonly Color ShopPriceText = Hex("FFF6E2");
-
-        /// <summary>
-        /// 特价位的价格色 —— 暖金。
-        ///
-        /// <para>用颜色而不是尺寸来表达「这张是特价」：四张牌等宽、价格牌等高，
-        /// 唯一变的就是那个数（10 vs 20），金色让它一眼被认出来。</para>
-        /// </summary>
-        public static readonly Color ShopPriceDiscount = Hex("FFC64B");
-
-        /// <summary>「卖光了」空位上的文字（灰，读作「这里什么都没有」）。</summary>
-        public static readonly Color ShopSoldOutText = Hex("9DA6B4");
-
-        /// <summary>
-        /// 「卖光了」标签的底板（半透明黑）。
-        ///
-        /// <para><b>为什么需要一块底板</b>：空位背后是商店的木质内景（浅暖色 + 货架结构），
-        /// 灰字直接浮上去几乎读不清。垫一块压暗的圆角牌之后，
-        /// ① 文字立刻立起来；② 那个格子也读作「槽位还在、只是空了」，
-        /// 而不是「这里本来就什么都没有」。</para>
-        /// </summary>
-        public static readonly Color ShopSoldOutPlate = new Color(0f, 0f, 0f, 0.58f);
-
-        /// <summary>买不起时价格数字的颜色（暗红，压暗但不至于看不见）。</summary>
-        public static readonly Color ShopPriceTooExpensive = Hex("E5484D");
-
         /// <summary>「离开」按钮的文字色。</summary>
         public static readonly Color ShopLeaveText = Hex("FFF3DE");
-
-        /// <summary>
-        /// 货位卡面在「买不起 / 卖光了」时的压暗遮罩。
-        ///
-        /// <para>与 <see cref="CannotPlayDim"/> 同一支黑纱：卡面本身（插画 / 卡名 / 数值）
-        /// 仍然要看得见 —— 玩家正是在看着这张牌决定要不要买。</para>
-        /// </summary>
-        public static readonly Color ShopSlotDim = new Color(0f, 0f, 0f, 0.45f);
 
         // ── 背包键 / 背包（主角卡池）面板（2026-09-26）──────────────
 
@@ -558,20 +556,11 @@ namespace MagicBrawl.App
         /// </summary>
         public static readonly Color ShopBagVeil = new Color(0f, 0f, 0f, 0.62f);
 
-        /// <summary>背包面板网格区的底板（比面板底图再压暗一档，让白底卡面立出来）。</summary>
-        public static readonly Color ShopBagGridBacking = new Color(0f, 0f, 0f, 0.30f);
-
         /// <summary>背包面板标题（与商店标题同一支暖金）。</summary>
         public static readonly Color ShopBagTitleText = ShopTitleText;
 
         /// <summary>背包面板的「N 张」计数行（近白）。</summary>
         public static readonly Color ShopBagCountText = Hex("FFF6E2");
-
-        /// <summary>「关闭」按钮文字色（与「离开」同一个口径）。</summary>
-        public static readonly Color ShopBagCloseText = ShopLeaveText;
-
-        /// <summary>一张牌都没有时的提示文字（灰，与「卖光了」同一支）。</summary>
-        public static readonly Color ShopBagEmptyText = ShopSoldOutText;
 
         // ══════════════════════════════════════════════════════
         //  强化卡牌场景（2026-09-30）
@@ -580,61 +569,6 @@ namespace MagicBrawl.App
         //  口径同上：这里只放**文字与逻辑态**的颜色，构建器把它们写进 prefab 的 Image.color；
         //  运行时只切 active / enabled / 文字内容，不写色。
 
-        /// <summary>场景标题「强化卡牌」（与商店标题同一支暖金）。</summary>
-        public static readonly Color UpgradeTitleText = ShopTitleText;
-
-        /// <summary>台面下方的引导文字（近白，压在蓝调地面上）。</summary>
-        public static readonly Color UpgradeHintText = Hex("FFF3DE");
-
-        /// <summary>选牌弹窗的遮罩（与背包面板同一支，保证两个场景观感一致）。</summary>
-        public static readonly Color UpgradeVeil = ShopBagVeil;
-
-        /// <summary>弹窗标题（复用商店背包那支暖金）。</summary>
-        public static readonly Color UpgradeTitleColor = ShopTitleText;
-
-        /// <summary>弹窗计数行（「N 张 · 可选 M 张」）。</summary>
-        public static readonly Color UpgradeCountText = ShopBagCountText;
-
-        /// <summary>「关闭」按钮文字色。</summary>
-        public static readonly Color UpgradeCloseText = ShopLeaveText;
-
-        /// <summary>
-        /// 不可强化的那张牌身上的压暗纱。
-        ///
-        /// <para>比 <see cref="ShopSlotDim"/> 更深一档：这里不是「暂时买不起」，
-        /// 而是「这张牌永远不能强化」（力量为 X / 沉重打击 / 已到上限），
-        /// 要一眼看出它和旁边可点的卡不是一类。</para>
-        /// </summary>
-        public static readonly Color UpgradeBlockedDim = new Color(0f, 0f, 0f, 0.66f);
-
-        /// <summary>不可强化原因的说明字（淡红，压在压暗纱上）。</summary>
-        public static readonly Color UpgradeBlockedReason = Hex("FFC9C9");
-
-        /// <summary>
-        /// 被选中那张牌的「可强化」数值提示 —— 暖金。
-        ///
-        /// <para>用户口径（2026-09-30）：选中描边<b>统一暖金</b>，不跟元素色走。
-        /// ⚠ 描边本身不在这里 —— 它是 <c>CardView_Hand.prefab</c> 上那个
-        /// <c>Glow</c> 节点（<c>CardView.SetSelected</c> 只切 active），
-        /// 本来就是暖金，所以本场景直接复用它、不动那份被手调过的 prefab。</para>
-        /// </summary>
-        public static readonly Color UpgradeAccent = Hex("FFD166");
-
-        /// <summary>弹窗里「确认」键禁用时的底图色调（压暗读作「先选一张」）。</summary>
-        public static readonly Color UpgradeConfirmOff = new Color(0.42f, 0.42f, 0.42f, 0.75f);
-
-        /// <summary>「确认」键可用时的底图色调（原色，暖金底图直接透出来）。</summary>
-        public static readonly Color UpgradeConfirmOn = Color.white;
-
-        /// <summary>强化动画里力量数字的**旧值**色（灰，先亮一下再滚）。</summary>
-        public static readonly Color UpgradePowerOld = Hex("9DA6B4");
-
-        /// <summary>强化动画里力量数字的**新值**色（暖金，落到新数时用它）。</summary>
-        public static readonly Color UpgradePowerNew = Hex("FFD166");
-
-        /// <summary>动画里那句「力量 +2」的说明字。</summary>
-        public static readonly Color UpgradeFxCaption = Hex("FFF3DE");
-
         // ══════════════════════════════════════════════════════
         //  女巫的工坊 · 特殊强化场景（2026-10-01 · P6）
         // ══════════════════════════════════════════════════════
@@ -642,88 +576,9 @@ namespace MagicBrawl.App
         //  与 P5 强化场景同一套口径：这里只放**文字与逻辑态**的颜色；
         //  提示类颜色一律只写进 prefab 的 Image.color，运行时只切 active / enabled。
 
-        /// <summary>场景标题「女巫的工坊」（与商店 / 强化标题同一支暖金）。</summary>
-        public static readonly Color WitchTitleText = ShopTitleText;
-
-        /// <summary>水晶球下方那行引导文字（近白，压在暗色帐篷地面上）。</summary>
-        public static readonly Color WitchHintText = Hex("FFF3DE");
-
-        /// <summary>主界面浮层的遮罩（与商店背包 / 强化弹窗同一支）。</summary>
-        public static readonly Color WitchVeil = ShopBagVeil;
-
-        /// <summary>浮层标题（同上）。</summary>
-        public static readonly Color WitchTitleColor = ShopTitleText;
-
-        /// <summary>
-        /// 空位的底衬（半透明暗，压在水晶球场景之上）。
-        ///
-        /// <para>与卡面底衬 <c>CardFaceBackdrop</c> 的区别：那是卡面自己的、不透；
-        /// 这一块是「这里<b>还空着</b>」，所以要能透出后面的背景，读起来才像凹槽。</para>
-        /// </summary>
-        public static readonly Color WitchSlotBackdrop = new Color(0f, 0f, 0f, 0.42f);
-
-        /// <summary>空位的描边（未填 —— 冷灰，表示「还是个空位」）。</summary>
-        public static readonly Color WitchSlotEdgeEmpty = Hex("8C97AB");
-
-        /// <summary>空位的描边（已填 —— 暖金，与「选中」「确认」同一支）。</summary>
-        public static readonly Color WitchSlotEdgeFilled = Hex("FFD166");
-
-        /// <summary>空位下方的角色标签（「献祭」「强化目标」）。</summary>
-        public static readonly Color WitchSlotLabel = Hex("E8EEF8");
-
-        /// <summary>空位里那张牌身上盖的一层淡暖光（表示「它就要被吃掉了」）。</summary>
-        public static readonly Color WitchSacrificeTint = new Color(1f, 0.72f, 0.36f, 0.30f);
-
-        /// <summary>状态行（「请为两个空位各选一张牌」这类中性提示）。</summary>
-        public static readonly Color WitchStatusText = Hex("FFF3DE");
-
-        /// <summary>状态行变成**警告**时的色（两个空位撞了同一张牌 / 卡池不够）。</summary>
-        public static readonly Color WitchStatusWarn = Hex("FFB4B4");
-
-        /// <summary>浮层里「确认」键禁用时的底图色调。</summary>
-        public static readonly Color WitchConfirmOff = new Color(0.42f, 0.42f, 0.42f, 0.75f);
-
-        /// <summary>「确认」键可用时的底图色调。</summary>
-        public static readonly Color WitchConfirmOn = Color.white;
-
-        /// <summary>「关闭」按钮文字色。</summary>
-        public static readonly Color WitchCloseText = ShopLeaveText;
-
         // ── 浏览层里的「效果选择」区（2026-10-02）────────────────────
 
-        /// <summary>那一屏的标题色（与「已选空位」的暖金描边同一个色，读作「这一步是暖的」）。</summary>
-        public static readonly Color WitchEffectTitle = Hex("FFD166");
-
-        /// <summary>一条效果按钮的底衬（半透明暗底，压在卡池背板那一层上）。</summary>
-        public static readonly Color WitchEffectRowBack = new Color(0f, 0f, 0f, 0.46f);
-
-        /// <summary>一条效果按钮的文字色。</summary>
-        public static readonly Color WitchEffectRowText = Hex("FFF3DE");
-
-        /// <summary>底部那行说明的色。</summary>
-        public static readonly Color WitchEffectHint = ShopBagCountText;
-
         // ── 价钱与金币（2026-10-03 · 特殊强化改成要花金币）──────────────
-
-        /// <summary>价格牌左边那块「本次强化」的色（与状态行同色 —— 它是面板正文的一部分）。</summary>
-        public static readonly Color WitchCostLabel = WitchStatusText;
-
-        /// <summary>
-        /// 价钱明细那两行（公式 / 「为什么和刚才不一样」）。
-        ///
-        /// <para>刻意比状态行暗一档：那是**注解**（解释价钱怎么来的），
-        /// 状态行才是**结论**（能不能确认）。同色会让人分不清该看哪一行。</para>
-        /// </summary>
-        public static readonly Color WitchCostDetail = Hex("C6D0E2");
-
-        /// <summary>价格牌右边那块「现有 N 金」的色。</summary>
-        public static readonly Color WitchGoldLabel = ShopPriceText;
-
-        /// <summary>右上角那行金币的色（有钱 = 暖金，与商店顶栏同口径）。</summary>
-        public static readonly Color WitchGold = AuraReady;
-
-        /// <summary>金币为 0 时的色（暗灰，读作「花光了」）。</summary>
-        public static readonly Color WitchGoldEmpty = TextSecondary;
 
         // ══════════════════════════════════════════════════════
         //  地图场景（2026-10-02 · P7 冒险地图）
@@ -733,71 +588,12 @@ namespace MagicBrawl.App
         //  所以文字沿用商店那套暖米白（ShopTitleText / FFF3DE），
         //  状态色只用两种 —— 金色 = 可以去，暗纱 = 去不了 / 已走过。
 
-        /// <summary>地图标题色（与商店标题同色，两屏是同一套「暖金标题」口径）。</summary>
-        public static readonly Color MapTitleText = ShopTitleText;
-
-        /// <summary>标题下面那行操作提示。</summary>
-        public static readonly Color MapHintText = Hex("FFF3DE");
-
-        /// <summary>
-        /// 「去不了 / 已经走过」的节点上的暗纱。
-        ///
-        /// <para>⚠ 它<b>只写在 prefab 的 <c>Image.color</c> 上</b>（用户 2026-09-19 定的红线）：
-        /// 运行期只切 <c>activeSelf</c>，不给 <c>Image.color</c> 赋值 ——
-        /// 否则用户在 Inspector 里调好的颜色会在进 Play 的瞬间被冲回代码里的值。</para>
-        /// </summary>
-        public static readonly Color MapNodeDim = new Color(0f, 0f, 0f, 0.62f);
-
-        /// <summary>可前往节点外面那圈高亮（暖金，与「已选 / 可点」同一套语言）。</summary>
-        public static readonly Color MapNodeRing = Hex("FFD166");
-
-        /// <summary>节点下方那一行小字（可前往 / 当前所在时才显示）。</summary>
-        public static readonly Color MapNodeLabel = Hex("FFF3DE");
-
-        /// <summary>起点 / Boss 的文字色（比普通节点亮一档，让两端看得出来）。</summary>
-        public static readonly Color MapNodeLabelSpecial = Hex("FFE9A8");
-
-        /// <summary>结束浮层的遮罩（沿用背包那一块）。</summary>
-        public static readonly Color MapEndVeil = ShopBagVeil;
-
-        /// <summary>通关标题色。</summary>
-        public static readonly Color MapEndWin = WinAccent;
-
-        /// <summary>旅程结束标题色。</summary>
-        public static readonly Color MapEndLose = LoseAccent;
-
-        /// <summary>结束浮层的正文与按钮文字色。</summary>
-        public static readonly Color MapEndText = ShopLeaveText;
-
         // ══════════════════════════════════════════════════════
         //  休息事件场景（2026-10-09 · P9 · 当前是占位）
         // ══════════════════════════════════════════════════════
         //
         //  用户口径：「该事件对应的场景暂时还没有做好，先姑且用个黑屏 + 按钮的方式替代一下」。
         //  所以这一组颜色只服务「一块黑底 + 一个能点的键」，正式场景做好后这套可以整个删掉。
-
-        /// <summary>
-        /// 休息场景的整屏底色 —— <b>近黑</b>。
-        ///
-        /// <para>刻意比 <see cref="Backdrop"/>（<c>0F131B</c>，带一点蓝的板岩色）更黑一档：
-        /// 它要一眼读出「这里还没有美术、这是占位」，而不是跟其它事件场景的深色底混为一谈。</para>
-        /// </summary>
-        public static readonly Color RestPlaceholderBackdrop = Hex("05070B");
-
-        /// <summary>场景标题色（与商店 / 强化 / 女巫 / 宝箱同一支暖金）。</summary>
-        public static readonly Color RestTitleText = ShopTitleText;
-
-        /// <summary>
-        /// 「休息」大键的底。用暖金实心块（不是美术底图）—— 压在近黑底上对比最强，
-        /// 也省掉一张「键底」素材（占位阶段不该再增加美术负担）。
-        /// </summary>
-        public static readonly Color RestButtonPlate = Hex("C8A96A");
-
-        /// <summary>「休息」大键的文字色（近黑，压在暖金底上）。</summary>
-        public static readonly Color RestButtonText = Hex("1A1408");
-
-        /// <summary>引导行与「离开」键的文字色（与商店 / 宝箱那支近白同源）。</summary>
-        public static readonly Color RestHintText = Hex("FFF3DE");
 
         /// <summary>把 "RRGGBB" 转成 Color（不解析 # 前缀之外的花样，够用即可）。</summary>
         public static Color Hex(string hex)

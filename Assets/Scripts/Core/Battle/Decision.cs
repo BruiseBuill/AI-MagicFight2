@@ -7,7 +7,11 @@ namespace MagicBrawl.Core
     public enum RequestKind
     {
         /// <summary>
-        /// 进攻：出哪张牌（有牌时不可跳过）。<b>光环选项与出牌选项同在这一拍里</b>
+        /// 进攻：出哪张牌。<b>光环选项与出牌选项同在这一拍里</b>
+        ///
+        /// <para>2026-10-29 起有牌也允许跳过（<see cref="OptionKind.Skip"/>）；<b>跳过 = 掉 1 点</b>
+        /// （2026-10-30 用户口径）。</para>
+        ///
         /// （2026-09-18：取消独立的光环选择环节，光环由玩家提前拖到判定区准备、随出牌一并提交）。
         /// </summary>
         ChooseAttackCard = 0,

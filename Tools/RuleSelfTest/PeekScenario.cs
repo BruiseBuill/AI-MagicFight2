@@ -50,7 +50,7 @@ namespace MagicBrawl.SelfTest
         {
             bool dataOk = CheckCardData(out string dataWhy);
             report.Add((dataOk ? "  [PASS] " : "  [FAIL] ")
-                       + "查看手牌（LookAndCool）的卡面参数：雷云 ≤4 修正 0、狂躁蘑菇 ≥7 修正 −1"
+                       + "查看手牌（LookAndCool）的卡面参数：吞食 ≤4 修正 0、狂躁蘑菇 ≥7 修正 −1"
                        + dataWhy);
 
             var failures = new List<string>();

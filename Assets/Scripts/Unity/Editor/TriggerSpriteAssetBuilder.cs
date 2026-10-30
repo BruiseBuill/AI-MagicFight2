@@ -96,6 +96,13 @@ namespace MagicBrawl.App.EditorTools
         {
             ApplySheetImporterSettings();
 
+            // ⚠ 2026-10-30：**必须等重导完成再读尺寸**。图集是 567×240（非 2 的幂），
+            //   导入设置一旦退回默认（textureType=Sprite / 压缩），Unity 会把它缩成
+            //   512×217 —— 而下面 glyphRect 仍按原生尺寸写。后果是**取样窗口整体右移**：
+            //   α 剑右边带一条盾边、β 盾右边带一条 γ 六边形的黄边（冰风暴的「守护」那行
+            //   就是这么坏的），TMP 一声不响。所以这里再强制重导一次，读到的才是真尺寸。
+            AssetDatabase.ImportAsset(SheetPath, ImportAssetOptions.ForceUpdate);
+
             Texture2D sheet = AssetDatabase.LoadAssetAtPath<Texture2D>(SheetPath);
             if (sheet == null)
             {
@@ -103,14 +110,14 @@ namespace MagicBrawl.App.EditorTools
                        + "\n    先跑：python Tools/art-audit/build_tmp_icon_sheet.py --apply";
             }
 
-            int cells = sheet.width / CellWidth;
-            if (cells < Order.Length || sheet.height < CellHeight)
+            if (sheet.width != CellWidth * Order.Length || sheet.height != CellHeight)
             {
-                return "⚠ 图集尺寸对不上：" + sheet.width + "×" + sheet.height
-                       + "，需要至少 " + (CellWidth * Order.Length) + "×" + CellHeight
-                       + "\n    多半是脚本生成后没有重新 Refresh，或 CellWidth/CellHeight 被改过。";
+                return "⚠ 图集尺寸必须精确是 " + (CellWidth * Order.Length) + "×" + CellHeight
+                       + "（每格 " + CellWidth + "×" + CellHeight + " × " + Order.Length + " 格），实际 "
+                       + sheet.width + "×" + sheet.height
+                       + " —— 导入设置大概把它缩到了 2 的幂 / 压了缩，去把 "
+                       + SheetPath + " 改成 Default + Uncompressed + NPOT=None 再重跑";
             }
-
             EnsureFolder(ResourcesDir);
 
             TMP_SpriteAsset asset = AssetDatabase.LoadAssetAtPath<TMP_SpriteAsset>(AssetPath);

@@ -183,6 +183,16 @@ namespace MagicBrawl.App
             }
         }
 
+        [Header("生命宝石（2026-10-29：替代「4/4」文字）")]
+        [Tooltip("由构建器按 UiLayout.HpGemCount 建出来、按顺序填进来。空 = 退回文字读数。")]
+        [SerializeField] private Image[] _hpGems = new Image[0];
+
+        /// <summary>构建器接线用：头顶生命宝石。</summary>
+        public void ConfigureHpGems(Image[] gems)
+        {
+            _hpGems = gems ?? new Image[0];
+        }
+
         /// <summary>
         /// 构建器接线用（与 <see cref="Configure"/> 分开：虚弱徽标是 2026-09-29 后加的一行，
         /// 老的一条 <c>Configure</c> 调用点不必跟着改）。
@@ -263,6 +273,15 @@ namespace MagicBrawl.App
         /// <summary>把「生命 n/m」渲染成头顶徽标。对方血量必须能看见，否则玩家无法判断能否收尾。</summary>
         public void SetHpBadge(int hp, int maxHp, Sprite icon)
         {
+            // 2026-10-29：有宝石就画宝石 —— 4 点血画 4 格，一眼数得清，
+            // 不用再去读「3/4」这两个字符。文字读数只在没接宝石（老 Prefab）时兜底。
+            if (_hpGems != null && _hpGems.Length > 0)
+            {
+                BindHpGems(hp, maxHp);
+                SetBadge(" ", UiTheme.TextPrimary, null);
+                return;
+            }
+
             Color c = UiTheme.TextPrimary;
             if (hp <= 0)
             {
@@ -274,6 +293,39 @@ namespace MagicBrawl.App
             }
 
             SetBadge(hp + "/" + Mathf.Max(0, maxHp), c, icon);
+        }
+
+        /// <summary>
+        /// 宝石读数：亮 = 还有，暗 = 已掉，更暗 = 上限被削（第 4 格）。
+        ///
+        /// <para><b>为什么上限那一格和「空」要分开画</b>：4 上限被削到 3 时，第 4 格如果
+        /// 和普通空格一样暗，玩家会以为「只是掉了 1 点，还能补回来」。</para>
+        /// </summary>
+        private void BindHpGems(int hp, int maxHp)
+        {
+            maxHp = Mathf.Max(0, maxHp);
+
+            for (int i = 0; i < _hpGems.Length; i++)
+            {
+                Image gem = _hpGems[i];
+                if (gem == null)
+                {
+                    continue;
+                }
+
+                if (i >= maxHp)
+                {
+                    gem.color = UiTheme.HpGone;
+                }
+                else if (i < hp)
+                {
+                    gem.color = UiTheme.HpFull;
+                }
+                else
+                {
+                    gem.color = UiTheme.HpEmpty;
+                }
+            }
         }
 
         /// <summary>

@@ -30,10 +30,10 @@ namespace MagicBrawl.App
     /// <item>可选多张的（磁暴 / 充能）：多张都进框，<b>框与面板按张数横向变宽</b>。</item>
     /// <item>点确认 = 提交；<b>一张没选也能确认</b>（= 什么都没选）。
     /// 这条是引擎给的（磁暴 / 充能的 <c>MinSelect</c> 在 2026-09-27 从 1 改成 0、
-    /// 漩涡在 2026-09-28 从 1 改成 0，见 <c>BuiltinEffects.CoolHand</c> / <c>Remove</c>）
-    /// —— 界面不自己判断，只读那个数字。</item>
-    /// <item>必须选一张的（电弧 <c>MinSelect = MaxSelect = 1</c>）：
-    /// <b>确认键在放牌之前不可用</b>，放入一张后可用，且<b>不能再放第二张</b>。</item>
+    /// 漩涡 2026-09-28、电弧 2026-10-30 —— 卡面写「可以」的都允许不执行，
+    /// 见 <c>BuiltinEffects.CoolHand</c> / <c>Remove</c>）—— 界面不自己判断，只读那个数字。</item>
+    /// <item>上限只有一张的（电弧 <c>MaxSelect = 1</c>）：装进一张之后<b>不能再放第二张</b>；
+    /// 确认键则从一进来就是亮的（<c>MinSelect = 0</c>）。</item>
     /// </list>
     ///
     /// <para><b>2026-09-27 删掉了标题下方那条「已选 N / M」计数</b>（用户口径：
@@ -639,8 +639,8 @@ namespace MagicBrawl.App
         /// 确认键的可用态 —— <b>唯一一处「界面上能不能按」的判断</b>，
         /// 判据完全是引擎给的 <c>MinSelect</c>（铁律 3：不在这里重复规则）。
         ///
-        /// <para>电弧（<c>MinSelect = 1</c>）：放第一张之前确认键暗着，放进去就亮，
-        /// 而且因为 <c>MaxSelect = 1</c> 又放不进第二张 —— 正是用户要的那条。</para>
+        /// <para>电弧（<c>MinSelect = 0</c> / <c>MaxSelect = 1</c>，2026-10-30 起）：
+        /// 确认键一进来就是亮的（可以不送牌），但最多只能放一张 —— 连击是一次性的。</para>
         /// </summary>
         private void RefreshConfirm()
         {

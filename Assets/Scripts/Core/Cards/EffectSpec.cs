@@ -141,7 +141,7 @@ namespace MagicBrawl.Core
                 specialEvent = effect.SpecialEvent ?? string.Empty,
                 distinctTargetGroup = effect.DistinctTargetGroup ?? string.Empty,
                 text = effect.Text ?? string.Empty,
-                sourceBaseId = CardUpgrade.BaseIdOf(sourceBaseId),
+                sourceBaseId = CardIds.BaseOf(sourceBaseId),
             };
 
             if (effect.Conditions != null && effect.Conditions.Count > 0)
