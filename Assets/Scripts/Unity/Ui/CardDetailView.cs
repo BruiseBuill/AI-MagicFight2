@@ -48,7 +48,7 @@ namespace MagicBrawl.App
                 return;
             }
 
-            _panel.SetActive(true);
+            UiPanelAnimator.SetVisible(_panel, true, interactive: false);
 
             if (_card != null)
             {
@@ -71,7 +71,7 @@ namespace MagicBrawl.App
         {
             if (_panel != null)
             {
-                _panel.SetActive(false);
+                UiPanelAnimator.SetVisible(_panel, false, interactive: false);
             }
         }
 

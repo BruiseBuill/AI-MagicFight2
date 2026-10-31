@@ -16,6 +16,18 @@ namespace MagicBrawl.Core
         public abstract string Describe();
     }
 
+    public sealed class DrawObservationEvent : BattleEvent
+    {
+        public int Seat;
+        public int StartTurn;
+        public bool Cancelled;
+        public override string Describe()
+        {
+            return Cancelled ? "平局观察取消：生命减少"
+                : "seat" + Seat + " 提出平局：第 " + StartTurn + " 回合开始观察四回合";
+        }
+    }
+
     /// <summary>半场开始（已触发冷却 −1）。</summary>
     public sealed class TurnStartedEvent : BattleEvent
     {

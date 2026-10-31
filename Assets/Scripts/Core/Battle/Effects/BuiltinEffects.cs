@@ -11,7 +11,7 @@ namespace MagicBrawl.Core
             Register(registry, EffectOp.HastePerHpLoss, EffectStage.Cooldown, Cooldown, EffectFamily.Haste, EffectTargetShape.Card);
             Register(registry, EffectOp.Slow, EffectStage.Cooldown, Cooldown, EffectFamily.Slow, EffectTargetShape.Card);
             Register(registry, EffectOp.SlowIfLastTwoHand, EffectStage.Cooldown, Cooldown, EffectFamily.Slow, EffectTargetShape.Card);
-            Register(registry, EffectOp.SlowIfUnblocked, EffectStage.AfterCooldown, Cooldown, EffectFamily.Slow, EffectTargetShape.Card);
+            Register(registry, EffectOp.SlowIfUnblocked, EffectStage.Cooldown, Cooldown, EffectFamily.Slow, EffectTargetShape.Card);
             Register(registry, EffectOp.HasteZone, EffectStage.Cooldown, Cooldown, EffectFamily.Haste, EffectTargetShape.Zone);
             Register(registry, EffectOp.SlowZone, EffectStage.Cooldown, Cooldown, EffectFamily.Slow, EffectTargetShape.Zone);
             Register(registry, EffectOp.Refresh, EffectStage.Cooldown, Refresh);
@@ -208,14 +208,14 @@ namespace MagicBrawl.Core
             bool reset = e.Op == EffectOp.ResetCooldown;
             var choice = new EffectChoice(() => {
                 var options = new List<Option>();
-                IEnumerable<int> seats = e.Op == EffectOp.ReadyRefresh ? new[] { c.Seat } : c.TargetSeats(e);
+                IEnumerable<int> seats = c.TargetSeats(e);
                 foreach (int seat in seats)
                 {
                     if (reset && e.Arg("secondary") == 1 && seat != c.OpponentSeat) continue;
                     foreach (CardInstance card in c.State.Of(seat).CoolingZone)
                         if ((!reset || card.RemainingCooldown < card.Def.Cooldown) && (e.Op != EffectOp.ReadyRefresh || card != c.Source)) options.Add(CardOption(card));
                 }
-                return Request(c, RequestKind.ChooseRefreshTarget, reset ? "重置冷却" : "立即冷却完成", options, haste: !reset);
+                return Request(c, RequestKind.ChooseRefreshTarget, reset ? "重置冷却" : "立即冷却完成", options, optional: e.CanSkip, haste: !reset);
             });
             yield return choice;
             Option pick = Pick(choice);
@@ -240,7 +240,7 @@ namespace MagicBrawl.Core
                 var options = new List<Option>();
                 foreach (CardInstance card in c.Owner.CoolingZone) options.Add(CardOption(card));
                 return Request(c, RequestKind.ChooseRemoveFromGame, "移出·获加速", options,
-                    allowEmpty: true);
+                    allowEmpty: e.CanSkip);
             });
             yield return choice;
             Option pick = Pick(choice);
@@ -266,7 +266,7 @@ namespace MagicBrawl.Core
                 // 漩涡（RemoveFromGame）走的是完全独立的一条流程，2026-09-28 起它也给 allowEmpty
                 // —— 卡面写的是「<b>可</b>将……」（见 Remove 的注释）。
                 return Request(c, RequestKind.ChooseCoolHandCards, title, options,
-                    maximum: single ? 1 : options.Count, allowEmpty: true);
+                    maximum: single ? 1 : options.Count, allowEmpty: e.CanSkip);
             });
             yield return choice;
             int count = 0;
@@ -290,7 +290,7 @@ namespace MagicBrawl.Core
                 var options = new List<Option>();
                 foreach (CardInstance card in c.Owner.CoolingZone)
                     if (card.Def.Cooldown <= e.Arg("threshold") && !card.Def.HasAura) options.Add(CardOption(card));
-                return Request(c, RequestKind.ChooseCopyTarget, "复制力量与效果", options);
+                return Request(c, RequestKind.ChooseCopyTarget, "复制力量与效果", options, optional: e.CanSkip);
             });
             yield return choice;
             Option pick = Pick(choice);
@@ -329,7 +329,7 @@ namespace MagicBrawl.Core
                 if (matched > 0) options.Add(new Option { Kind = OptionKind.ZoneValue, Seat = -1,
                     Value = threshold, Count = matched,
                     Label = "双方减速 " + threshold + "（" + matched + " 张）" });
-                return Request(c, RequestKind.ChooseZoneValue, "区域减速", options, optional: true);
+                return Request(c, RequestKind.ChooseZoneValue, "区域减速", options, optional: e.CanSkip);
             });
             yield return choice;
             Option pick = Pick(choice);
@@ -339,6 +339,7 @@ namespace MagicBrawl.Core
 
         private static IEnumerable<EffectChoice> Peek(EffectContext c, EffectDef e)
         {
+            if (c.State.Of(c.OpponentSeat).Hand.Count == 0) yield break;
             var choice = new EffectChoice(() => {
                 var options = new List<Option>();
                 var hand = c.State.Of(c.OpponentSeat).Hand;

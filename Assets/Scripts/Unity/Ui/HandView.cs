@@ -548,7 +548,9 @@ namespace MagicBrawl.App
                     if (!_reuse.TryGetValue(hand[i].Uid, out v))
                     {
                         v = TakeFromPool();
-                        InstantiateState(v);
+                        HandCardState added = InstantiateState(v);
+                        added.Entering = Application.isPlaying;
+                        added.EnterDelay = i * 0.035f;
                     }
 
                     v.Bind(hand[i], CardView.ViewMode.Hand, i);
@@ -871,13 +873,18 @@ namespace MagicBrawl.App
                 if (st.First)
                 {
                     st.X = targetX;
-                    st.Y = targetY;
+                    st.Y = targetY - (st.Entering ? UiLayout.HandCardHeight : 0f);
                     st.Rot = targetRot;
-                    st.Scale = targetScale;
+                    st.Scale = st.Entering ? 0.85f : targetScale;
                     st.First = false;
+                }
+                else if (st.Entering && st.EnterDelay > 0f)
+                {
+                    st.EnterDelay -= Time.unscaledDeltaTime;
                 }
                 else
                 {
+                    st.Entering = false;
                     st.X = Mathf.Lerp(st.X, targetX, k);
                     st.Y = Mathf.Lerp(st.Y, targetY, k);
                     st.Rot = Mathf.Lerp(st.Rot, targetRot, k);
@@ -899,6 +906,8 @@ namespace MagicBrawl.App
                 if (st != null)
                 {
                     st.First = true;
+                    st.Entering = false;
+                    st.EnterDelay = 0f;
                 }
             }
 

@@ -1,0 +1,6 @@
+var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+if (UnityEditor.EditorApplication.isPlaying) return "Play mode is active";
+if (scene.path != "Assets/Scenes/SampleScene.unity") return "Unexpected scene: " + scene.path;
+MagicBrawl.App.EditorTools.BattleUiBuilder.RebuildInformationLayout();
+UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+return "Rebuilt and saved battle information layout.";

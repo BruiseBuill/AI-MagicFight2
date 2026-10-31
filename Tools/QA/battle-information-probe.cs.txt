@@ -1,0 +1,82 @@
+if (!UnityEditor.EditorApplication.isPlaying) return "Enter Play mode first";
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+var d = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleDriver>();
+var ui = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleUi>();
+d.StartBattle(20261030);
+d.StopAllCoroutines();
+var engine = (MagicBrawl.Core.BattleEngine)typeof(MagicBrawl.App.BattleDriver).GetField("_engine", flags).GetValue(d);
+for (int i = 0; i < 20 && engine.Pending != null && engine.Pending.Kind != MagicBrawl.Core.RequestKind.ChooseAttackCard; i++)
+{
+    engine.Submit(MagicBrawl.Core.DecisionResponse.Skip(engine.Pending.Seat));
+    engine.Advance();
+}
+if (engine.Pending == null || engine.Pending.Kind != MagicBrawl.Core.RequestKind.ChooseAttackCard)
+    throw new System.Exception("No attack request");
+d.SetLocalSeat(engine.Pending.Seat);
+var snap = MagicBrawl.Core.DecisionSnapshot.From(engine.Pending);
+var handle = typeof(MagicBrawl.App.BattleUi).GetMethod("HandleDecision", flags);
+var stage = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.StageView>();
+stage.BeginTurn(true, false, engine.State.TurnNumber);
+handle.Invoke(ui, new object[] { snap });
+var dock = ui.GetComponentInChildren<MagicBrawl.App.BattleDockView>(true);
+var picker = ui.GetComponentInChildren<MagicBrawl.App.TargetPicker>(true);
+var label = (TMPro.TMP_Text)typeof(MagicBrawl.App.BattleDockView).GetField("_label", flags).GetValue(dock);
+var sub = (TMPro.TMP_Text)typeof(MagicBrawl.App.BattleDockView).GetField("_sub", flags).GetValue(dock);
+var phase = (TMPro.TMP_Text)typeof(MagicBrawl.App.StageView).GetField("_phaseLabel", flags).GetValue(stage);
+var prompt = (TMPro.TMP_Text)typeof(MagicBrawl.App.StageView).GetField("_prompt", flags).GetValue(stage);
+var attack = (TMPro.TMP_Text)typeof(MagicBrawl.App.StageView).GetField("_attackLabel", flags).GetValue(stage);
+bool attackVisible = dock.Visible && label.text == "结束进攻" && sub.text == "生命 -1" && !picker.IsOpen;
+stage.BeginTurn(true, true, engine.State.TurnNumber);
+handle.Invoke(ui, new object[] { snap });
+bool comboVisible = dock.Visible && phase.text.Contains("连击");
+
+var controller = new MagicBrawl.Core.HumanController();
+controller.BeginDecision(engine.Pending);
+typeof(MagicBrawl.App.BattleDriver).GetField("_activeController", flags).SetValue(d, controller);
+typeof(MagicBrawl.App.BattleDriver).GetField("_waitingPlayer", flags).SetValue(d, true);
+typeof(MagicBrawl.App.BattleDriver).GetField("_pending", flags).SetValue(d, snap);
+var button = (UnityEngine.UI.Button)typeof(MagicBrawl.App.BattleDockView).GetField("_button", flags).GetValue(dock);
+button.onClick.Invoke();
+MagicBrawl.Core.DecisionResponse response;
+bool submitted = controller.TryTakeResponse(out response);
+bool skipSubmitted = submitted && response.OptionIndices.Length == 1
+    && engine.Pending.Options[response.OptionIndices[0]].IsSkip && !dock.Visible;
+int handBefore = engine.State.Of(snap.Seat).Hand.Count;
+engine.Submit(response);
+bool noCardPlayed = engine.State.Of(snap.Seat).Hand.Count == handBefore;
+
+var defense = new MagicBrawl.Core.DecisionSnapshot {
+    Seat = d.LocalSeat, Kind = MagicBrawl.Core.RequestKind.ChooseDefense,
+    ContextPower = 7, ContextDouble = true, ContextDefenseBonus = 2,
+    Options = new System.Collections.Generic.List<MagicBrawl.Core.Option> {
+        new MagicBrawl.Core.Option { Index = 0, Kind = MagicBrawl.Core.OptionKind.Skip, Label = "放弃防御" }
+    }
+};
+handle.Invoke(ui, new object[] { defense });
+bool defenseVisible = dock.Visible && label.text == "放弃防御" && attack.text.Contains("7")
+    && prompt.text.Contains("0 / 2") && !picker.IsOpen;
+string phaseBefore = phase.text;
+stage.ShowFeedback(true, "生命 -1");
+bool feedbackIsolated = phase.text == phaseBefore && attack.text.Contains("7");
+typeof(MagicBrawl.App.BattleUi).GetMethod("ClearDecision", flags, null, new System.Type[0], null).Invoke(ui, null);
+bool cleared = !dock.Visible && !MagicBrawl.App.UiPanelAnimator.IsShown(prompt.transform.parent.gameObject);
+stage.ResetPresentation();
+bool reset = !MagicBrawl.App.UiPanelAnimator.IsShown(phase.transform.parent.gameObject)
+    && !MagicBrawl.App.UiPanelAnimator.IsShown(attack.transform.parent.gameObject);
+if (!(attackVisible && comboVisible && skipSubmitted && noCardPlayed && defenseVisible && feedbackIsolated && cleared && reset))
+    return new { attackVisible, comboVisible, skipSubmitted, noCardPlayed, defenseVisible, feedbackIsolated, cleared, reset,
+        label = label.text, sub = sub.text, phase = phase.text, prompt = prompt.text };
+
+stage.BeginTurn(true, true, 3);
+handle.Invoke(ui, new object[] { snap });
+UnityEngine.Canvas.ForceUpdateCanvases();
+double captureAt = UnityEditor.EditorApplication.timeSinceStartup + 0.5;
+UnityEditor.EditorApplication.CallbackFunction capture = null;
+capture = () => {
+    if (UnityEditor.EditorApplication.timeSinceStartup < captureAt) return;
+    UnityEditor.EditorApplication.update -= capture;
+    if (UnityEditor.EditorApplication.isPlaying)
+        UnityEngine.ScreenCapture.CaptureScreenshot("Captures/ui-refactor-attack-verified.png");
+};
+UnityEditor.EditorApplication.update += capture;
+return new { attackVisible, comboVisible, skipSubmitted, noCardPlayed, defenseVisible, feedbackIsolated, cleared, reset };

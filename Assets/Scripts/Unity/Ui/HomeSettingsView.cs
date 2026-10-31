@@ -147,7 +147,7 @@ namespace MagicBrawl.App
 
             if (_layer != null)
             {
-                _layer.SetActive(true);
+                UiPanelAnimator.SetVisible(_layer, true);
                 _layer.transform.SetAsLastSibling();
             }
         }
@@ -157,13 +157,13 @@ namespace MagicBrawl.App
         {
             if (_layer != null)
             {
-                _layer.SetActive(false);
+                UiPanelAnimator.SetVisible(_layer, false);
             }
         }
 
         public bool IsOpen
         {
-            get { return _layer != null && _layer.activeSelf; }
+            get { return UiPanelAnimator.IsShown(_layer); }
         }
 
         // ══════════════════════════════════════════════════════

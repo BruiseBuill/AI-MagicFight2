@@ -262,6 +262,7 @@ namespace MagicBrawl.App
             }
 
             _closing = true;
+            if (_group != null) _group.interactable = false;
 
             TweenCanvasAlpha fadeOut = FadeFor();
             fadeOut.Setup(_group == null ? 1f : _group.alpha, 0f,
@@ -465,14 +466,14 @@ namespace MagicBrawl.App
 
             if (_panel != null)
             {
-                _panel.sizeDelta = new Vector2(panelW, UiLayout.HandPickPanelHeight);
+                UiSizeMotion.Resize(_panel, new Vector2(panelW, UiLayout.HandPickPanelHeight), _showing && gameObject.activeInHierarchy);
             }
 
             float areaCenterY = UiLayout.HandPickPanelHeight * 0.5f - UiLayout.HandPickSlotAreaCenterY;
 
             if (_slotArea != null)
             {
-                _slotArea.sizeDelta = new Vector2(areaW, UiLayout.HandPickSlotAreaHeight);
+                UiSizeMotion.Resize(_slotArea, new Vector2(areaW, UiLayout.HandPickSlotAreaHeight), _showing && gameObject.activeInHierarchy);
                 _slotArea.anchoredPosition = new Vector2(0f, areaCenterY);
             }
 
@@ -513,6 +514,10 @@ namespace MagicBrawl.App
             // 前两个是「装饰」，必须待在槽位**下面**（同层绘制顺序 = 兄弟顺序），
             // 所以槽位只能从它们后面开始排 —— 用实测下标算，构建器若增删装饰也能自适应。
             int slotSiblingBase = SlotSiblingBase();
+            var origins = new Dictionary<int, Vector3>();
+            foreach (HandPickSlot old in _slots)
+                if (old != null && old.gameObject.activeInHierarchy && old.CardUid >= 0)
+                    origins[old.CardUid] = old.transform.position;
 
             for (int i = 0; i < _slots.Length; i++)
             {
@@ -540,7 +545,11 @@ namespace MagicBrawl.App
                 rt.anchorMax = new Vector2(0.5f, 0.5f);
                 rt.pivot = new Vector2(0.5f, 0.5f);
                 rt.sizeDelta = new Vector2(UiLayout.HandPickSlotWidth, UiLayout.HandPickSlotHeight);
-                rt.anchoredPosition = new Vector2(firstX + i * pitch, 0f);
+                Vector2 destination = new Vector2(firstX + i * pitch, 0f);
+                Vector3 origin = Vector3.zero;
+                bool reused = o.Card != null && origins.TryGetValue(o.Card.Uid, out origin);
+                if (reused) UiPositionMotion.FromWorld(rt, origin, destination);
+                else UiPositionMotion.MoveTo(rt, destination, false);
 
                 slot.SlotIndex = i;
                 slot.OptionIndex = o.Index;

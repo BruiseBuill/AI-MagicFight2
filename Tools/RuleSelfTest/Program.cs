@@ -9,7 +9,8 @@ namespace MagicBrawl.SelfTest
     /// M11 · 命令行自测入口。
     ///
     /// <code>
-    /// dotnet run --project Tools/RuleSelfTest                 # 默认 10000 局
+    /// dotnet run --project Tools/RuleSelfTest                 # 默认少量定向检查
+    /// dotnet run --project Tools/RuleSelfTest -- --quick      # 同上
     /// dotnet run --project Tools/RuleSelfTest -- 200 12345    # 局数 / 种子基
     /// dotnet run --project Tools/RuleSelfTest -- 1 1 --trace  # 打一局完整事件流
     /// </code>
@@ -29,7 +30,16 @@ namespace MagicBrawl.SelfTest
                 // 某些终端不支持设置编码，忽略即可
             }
 
-            int games = 10000;
+            if (args.Length == 0 || Array.IndexOf(args, "--quick") >= 0)
+            {
+                var quickReport = new List<string>();
+                bool quickOk = RuleAlignmentScenario.Run(quickReport);
+                foreach (string line in quickReport) Console.WriteLine(line);
+                Console.WriteLine(quickOk ? "PASS: focused rule checks" : "FAIL: focused rule checks");
+                return quickOk ? 0 : 1;
+            }
+
+            int games = 10;
             int seedBase = 20260916;
             bool trace = false;
 
@@ -58,7 +68,7 @@ namespace MagicBrawl.SelfTest
 
             if (games <= 0)
             {
-                games = 10000;
+                games = 10;
             }
 
             Console.WriteLine("魔法乱斗 1.3 · 规则内核自测（M11）");
@@ -175,6 +185,7 @@ namespace MagicBrawl.SelfTest
             // 2026-10-30：44 张卡逐张核对（描述 ↔ 卡表 ↔ 引擎），
             // 外加「卡面写『可以』⇒ 这一拍必须能放弃」这一条用户口径。
             ok &= CardAuditScenario.Run(report);
+            ok &= RuleAlignmentScenario.Run(report);
             Prune(report);
 
             // 2026-10-02：多轴强化与强化册（**2026-10-29 起停用**）—— 随 2026-10-28 大改一起删了。

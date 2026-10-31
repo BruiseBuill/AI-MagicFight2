@@ -65,7 +65,7 @@ namespace MagicBrawl.App
 
         public bool IsOpen
         {
-            get { return _panel != null && _panel.activeSelf; }
+            get { return UiPanelAnimator.IsShown(_panel); }
         }
 
         /// <summary>当前已标记几张。</summary>
@@ -86,7 +86,7 @@ namespace MagicBrawl.App
                 _skipButton.onClick.AddListener(OnSkipClicked);
             }
 
-            Hide();
+            UiPanelAnimator.SetVisible(_panel, false, immediate: true);
         }
 
         // ══════════════════════════════════════════════════════
@@ -158,7 +158,7 @@ namespace MagicBrawl.App
 
             if (_panel != null)
             {
-                _panel.SetActive(true);
+                UiPanelAnimator.SetVisible(_panel, true);
             }
 
             RefreshCounter();
@@ -182,7 +182,7 @@ namespace MagicBrawl.App
 
             if (_panel != null)
             {
-                _panel.SetActive(false);
+                UiPanelAnimator.SetVisible(_panel, false);
             }
         }
 

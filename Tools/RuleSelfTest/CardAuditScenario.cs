@@ -233,10 +233,10 @@ namespace MagicBrawl.SelfTest
 
                     // 反向：加速 / 减速这一族天生可以跳过（规则 §0「效果可选性」），
                     // 其余效果若没写「可以」就不该给出放弃的口子。
-                    if (declinable && !textSaysCan && !IsCooldownOp(ef.Op))
+                    bool expected = !ef.Text.Contains("[强制]") && !ef.IsConstraint;
+                    if (declinable != expected)
                     {
-                        bad.Add(def.Name + "（" + def.Id + "）第 " + e + " 条没写「可以」，"
-                                + "引擎却允许放弃（" + ef.Op + "）—— 效果比卡面弱");
+                        bad.Add(def.Name + " / " + ef.Op + " 的可选性与强制标记或固有约束不一致");
                     }
 
                     if (textSaysCan)
@@ -248,7 +248,7 @@ namespace MagicBrawl.SelfTest
 
             report.Add(Flag(bad.Count == 0)
                        + "可选性：卡面写「可以」的效果全部能放弃（共 " + canDeclineCards
-                       + " 条）；没写「可以」的非冷却类效果都不给放弃口子");
+                       + " 条）；其余未标强制的效果可跳过，固有约束不可跳过");
             for (int i = 0; i < bad.Count; i++)
             {
                 report.Add("      · " + bad[i]);
@@ -260,6 +260,7 @@ namespace MagicBrawl.SelfTest
         /// <summary>这一条效果在引擎里能不能被放弃（跳过 / 空确认）。</summary>
         private static bool Declinable(EffectDef ef)
         {
+            if (ef.Mandatory || ef.IsConstraint) return false;
             if (ef.CanSkip)
             {
                 return true;
@@ -489,7 +490,7 @@ namespace MagicBrawl.SelfTest
             r.ToAttackTurn();
 
             if (!r.PlayCard("k")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req == null || req.Kind != RequestKind.ChooseCoolHandCards)
@@ -537,7 +538,7 @@ namespace MagicBrawl.SelfTest
             r.ToAttackTurn();
 
             if (!r.PlayCard("l")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req == null || req.Kind != RequestKind.ChooseCoolHandCards) return "没有弹选牌决策";
@@ -689,7 +690,7 @@ namespace MagicBrawl.SelfTest
             if (r.Trouble.Length > 0) return r.Trouble;
 
             if (!r.PlayCard("j")) return "对手没能打出闪电：" + r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             AttackPowerResolvedEvent ev = r.FindAttack("j");
             if (ev == null) return "没找到闪电的力量结算事件";
@@ -770,7 +771,7 @@ namespace MagicBrawl.SelfTest
             r.ToAttackTurn();
 
             if (!r.PlayCard("x")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req != null && req.Kind == RequestKind.ChooseCopyTarget)
@@ -793,7 +794,7 @@ namespace MagicBrawl.SelfTest
             r.SetCooling(0, "c:1");      // c 基础冷却 2、无光环 → 可复制（出牌拍之后再摆，避开开拍 tick）
 
             if (!r.PlayCard("x")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req == null || req.Kind != RequestKind.ChooseCopyTarget)
@@ -809,7 +810,7 @@ namespace MagicBrawl.SelfTest
 
             if (idx < 0) return "候选里没有凝固（c）";
             r.Submit(idx);
-            r.Engine.Advance();
+            r.Advance();
 
             AttackPowerResolvedEvent ev = r.FindAttack("x");
             if (ev == null) return "没找到模仿的力量结算事件";
@@ -850,7 +851,7 @@ namespace MagicBrawl.SelfTest
             r.GiveAura(ak);
 
             if (!r.PlayCard("f")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req == null || req.Kind != RequestKind.ChooseDefense) return "没有进入防御拍";
@@ -864,7 +865,7 @@ namespace MagicBrawl.SelfTest
             if (idx < 0) return "防御拍没有给出「免疫 ≥6」的光环选项";
 
             r.Engine.Submit(DecisionResponse.WithAuras(1, new int[0], new int[] { idx }));
-            r.Engine.Advance();
+            r.Advance();
 
             DefenseResolvedEvent def = r.FindDefense();
             if (def == null) return "没有防御结算事件";
@@ -894,7 +895,7 @@ namespace MagicBrawl.SelfTest
             if (idx < 0) return "候选里没有对方那张牌";
 
             r.Submit(idx);
-            r.Engine.Advance();
+            r.Advance();
 
             CooldownChangedEvent reset = r.FindChange("重置冷却", "a");
             if (reset == null) return "没有产生「重置冷却」的改动" + r.Dump(12);
@@ -923,7 +924,7 @@ namespace MagicBrawl.SelfTest
             int idx = r.IndexOfOptionCard("a");
             if (idx < 0) return "候选里没有自己那张牌";
             r.Submit(idx);
-            r.Engine.Advance();
+            r.Advance();
 
             CardInstance a = r.FindAny("a");
             if (a == null) return "找不到那张牌";
@@ -944,7 +945,7 @@ namespace MagicBrawl.SelfTest
             r.Engine.State.Of(1).Hp = 3;     // 对方掉 1
 
             if (!r.PlayCard("ae")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             AttackPowerResolvedEvent ev = r.FindAttack("ae");
             if (ev == null) return "没找到灼烧的力量结算事件";
@@ -963,7 +964,7 @@ namespace MagicBrawl.SelfTest
             r.SetCooling(0, "a:2", "b:2");    // 自己冷却区 2 张
 
             if (!r.PlayCard("ac")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             AttackPowerResolvedEvent ev = r.FindAttack("ac");
             if (ev == null) return "没找到雪球的力量结算事件";
@@ -1071,7 +1072,7 @@ namespace MagicBrawl.SelfTest
             if (aura < 0) return "出牌拍没有给出「连击」光环选项";
 
             r.Engine.Submit(DecisionResponse.WithAuras(0, new int[] { card }, new int[] { aura }));
-            r.Engine.Advance();
+            r.Advance();
 
             // 连击 = 打完还能再打一次：下一个出牌拍仍然属于座位 0
             int guard = 0;
@@ -1081,7 +1082,7 @@ namespace MagicBrawl.SelfTest
                 if (q.Kind == RequestKind.ChooseAttackCard && q.Seat == 0) return null;
                 if (q.Kind == RequestKind.ChooseAttackCard && q.Seat == 1) break;
                 r.SubmitSkipOrEmpty(q);
-                r.Engine.Advance();
+                r.Advance();
             }
 
             return "拿到连击光环之后没有出现「再打一次」的出牌拍";
@@ -1107,7 +1108,7 @@ namespace MagicBrawl.SelfTest
             int idx = r.IndexOfOptionCard("b");
             if (idx < 0) return "候选里没有自己冷却区那张牌";
             r.Submit(idx);
-            r.Engine.Advance();
+            r.Advance();
 
             CardInstance b = r.FindAny("b");
             if (b == null) return "找不到那张牌";
@@ -1125,7 +1126,7 @@ namespace MagicBrawl.SelfTest
             r.ToAttackTurn();
 
             if (!r.PlayCard("k")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req == null || req.Kind != RequestKind.ChooseCoolHandCards) return "没有弹选牌决策";
@@ -1138,7 +1139,7 @@ namespace MagicBrawl.SelfTest
 
             if (card < 0) return "没有可送冷却的手牌";
             r.Submit(card);
-            r.Engine.Advance();
+            r.Advance();
 
             int guard = 0;
             while (r.Engine.Pending != null && ++guard < 60)
@@ -1147,7 +1148,7 @@ namespace MagicBrawl.SelfTest
                 if (q.Kind == RequestKind.ChooseAttackCard && q.Seat == 0) return null;
                 if (q.Kind == RequestKind.ChooseAttackCard && q.Seat == 1) break;
                 r.SubmitSkipOrEmpty(q);
-                r.Engine.Advance();
+                r.Advance();
             }
 
             return "送了一张牌进冷却，却没有拿到连击（没出现追加进攻）" + r.Dump(12);
@@ -1180,7 +1181,7 @@ namespace MagicBrawl.SelfTest
             if (aura < 0) return "出牌拍没有给出「攻/防 +3」光环选项";
 
             r.Engine.Submit(DecisionResponse.WithAuras(0, new int[] { card }, new int[] { aura }));
-            r.Engine.Advance();
+            r.Advance();
 
             AttackPowerResolvedEvent ev = r.FindAttack("u");
             if (ev == null) return "没找到飞叶连击的力量结算事件" + r.Dump(10);
@@ -1200,7 +1201,7 @@ namespace MagicBrawl.SelfTest
             r.Engine.State.Of(0).Hp = 3;
 
             if (!r.PlayCard("o")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             PlayerState me = r.Engine.State.Of(0);
             if (me.MaxHp != 3) return "生命上限应 4 → 3，实为 " + me.MaxHp;
@@ -1222,7 +1223,7 @@ namespace MagicBrawl.SelfTest
             r.GiveAura(al);
 
             if (!r.PlayCard("c")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req == null || req.Kind != RequestKind.ChooseDefense) return "没有进入防御拍";
@@ -1236,7 +1237,7 @@ namespace MagicBrawl.SelfTest
             if (idx < 0) return "防御拍没有给出「免疫 ≤3」的光环选项";
 
             r.Engine.Submit(DecisionResponse.WithAuras(1, new int[0], new int[] { idx }));
-            r.Engine.Advance();
+            r.Advance();
 
             DefenseResolvedEvent def = r.FindDefense();
             if (def == null) return "没有防御结算事件";
@@ -1255,7 +1256,7 @@ namespace MagicBrawl.SelfTest
             r.ToAttackTurn();
 
             if (!r.PlayCard("f")) return r.Trouble;
-            r.Engine.Advance();
+            r.Advance();
 
             DecisionRequest req = r.Engine.Pending;
             if (req == null || req.Kind != RequestKind.ChooseDefense) return "没有进入防御拍";
@@ -1270,7 +1271,7 @@ namespace MagicBrawl.SelfTest
             if (idx < 0) return "冰风暴（5）没有被列为「9 点攻击」的合法防御牌（守护没生效）";
 
             r.Submit(idx);
-            r.Engine.Advance();
+            r.Advance();
 
             DefenseResolvedEvent def = r.FindDefense();
             if (def == null) return "没有防御结算事件";
@@ -1289,13 +1290,24 @@ namespace MagicBrawl.SelfTest
             public readonly List<BattleEvent> Events = new List<BattleEvent>();
             public string Trouble = string.Empty;
 
+            public void Advance()
+            {
+                Engine.Advance();
+                for (int guard = 0; Engine.Pending != null && Engine.Pending.Kind == RequestKind.ResolveOrder; guard++)
+                {
+                    if (guard >= 100) throw new InvalidOperationException("Effect confirmation loop");
+                    Engine.Submit(DecisionResponse.Of(Engine.Pending.Seat, 0));
+                    Engine.Advance();
+                }
+            }
+
             public static Table Begin(int seed)
             {
                 Table r = new Table();
                 r.Engine = BattleEngine.Create(seed);
                 r.Engine.OnEvent += r.OnEvent;
                 r.Engine.Start();
-                r.Engine.Advance();
+                r.Advance();
 
                 // ⚠ **只停在换牌拍、不代答** —— 手牌必须在这一拍之前布置好，
                 //   因为出牌选项是在「推进到出牌拍」那一刻按当时的手牌建出来的。

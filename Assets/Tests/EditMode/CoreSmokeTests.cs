@@ -111,7 +111,7 @@ namespace MagicBrawl.Tests
         }
 
         [Test]
-        public void 规则_进攻决策不给放弃选项()
+        public void 规则_进攻可放弃且连击无代价()
         {
             for (int seed = 60000; seed < 60010; seed++)
             {
@@ -129,8 +129,9 @@ namespace MagicBrawl.Tests
 
                     if (engine.Pending.Kind == RequestKind.ChooseAttackCard)
                     {
-                        Assert.IsTrue(engine.Pending.ContextNoSkip, "有牌时必须能进攻");
-                        Assert.IsNull(engine.Pending.SkipOption, "进攻决策不应提供 Skip");
+                        Assert.IsFalse(engine.Pending.ContextNoSkip, "进攻允许主动结束");
+                        Assert.IsNotNull(engine.Pending.SkipOption);
+                        Assert.AreEqual(engine.State.InCombo ? 0 : 1, engine.Pending.SkipOption.Value);
                     }
 
                     engine.Submit(agent.Decide(engine.Pending));

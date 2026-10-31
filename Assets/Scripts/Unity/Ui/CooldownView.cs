@@ -621,7 +621,9 @@ namespace MagicBrawl.App
 
 
                 CardView v;
-                if (!_reuse.TryGetValue(cards[i].Uid, out v))
+                bool reused = _reuse.TryGetValue(cards[i].Uid, out v);
+                Vector3 fromWorld = reused ? v.transform.position : Vector3.zero;
+                if (!reused)
                 {
                     v = Take(pool, container);
                     v.Bind(cards[i], CardView.ViewMode.Mini, used[rowIndex]);
@@ -653,7 +655,8 @@ namespace MagicBrawl.App
                     float x = playerSide ? offset : -offset;
 
                     // 竖直：跟槽行居中对齐
-                    rt.anchoredPosition = new Vector2(x, -(rowH - h) * 0.5f);
+                    UiPositionMotion.FromWorld(rt, fromWorld,
+                        new Vector2(x, -(rowH - h) * 0.5f), reused);
                 }
 
                 v.transform.SetAsLastSibling();

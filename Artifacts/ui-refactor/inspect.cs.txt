@@ -1,0 +1,8 @@
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+var d = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleDriver>();
+var ui = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleUi>();
+var engine = (MagicBrawl.Core.BattleEngine)typeof(MagicBrawl.App.BattleDriver).GetField("_engine", flags).GetValue(d);
+return new { playing = UnityEditor.EditorApplication.isPlaying, driver = d != null, enabled = d.enabled,
+ autoStart = typeof(MagicBrawl.App.BattleDriver).GetField("_autoStart", flags).GetValue(d),
+ engine = engine != null, pending = engine != null && engine.Pending != null ? engine.Pending.Kind.ToString() : "none",
+ ui = ui != null, stage = typeof(MagicBrawl.App.BattleUi).GetField("_stage", flags).GetValue(ui) != null };

@@ -38,6 +38,30 @@
 
 ## 排查与编译
 
+### 2026-10-30：依赖下载挂起导致服务无法启动
+
+症状：8080 无监听，Unity 提示 `Local HTTP server did not become reachable`；
+`Library/MCPForUnity/Logs/server-launch-8080.log` 停在 `Downloading pydantic-core / cryptography / beartype`。
+下载进程持有 uv 环境锁，后续离线启动也会等待。即使主包固定为 10.1.2，重新解析的传递依赖仍可能选中未缓存的新版本。
+
+本机已用完整缓存安装持久化的 uv tool 环境，并把验证过的依赖固定在
+`Tools/Mcp/constraints-win-py312.txt`。后续 `uvx --from mcpforunityserver==10.1.2` 会复用已安装环境。
+
+恢复入口（项目根目录）：
+
+```powershell
+./Tools/Mcp/Repair-UnityMcp.ps1
+./Tools/Mcp/Start-UnityMcp.ps1 -Background
+```
+
+修复脚本只使用本机缓存，要求 Python 3.12；如有挂起的下载，先核对进程命令行，仅结束属于该 MCP 服务的挂起进程，不能批量结束 Python/uv 进程。
+后台启动隐藏窗口，并把输出保存在 `Library/MCPForUnity/Logs/server-start.*.log`，等待健康检查通过后返回。
+如果服务健康但实例为空，在 Unity 执行 `Tools > MCP > Reconnect Existing Server`，然后按上面的四项判据验证。
+
+本次实测：服务健康版本 10.1.2、目标项目实例登记成功、`ready_for_tools=true`、场景查询成功；
+停止本次修复启动的服务后，用上述后台启动命令重启，Unity 自动重连并注册 35 个工具。
+服务重启会让旧 MCP 会话失效，客户端需重新初始化会话。
+
 - 服务未启动：使用上述命令，检查 uvx 路径和离线缓存。
 - 端口被占用：检查现有进程，不重复启动或自动结束未知进程。
 - 服务可读但实例数为 0：检查 Unity MCP 插件中的 HTTP 地址和连接状态。

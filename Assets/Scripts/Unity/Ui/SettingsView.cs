@@ -65,9 +65,9 @@ namespace MagicBrawl.App
             _previousPause = _driver.IsPaused;
             _driver.SetPaused(true);
             _open = true;
-            gameObject.SetActive(true);
-            _menu.SetActive(true);
-            _poolPanel.SetActive(false);
+            UiPanelAnimator.SetVisible(gameObject, true);
+            UiPanelAnimator.SetVisible(_menu, true, immediate: true);
+            UiPanelAnimator.SetVisible(_poolPanel, false, immediate: true);
             // 打开时同步成当前值（开关不落盘，跨局保留在 driver 上）
             if (_revealMonsterHand != null) _revealMonsterHand.isOn = _driver.ForceRevealMonsterHand;
             _resume.Select();
@@ -80,7 +80,7 @@ namespace MagicBrawl.App
             _open = false;
             _draft = null;
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
-            gameObject.SetActive(false);
+            UiPanelAnimator.SetVisible(gameObject, false);
         }
 
         private void Restart() { _driver.StartBattle(); }
@@ -98,8 +98,8 @@ namespace MagicBrawl.App
         {
             _character = _driver.GetLocalCharacterDefinition();
             _draft = _character.CreateCardPool();
-            _menu.SetActive(false);
-            _poolPanel.SetActive(true);
+            UiPanelAnimator.SetVisible(_menu, false);
+            UiPanelAnimator.SetVisible(_poolPanel, true);
             IReadOnlyList<CardDef> cards = _driver.GetCardCatalog().All;
             for (int i = _entries.Count; i < cards.Count; i++)
             {
@@ -158,8 +158,8 @@ namespace MagicBrawl.App
         private void Back()
         {
             _draft = null;
-            _poolPanel.SetActive(false);
-            _menu.SetActive(true);
+            UiPanelAnimator.SetVisible(_poolPanel, false);
+            UiPanelAnimator.SetVisible(_menu, true);
             _resume.Select();
         }
 

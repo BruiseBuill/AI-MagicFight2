@@ -56,6 +56,8 @@ namespace MagicBrawl.App
 
         /// <summary>已经播过倒地动作。挡住后续所有「回待机」的请求。</summary>
         private bool _dead;
+        private bool _highlighted;
+        private TweenScale _highlightTween;
 
         public void Configure(Image image, SpriteAnimator animator, RectTransform badgeRoot,
                               TMP_Text badgeText, Image badgeIcon)
@@ -315,15 +317,15 @@ namespace MagicBrawl.App
 
                 if (i >= maxHp)
                 {
-                    gem.color = UiTheme.HpGone;
+                    UiColorMotion.Set(gem, UiTheme.HpGone);
                 }
                 else if (i < hp)
                 {
-                    gem.color = UiTheme.HpFull;
+                    UiColorMotion.Set(gem, UiTheme.HpFull);
                 }
                 else
                 {
-                    gem.color = UiTheme.HpEmpty;
+                    UiColorMotion.Set(gem, UiTheme.HpEmpty);
                 }
             }
         }
@@ -370,12 +372,23 @@ namespace MagicBrawl.App
         {
             if (_image != null)
             {
-                _image.color = on ? UiTheme.DropTargetTint : Color.white;
+                UiColorMotion.Set(_image, on ? UiTheme.DropTargetTint : Color.white);
             }
 
-            transform.localScale = on
+            Vector3 target = on
                 ? new Vector3(HighlightScale, HighlightScale, 1f)
                 : Vector3.one;
+            if (!Application.isPlaying || !isActiveAndEnabled)
+            {
+                transform.localScale = target;
+                _highlighted = on;
+                return;
+            }
+            if (_highlighted == on) return;
+            _highlighted = on;
+            if (_highlightTween == null) _highlightTween = gameObject.AddComponent<TweenScale>();
+            _highlightTween.Setup(transform.localScale, target, 0.12f, UiEaseKind.OutCubic);
+            _highlightTween.Play();
         }
 
         /// <summary>落点高亮的放大倍率。</summary>

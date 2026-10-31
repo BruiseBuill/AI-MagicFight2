@@ -715,7 +715,8 @@ namespace MagicBrawl.App
                 // 中央的 StageMark 在 M8 里停用了（它占的正是浮层要用的中央净空），
                 // 所有叙事统一走顶部提示条。
                 _stage.SetMark(string.Empty);
-                _stage.SetPrompt("发牌中…");
+                _stage.ResetPresentation();
+                _stage.SetPhase("发牌中");
             }
 
             // 上一局倒下的那个要站起来（M14）—— Revive 只是清掉「已倒下」的闸，
@@ -905,8 +906,8 @@ namespace MagicBrawl.App
         /// </summary>
         /// <para><b>M36 起怪物那一侧带入场动画</b>（用户口径：「加入 AI 的出牌动画
         /// （从其模型，向上移动，并逐渐出现）」）：那张牌从<b>怪物模型当前帧的中心</b>
-        /// 升起并渐渐显形，落到头顶卡位。玩家自己那一侧不做 —— 他的牌是从手牌区拖上去的，
-        /// 起点另有其物，而且他自己知道打了什么。</para>
+        /// 升起并渐渐显形，落到头顶卡位。玩家侧从手牌当前或缓存的位置起飞，
+        /// 找不到卡面起点时退回角色中心。</para>
         /// </summary>
         private void ShowOnHead(int seat, IReadOnlyList<CardSnapshot> cards)
         {
@@ -924,7 +925,10 @@ namespace MagicBrawl.App
             }
             else
             {
-                view.Show(cards, 0f);
+                Vector3 origin;
+                if (_transit != null && _transit.TryGetHandOrigin(cards[0].Uid, out origin))
+                    view.ShowFrom(cards, 0f, origin);
+                else view.ShowFrom(cards, 0f, ModelCenterWorld(seat));
             }
 
             for (int i = 0; i < cards.Count; i++)
@@ -1099,7 +1103,18 @@ namespace MagicBrawl.App
             ApplyDock();
             // 演出先跑 —— 角色的插播动作不该因为「提示条没接上」就一起失效
             PlayCharacterBeats(e);
-            PlayActionBanner(e);
+
+            if (_transit != null && e is CardRemovedEvent)
+            {
+                var removed = (CardRemovedEvent)e;
+                _transit.PlayDeparture(CardSnapshot.From(removed.Card), true);
+            }
+            else if (_transit != null && e is ReplaceEvent)
+            {
+                var replaced = (ReplaceEvent)e;
+                if (replaced.Seat == LocalSeat)
+                    _transit.PlayDeparture(CardSnapshot.From(replaced.Returned), false);
+            }
 
             // M36：怪物用掉一枚光环 → 让那一枚**飞到怪物模型右侧**（用户口径：AI 使用光环时
             // 也要有一个光环移动的过程来帮玩家识别）。
@@ -1144,36 +1159,35 @@ namespace MagicBrawl.App
             if (e is TurnStartedEvent)
             {
                 var ts = (TurnStartedEvent)e;
-                _stage.SetPrompt(SeatName(ts.Seat) + (ts.IsComboFollowUp ? " 连击追加进攻" : " 进攻回合"));
+                _stage.BeginTurn(ts.Seat == LocalSeat, ts.IsComboFollowUp, e.TurnNumber);
             }
             else if (e is AttackDeclaredEvent)
             {
                 var ad = (AttackDeclaredEvent)e;
-                _stage.SetPrompt(SeatName(ad.Seat) + " 打出「" + ad.Card.Def.Name + "」");
+                _stage.SetPhase((ad.Seat == LocalSeat ? "你的" : "对手的") + "进攻");
+                _stage.ShowFeedback(ad.Seat == LocalSeat,
+                    "打出「" + ad.Card.Def.Name + "」");
             }
             else if (e is AttackPowerResolvedEvent)
             {
                 var ap = (AttackPowerResolvedEvent)e;
-                _stage.SetPrompt("进攻力量 " + ap.FinalPower
-                                 + (ap.IsDouble ? "（双发）" : string.Empty)
-                                 + " · 需要 ≥" + ap.FinalPower + " 才能挡住");
+                _stage.SetAttack("进攻力量 " + ap.FinalPower + (ap.IsDouble ? " · 双发" : string.Empty));
+                _stage.SetDefense("需要 ≥" + ap.FinalPower + " 才能挡住");
             }
             else if (e is AuraConsumedEvent)
             {
                 var au = (AuraConsumedEvent)e;
-                string line = SeatName(au.Seat) + " 消耗光环：「" + au.Source.Def.Name + "」"
+                string line = "消耗光环：「" + au.Source.Def.Name + "」"
                               + AuraResolver.DescribeEffect(au.Kind, au.Value);
-                _stage.SetPrompt(line);
-                PlayEffectBanner(line);
+                _stage.ShowFeedback(au.Seat == LocalSeat, line);
             }
             else if (e is AuraActivatedEvent)
             {
                 // M36：光环激活以前在提示条上**完全无声** —— 玩家只看得到冷却区里那张牌
                 // 多了一枚图标，不知道它是「刚拿到的」。怪物的牌更是毫无交代。
                 var aa = (AuraActivatedEvent)e;
-                string line = SeatName(aa.Seat) + " 的「" + aa.Card.Def.Name + "」光环激活 ×" + aa.Tokens;
-                _stage.SetPrompt(line);
-                PlayEffectBanner(line);
+                string line = "「" + aa.Card.Def.Name + "」光环激活 ×" + aa.Tokens;
+                _stage.ShowFeedback(aa.Seat == LocalSeat, line);
             }
             else if (e is CooldownChangedEvent)
             {
@@ -1188,45 +1202,65 @@ namespace MagicBrawl.App
                     if (!zone || !_effectBatchShown)
                     {
                         _effectBatchShown = true;
-                        _stage.SetPrompt(line);
-                        PlayEffectBanner(line);
+                        int owner = cc.Change.Card != null ? cc.Change.Card.OwnerSeat : _actorSeat;
+                        _stage.ShowFeedback(owner == LocalSeat, line, true);
                     }
                 }
             }
             else if (e is DefenseResolvedEvent)
             {
                 var dr = (DefenseResolvedEvent)e;
-                _stage.SetPrompt(dr.Success
-                    ? SeatName(dr.DefenderSeat) + (dr.UsedImmune ? " 用免疫光环挡住了" : " 挡住了")
-                    : SeatName(dr.DefenderSeat) + (dr.GaveUp ? " 放弃防御" : " 无法防御") + " → 掉 1 点生命");
+                _stage.SetDefense(dr.Success
+                    ? (dr.DefenderSeat == LocalSeat ? "你" : "对手") + (dr.UsedImmune ? "用免疫光环挡住了" : "挡住了")
+                    : (dr.DefenderSeat == LocalSeat ? "你" : "对手") + (dr.GaveUp ? "放弃防御" : "无法防御") + " · 生命 -1");
             }
             else if (e is DamageTakenEvent)
             {
                 var dt = (DamageTakenEvent)e;
-                _stage.SetPrompt(SeatName(dt.Seat) + " 生命 −" + dt.Amount + "（" + dt.Source + "）");
+                _stage.ShowFeedback(dt.Seat == LocalSeat, "生命 -" + dt.Amount + " · " + dt.Source);
                 // M20：这里原来还有一发「整个屏幕闪红」，已按用户口径删掉 ——
                 // 掉血的反馈是挨打方自己的受击动画（见 PlayCharacterBeats），
                 // 全屏压红跟「谁掉的血」无关，只会盖住角色动作。
             }
+            else if (e is HealEvent)
+            {
+                var heal = (HealEvent)e;
+                _stage.ShowFeedback(heal.Seat == LocalSeat, "生命 +" + heal.Actual);
+            }
+            else if (e is HpMaxChangedEvent)
+            {
+                var hp = (HpMaxChangedEvent)e;
+                _stage.ShowFeedback(hp.Seat == LocalSeat, "生命上限 " + hp.From + " → " + hp.To);
+            }
+            else if (e is WeakenAppliedEvent)
+            {
+                var weaken = (WeakenAppliedEvent)e;
+                _stage.ShowFeedback(weaken.Seat == LocalSeat, "虚弱 ×" + weaken.Stacks);
+            }
             else if (e is HandRevealedEvent)
             {
                 var hr = (HandRevealedEvent)e;
-                _stage.SetPrompt(SeatName(hr.ViewerSeat) + " 查看了对方的手牌"
-                                 + (hr.Cooled ? "，送入冷却" : string.Empty));
+                _stage.ShowFeedback(hr.ViewerSeat == LocalSeat,
+                    "查看手牌" + (hr.Cooled ? " · 送入冷却" : string.Empty));
             }
             else if (e is CardRemovedEvent)
             {
                 var cr = (CardRemovedEvent)e;
-                _stage.SetPrompt("「" + cr.Card.Def.Name + "」被永久移出游戏");
+                _stage.ShowFeedback(cr.Seat == LocalSeat, "「" + cr.Card.Def.Name + "」移出游戏");
             }
             else if (e is SelfDestructEvent)
             {
                 var sd = (SelfDestructEvent)e;
-                _stage.SetPrompt(SeatName(sd.Seat) + " 自爆（原生命 " + sd.HpBefore + "）");
+                _stage.ShowFeedback(sd.Seat == LocalSeat, "自爆 · 原生命 " + sd.HpBefore);
+            }
+            else if (e is DrawObservationEvent)
+            {
+                var draw = (DrawObservationEvent)e;
+                _stage.ShowFeedback(draw.Seat == LocalSeat, draw.Cancelled ? "平局观察取消" : "已提出平局");
             }
             else if (e is GameOverEvent)
             {
-                _stage.SetPrompt(string.Empty);
+                _stage.ResetPresentation();
             }
 
             if (_showLog)
@@ -1376,52 +1410,6 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 屏幕中央的行动提示（2026-09-19）。
-        ///
-        /// <para>只挑「一眼必须看到」的几个时刻：轮到谁进攻、玩家这一拍打完了、防御的结果。
-        /// 其余细节仍然只走顶部提示条 —— 中央横幅一局闪十几次就成了噪音，
-        /// 而它的价值恰恰在「不用盯提示条也知道现在该谁」。</para>
-        ///
-        /// <para>文案是表现层的措辞，不是规则判断（铁律 3）：谁进攻、成没成，都是引擎事件里的事实。</para>
-        /// </summary>
-        private void PlayActionBanner(BattleEvent e)
-        {
-            if (_stage == null)
-            {
-                return;
-            }
-
-            if (e is TurnStartedEvent)
-            {
-                var ts = (TurnStartedEvent)e;
-                if (ts.Seat == LocalSeat)
-                {
-                    _stage.Flash(ts.IsComboFollowUp ? "连击 · 追加进攻" : "轮到你进攻");
-                }
-                else
-                {
-                    _stage.Flash(ts.IsComboFollowUp ? "对手连击追加进攻" : "对手进攻回合");
-                }
-            }
-            else if (e is AttackDeclaredEvent)
-            {
-                // 玩家这一拍已经交牌了 —— 告诉玩家「该我做的做完了」；
-                // 挡没挡住是结算的事，下一拍 DefenseResolved 会说。
-                if (((AttackDeclaredEvent)e).Seat == LocalSeat)
-                {
-                    _stage.Flash("进攻结束");
-                }
-            }
-            else if (e is DefenseResolvedEvent)
-            {
-                var dr = (DefenseResolvedEvent)e;
-                _stage.Flash(dr.Success
-                    ? "防御成功"
-                    : (dr.GaveUp ? "放弃防御 · 掉 1 点" : "防御失败 · 掉 1 点"));
-            }
-        }
-
-        /// <summary>
         /// 把一条冷却改动翻译成人话（M36）。
         ///
         /// <para>返回 null = 这一条不值得报：<c>Reason</c> 里的「进攻开始 −1」与
@@ -1486,24 +1474,6 @@ namespace MagicBrawl.App
             }
 
             return "加速";
-        }
-
-        /// <summary>
-        /// M36：怪物执行效果时额外给一次**中央**提示。
-        ///
-        /// <para><b>为什么只给怪物</b>（用户口径：「怪物在执行效果（加速减速区加区减等）时，
-        /// 应当给予更多的提示」）：玩家自己做的选择自己知道，他看顶部提示条就够了；
-        /// 而怪物做的效果（尤其是区域加减速这种一次动好几张牌的）如果只写在那条小小的提示条上，
-        /// 很容易整局都注意不到。中央横幅是「一眼必须看到」的位置，正好补这一块。</para>
-        /// </summary>
-        private void PlayEffectBanner(string line)
-        {
-            if (_stage == null || string.IsNullOrEmpty(line) || _actorSeat != OpponentSeat)
-            {
-                return;
-            }
-
-            _stage.Flash(line);
         }
 
         /// <summary>
@@ -1604,13 +1574,6 @@ namespace MagicBrawl.App
             // 动作区要在浮层之前定下来：浮层靠 _dockSubmit 判断「这一拍的结束键是不是
             // 已经被右下角那个键接走了」，接走了就不再在屏幕中央列一遍。
             SetDockState(snap);
-
-            // 防御拍不会发 TurnStarted（那是「进攻回合」的开场事件）——
-            // 玩家只有在被问到的这一刻才知道「该我挡了」，所以在中央补一声。
-            if (_stage != null && snap.Kind == RequestKind.ChooseDefense)
-            {
-                _stage.Flash("轮到你防御");
-            }
 
             // M13：把「这一拍问的是哪件事」翻成拖拽出牌的方向 ——
             // 问进攻 = 箭头指对手，问防御 = 箭头指自己；其余（替换 / 光环 / 选目标…）不开放拖拽。
@@ -1714,7 +1677,7 @@ namespace MagicBrawl.App
                     //   那就没有「点哪一格」这回事，只能把档列出来让玩家挑。
                     if (snap.Kind == RequestKind.ChooseCooldownEffects)
                     {
-                        _picker.Show(string.Empty, _flatOptions);
+                        _picker.Show(CaptionFor(snap), WithoutDockOption(_flatOptions));
                     }
                     else if (_dockSubmit != null)
                     {
@@ -1728,7 +1691,7 @@ namespace MagicBrawl.App
 
                     if (_zoneBySeat.Count == 0)
                     {
-                        _picker.Show(string.Empty, _zoneBothOptions);
+                        _picker.Show(CaptionFor(snap), WithoutDockOption(_zoneBothOptions));
                     }
                 }
                 else if (snap.Kind == RequestKind.ChoosePeekCard)
@@ -1756,21 +1719,46 @@ namespace MagicBrawl.App
                     }
                     else
                     {
-                        _picker.Show(string.Empty, rest);
+                        _picker.Show(CaptionFor(snap), rest);
                     }
                 }
             }
 
             if (_stage != null)
             {
-                // 2026-10-29：不再把引擎那句整话（「选择本次进攻打出的法术（有牌时必须进攻）」）
-                // 铺在屏幕顶上 —— 只留 ≤10 字的阶段字幕，细节交给动作区与卡面本身。
-                _stage.SetPrompt(CaptionFor(snap));
+                _stage.ClearContext();
+                if (snap.Kind == RequestKind.ChooseAttackCard)
+                    _stage.ShowLocalAttack();
+                else if (snap.Kind == RequestKind.ChooseDefense)
+                {
+                    _stage.SetPhase("你的防御");
+                    _stage.SetAttack("进攻力量 " + snap.ContextPower + (snap.ContextDouble ? " · 双发" : string.Empty));
+                    _stage.SetDefense((snap.ContextDouble ? "两张防御牌 · 各需 ≥" : "防御力量 ≥") + snap.ContextPower
+                        + (snap.ContextDefenseBonus > 0 ? "\n光环补值 +" + snap.ContextDefenseBonus : string.Empty));
+                    if (snap.ContextDouble) _stage.SetPrompt("双发防御 · 已选 0 / 2");
+                }
+                else if (replace)
+                {
+                    _stage.SetPhase("换牌");
+                    _stage.SetAttack(string.Empty);
+                }
+                else
+                {
+                    _stage.SetPhase("效果结算");
+                    bool modal = snap.Kind == RequestKind.ChooseCoolHandCards
+                                 || snap.Kind == RequestKind.ChooseRemoveFromGame
+                                 || snap.Kind == RequestKind.ChoosePeekCard;
+                    if (!modal && WithoutDockOption(_flatOptions).Count == 0 && _zoneBothOptions.Count == 0)
+                        _stage.SetPrompt(CaptionFor(snap));
+                }
             }
 
             RefreshAll();
 
             // M24 #2：刷新之后（它会 ClearPlayable）把「两片冷却区可点」重新点亮
+            if (_stage != null && !string.IsNullOrEmpty(snap.DrawStatus)
+                && (snap.Kind == RequestKind.ChooseAttackCard || snap.Kind == RequestKind.ChooseDefense))
+                _stage.SetPrompt(snap.DrawStatus + (snap.ContextDouble ? " · 双发防御" : string.Empty));
             ApplyZonePickState();
 
             // M16：引擎每次重发本拍（玩家加 / 减了一枚准备使用的光环就会重发一次）之后，
@@ -2497,6 +2485,7 @@ namespace MagicBrawl.App
         private void ClearDecision(bool keepReturning)
         {
             _pendingValid = false;
+            if (_stage != null) _stage.ClearContext();
 
             // 2026-10-29：本拍结束 → 动作区一起收起（下一拍由 SetDockState 重新摆）。
             _dockSubmit = null;
@@ -2741,7 +2730,7 @@ namespace MagicBrawl.App
                 // 这一对不是引擎给出的合法组合 → 保留已选（玩家自己点一下才能取消），只提示换一张
                 if (_stage != null)
                 {
-                    _stage.SetPrompt("这两张合计挡不住这次双发，换一张再试；再点一下已选的牌可以取消它");
+                    _stage.Flash("这组牌无法挡住双发", UiTheme.InkOnIvoryWarm);
                 }
 
                 return;
@@ -2781,23 +2770,7 @@ namespace MagicBrawl.App
             }
 
             int count = _hand == null ? 0 : _hand.PickCount;
-            string text;
-            if (count <= 0)
-            {
-                text = "对方双发：点选（或拖出）两张用于防御的牌";
-            }
-            else if (count == 1)
-            {
-                text = "对方双发：已选 1 张，再点 / 拖一张凑成一对"
-                       + "（两张合计需够挡；再点一下已选的牌可取消它）";
-            }
-            else
-            {
-                text = "对方双发：已选 2 张，拖其中一张进判定区即可交出这一对"
-                       + "（再点一下已选的牌可换掉它）";
-            }
-
-            _stage.SetPrompt(text);
+            _stage.SetPrompt("双发防御 · 已选 " + count + " / 2");
         }
 
         /// <summary>清掉双发「已选第一张」（换拍 / 提交 / 收尾时用）。</summary>
@@ -3363,8 +3336,8 @@ namespace MagicBrawl.App
                     if (skip != null)
                     {
                         _dockLabel = "结束进攻";
-                        _dockSub = "−1";
-                        _dockDanger = true;
+                        _dockSub = skip.Value > 0 ? "生命 -" + skip.Value : string.Empty;
+                        _dockDanger = skip.Value > 0;
                         _dockSubmit = skip;
                     }
                     break;
@@ -3373,7 +3346,7 @@ namespace MagicBrawl.App
                     if (skip != null)
                     {
                         _dockLabel = "放弃防御";
-                        _dockSub = "−1";
+                        _dockSub = "生命 -1";
                         _dockDanger = true;
                         _dockSubmit = skip;
                     }
@@ -3388,12 +3361,12 @@ namespace MagicBrawl.App
                 default:
                     if (skip != null)
                     {
-                        _dockLabel = "放弃";
+                        _dockLabel = "跳过效果";
                         _dockSubmit = skip;
                     }
                     else if (done != null)
                     {
-                        _dockLabel = "不选";
+                        _dockLabel = "完成选择";
                         _dockSubmit = done;
                     }
                     break;
@@ -3416,10 +3389,7 @@ namespace MagicBrawl.App
                 return;
             }
 
-            bool attack = _pendingKind == RequestKind.ChooseAttackCard;
-            int pips = attack ? Mathf.Clamp(_attacksRemaining, 0, UiLayout.DockPipSlots) : 0;
-            int slots = attack ? 1 : 0;
-            _dock.Bind(true, _dockLabel, _dockSub, _dockDanger, pips, slots);
+            _dock.Bind(true, _dockLabel, _dockSub, _dockDanger, 0, 0);
         }
 
         private void OnDockClicked()
@@ -3503,7 +3473,20 @@ namespace MagicBrawl.App
                     return "对手打出 " + snap.ContextPower + " 点";
 
                 case RequestKind.ChooseReplace:
-                    return "换牌 · 至多 3 张";
+                    return "换牌 · 至多 " + snap.MaxSelect + " 张";
+
+                case RequestKind.ChooseHasteTarget:
+                    return "加速 · 选择冷却牌";
+                case RequestKind.ChooseSlowTarget:
+                    return "减速 · 选择冷却牌";
+                case RequestKind.ChooseRefreshTarget:
+                    return snap.ContextHaste ? "立即回手 · 选择冷却牌" : "重置冷却 · 选择冷却牌";
+                case RequestKind.ChooseZoneValue:
+                    return snap.ContextHaste ? "区域加速 · 选择冷却档" : "区域减速 · 选择冷却档";
+                case RequestKind.ChooseCopyTarget:
+                    return "模仿 · 选择法术";
+                case RequestKind.ResolveOrder:
+                    return "选择结算顺序";
 
                 case RequestKind.ChooseCoolHandCards:
                 case RequestKind.ChooseRemoveFromGame:

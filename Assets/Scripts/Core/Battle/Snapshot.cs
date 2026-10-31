@@ -338,6 +338,7 @@ namespace MagicBrawl.Core
     /// </summary>
     public struct DecisionSnapshot
     {
+        public string DrawStatus;
         public long RequestId;
         public int Seat;
         public RequestKind Kind;
@@ -373,6 +374,7 @@ namespace MagicBrawl.Core
             return new DecisionSnapshot
             {
                 RequestId = r.RequestId,
+                DrawStatus = r.DrawStatus,
                 Seat = r.Seat,
                 Kind = r.Kind,
                 Prompt = r.Prompt,

@@ -209,7 +209,7 @@ namespace MagicBrawl.SelfTest
                 // 这一批是 AI 对 AI → 套上回合上限（用户 2026-10-03 口径：最多 100 回合）。
                 // ⚠ 必须显式设：Create 只按 setup 的 Control 判「全员 AI」，而默认 setup 的
                 //   0 号座位写着 Human，自动判定不会生效。
-                engine.MaxTurns = BattleEngine.AiTurnLimit;
+                engine.UseAiTurnLimit();
                 var agent = new HeuristicAgent(engine.State);
 
                 try

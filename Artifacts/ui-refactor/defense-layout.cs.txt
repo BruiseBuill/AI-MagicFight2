@@ -1,0 +1,26 @@
+if (!UnityEditor.EditorApplication.isPlaying) return "Enter Play mode first";
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+var d = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleDriver>();
+var ui = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.BattleUi>();
+var stage = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.StageView>();
+d.StopAllCoroutines();
+stage.BeginTurn(false, false, 3);
+var defense = new MagicBrawl.Core.DecisionSnapshot {
+    Seat = d.LocalSeat, Kind = MagicBrawl.Core.RequestKind.ChooseDefense,
+    ContextPower = 7, ContextDouble = true, ContextDefenseBonus = 2,
+    Options = new System.Collections.Generic.List<MagicBrawl.Core.Option> {
+        new MagicBrawl.Core.Option { Index = 0, Kind = MagicBrawl.Core.OptionKind.Skip, Label = "放弃防御" }
+    }
+};
+typeof(MagicBrawl.App.BattleUi).GetMethod("HandleDecision", flags).Invoke(ui, new object[] { defense });
+UnityEngine.Canvas.ForceUpdateCanvases();
+double captureAt = UnityEditor.EditorApplication.timeSinceStartup + 0.5;
+UnityEditor.EditorApplication.CallbackFunction capture = null;
+capture = () => {
+    if (UnityEditor.EditorApplication.timeSinceStartup < captureAt) return;
+    UnityEditor.EditorApplication.update -= capture;
+    if (UnityEditor.EditorApplication.isPlaying)
+        UnityEngine.ScreenCapture.CaptureScreenshot("Captures/ui-refactor-defense-verified.png");
+};
+UnityEditor.EditorApplication.update += capture;
+return "Double defense layout ready";

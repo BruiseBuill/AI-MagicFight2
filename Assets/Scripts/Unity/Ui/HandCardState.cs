@@ -23,5 +23,7 @@ namespace MagicBrawl.App
 
         /// <summary>刚取出来（或刚被重排）—— 这一帧直接落到目标位姿，不做平滑趋近。</summary>
         public bool First = true;
+        public bool Entering;
+        public float EnterDelay;
     }
 }

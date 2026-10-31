@@ -1,0 +1,46 @@
+PASS OutCubic is nonlinear
+PASS easing endpoints
+PASS panel starts hidden but logically open
+PASS closing immediately rejects stale input
+PASS close preserves intermediate alpha
+PASS reverse preserves intermediate alpha
+PASS repeated show completes while paused
+PASS panel preserves authored scale
+PASS repeated hide completes once and deactivates
+PASS pooled panel recovers after interruption
+PASS parent disable/enable preserves visible child
+PASS parent disable completes child close without invisible blocker
+PASS result waits for exit and rejects double click
+PASS result callback fires once after exit
+PASS reparent preserves world origin
+PASS repeated motion target settles while paused
+PASS movement retargets latest destination
+PASS real card prefab available
+PASS cooldown row change does not teleport
+PASS cooldown card reaches new row
+PASS direct hand-to-cooling launches ghost and hides destination
+PASS exactly one flight per UID
+PASS flight reveals destination after landing
+PASS hotseat local seat 1 returns from correct origin array
+PASS reset restores hidden destination
+PASS deck removal preserves remaining card identity/origin
+PASS rapid tab switch settles visibility
+PASS tab reveal has a single alpha owner
+PASS aura cancel preserves drag origin
+PASS aura reaches home while paused
+PASS panel resize reaches target while paused
+PASS HP/highlight color reaches target while paused
+PASS disabled tween clears playing state
+PASS removed card transfers to exit ghost
+PASS removed card ghost is recycled
+PASS real settings opens
+PASS real settings reopens during close
+PASS scene navigation accepts first request
+PASS scene navigation rejects concurrent request
+PASS Home transition completes
+PASS transition veil is destroyed
+PASS Deck transition accepted after Home
+PASS Deck scene loaded
+PASS Battle transition accepted after Deck
+PASS Battle transition completes
+PASS all animation smoke checks

@@ -398,7 +398,7 @@ namespace MagicBrawl.App
 
             if (!anyHuman)
             {
-                engine.MaxTurns = BattleEngine.AiTurnLimit;
+                engine.UseAiTurnLimit();
             }
 
             StopBattle();

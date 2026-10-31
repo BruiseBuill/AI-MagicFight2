@@ -25,6 +25,8 @@ namespace MagicBrawl.Core
         private readonly List<Work> _group = new List<Work>();
         private readonly Dictionary<int, Tuple<Work, Option>> _routes = new Dictionary<int, Tuple<Work, Option>>();
         private DecisionRequest _request;
+        private List<Work> _orderCandidates;
+        private Work _orderedWork;
         public bool Complete { get; private set; }
 
         public EffectWindow(EffectRegistry registry, IEnumerable<EffectActivation> effects)
@@ -43,8 +45,31 @@ namespace MagicBrawl.Core
         {
             if (_group.Count == 0)
             {
-                Work first = _work.Find(w => !w.Done);
+                Work first = _orderedWork ?? _work.Find(w => !w.Done);
                 if (first == null) { Complete = true; return null; }
+                if (_orderedWork == null)
+                {
+                    var candidates = _work.FindAll(w => !w.Done && w.Iterator == null
+                        && ReferenceEquals(w.Activation.Context, first.Activation.Context)
+                        && _registry.Matches(w.Activation.Context, w.Activation.Definition));
+                    Work constraint = candidates.Find(w => w.Activation.Definition.IsConstraint);
+                    if (constraint != null) first = constraint;
+                    else if (first.Handler.Stage == EffectStage.Cooldown && candidates.Count > 1
+                        && !candidates.TrueForAll(w => SameGroup(first, w)
+                        && w.Handler.Family != EffectFamily.None && w.Handler.Shape != EffectTargetShape.None))
+                    {
+                        _orderCandidates = candidates;
+                        var choices = new List<Option>();
+                        for (int i = 0; i < candidates.Count; i++)
+                            choices.Add(new Option { Index = i, Kind = OptionKind.ExecuteEffect,
+                                Label = candidates[i].Activation.Definition.Text });
+                        _request = new DecisionRequest { Kind = RequestKind.ResolveOrder,
+                            Seat = first.Activation.Context.Seat, Title = "选择结算顺序",
+                            Prompt = "先结算哪个效果", Options = choices, MinSelect = 1, MaxSelect = 1, ContextNoSkip = true };
+                        return _request;
+                    }
+                }
+                _orderedWork = null;
                 _group.Add(first);
                 if (first.Handler.Family != EffectFamily.None && first.Handler.Shape != EffectTargetShape.None)
                 {
@@ -120,6 +145,16 @@ namespace MagicBrawl.Core
         public bool Submit(DecisionResponse response)
         {
             if (_request == null || response.Seat != _request.Seat) return false;
+            if (_orderCandidates != null)
+            {
+                if (response.OptionIndices == null || response.OptionIndices.Length != 1) return false;
+                int index = response.OptionIndices[0];
+                if (index < 0 || index >= _orderCandidates.Count) return false;
+                _orderedWork = _orderCandidates[index];
+                _orderCandidates = null;
+                _request = null;
+                return true;
+            }
             var selected = new List<Option>();
             Work destination = null;
             var seen = new HashSet<int>();

@@ -40,7 +40,7 @@ namespace MagicBrawl.App.EditorTools
             // ⚠ M20（2026-09-20）删掉了 "Flash" —— 全屏受击红闪按用户口径取消，
             //   节点与 StageView._flash 一并移除（残留的旧节点会被 Cleanup 顺带清掉，
             //   但要先把名字留在下面这份列表里最后一趟，见 Cleanup 的说明）。
-            "PromptBar", "PickerPanel", "DealPanel", "DetailPanel", "ResultRoot", "LogPanel",
+            "PromptBar", "BattleInformation", "PickerPanel", "DealPanel", "DetailPanel", "ResultRoot", "LogPanel",
             // 2026-10-04：战斗胜利结算界面（顶徽记 + 横幅 + 三选一 + 金币 + 继续）
             "ResultWinRoot",
             // 2026-10-05：战斗失败结算界面（顶徽记 + 横幅 + 重试 / 退出）
@@ -358,8 +358,8 @@ namespace MagicBrawl.App.EditorTools
             Transform topArea = stage.parent;
 
             GameObject prompt = NewUi("PromptBar", topArea);
-            Box(Rt(prompt), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -UiLayout.PromptTop), new Vector2(UiLayout.PromptWidth, UiLayout.PromptHeight));
+            Box(Rt(prompt), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(UiLayout.CharCenterX - UiLayout.ReferenceWidth * 0.5f, 70f), new Vector2(340f, 44f));
 
             // 2026-10-29：底板由「深灰半透明块 + 描边」换成生成的象牙石字幕条（九宫格）。
             //   缺图时退回原来的深色块 —— 少了美术也不至于变成一条空白。
@@ -371,7 +371,7 @@ namespace MagicBrawl.App.EditorTools
             {
                 plateImg.type = Image.Type.Sliced;
                 plateImg.pixelsPerUnitMultiplier =
-                    Mathf.Max(1f, caption.rect.height / UiLayout.PromptHeight);
+                    Mathf.Max(1f, caption.rect.height / 44f);
             }
             else
             {
@@ -380,9 +380,10 @@ namespace MagicBrawl.App.EditorTools
 
             GameObject promptText = NewUi("Text", prompt.transform);
             // 内缩 60：九宫格的左右端帽各占 40 px，文字压进圆头里会糊
-            Stretch(Rt(promptText), 60f, 6f, 60f, 6f);
-            TMP_Text promptLabel = AddText(promptText, title, UiLayout.FontSizePrompt,
-                UiTheme.TextPrimary, TextAlignmentOptions.Center);
+            Stretch(Rt(promptText), 28f, 4f, 28f, 4f);
+            TMP_Text promptLabel = AddText(promptText, title, 22f,
+                UiTheme.InkOnIvory, TextAlignmentOptions.Center);
+            FitInformationText(promptLabel, 18f, 22f);
 
             var view = stage.GetComponent<StageView>();
             if (view == null)
@@ -412,7 +413,116 @@ namespace MagicBrawl.App.EditorTools
             so.FindProperty("_prompt").objectReferenceValue = promptLabel;
             so.ApplyModifiedPropertiesWithoutUndo();
 
+            BuildBattleInformation(view, topArea.parent, title);
+            prompt.SetActive(false);
+
             return view;
+        }
+
+        private static void FitInformationText(TMP_Text label, float min, float max)
+        {
+            label.enableAutoSizing = true;
+            label.fontSizeMin = min;
+            label.fontSizeMax = max;
+            label.characterSpacing = 0f;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+            label.raycastTarget = false;
+        }
+
+        private static TMP_Text InformationLabel(Transform parent, string name, Vector2 anchor,
+            Vector2 position, Vector2 size, TMP_FontAsset font, float fontSize, Color color)
+        {
+            var root = NewUi(name, parent);
+            Box(Rt(root), anchor, new Vector2(0.5f, 0.5f), position, size);
+            var plate = root.AddComponent<Image>();
+            plate.color = new Color(0.08f, 0.13f, 0.14f, 0.84f);
+            plate.raycastTarget = false;
+            string spriteName = name == "Phase" ? "Ui_PhaseBadge" : "Ui_CombatReadout";
+            if (name == "Phase" || name == "Attack" || name == "Defense")
+            {
+                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Ui/" + spriteName + ".png");
+                if (sprite != null)
+                {
+                    plate.sprite = sprite;
+                    plate.type = Image.Type.Sliced;
+                    plate.pixelsPerUnitMultiplier = Mathf.Max(1f, sprite.rect.height / size.y);
+                    plate.color = Color.white;
+                }
+            }
+            var text = NewUi("Text", root.transform);
+            Stretch(Rt(text), 12f, 4f, 12f, 4f);
+            var label = AddText(text, font, fontSize, color, TextAlignmentOptions.Center);
+            FitInformationText(label, fontSize - 4f, fontSize);
+            return label;
+        }
+
+        private static void BuildBattleInformation(StageView view, Transform canvas, TMP_FontAsset font)
+        {
+            var root = NewUi("BattleInformation", canvas);
+            Stretch(Rt(root), 0f, 0f, 0f, 0f);
+            var phase = InformationLabel(root.transform, "Phase", new Vector2(0.5f, 1f),
+                new Vector2(0f, -36f), new Vector2(300f, 44f), font, 22f, Color.white);
+            var attack = InformationLabel(root.transform, "Attack", Vector2.zero,
+                new Vector2(UiLayout.CharCenterX, 635f), new Vector2(340f, 56f), font, 28f, new Color(1f, 0.83f, 0.42f));
+            var defense = InformationLabel(root.transform, "Defense", Vector2.zero,
+                new Vector2(UiLayout.CharCenterX, 576f), new Vector2(340f, 58f), font, 22f, Color.white);
+            attack.transform.parent.gameObject.SetActive(false);
+            defense.transform.parent.gameObject.SetActive(false);
+            phase.transform.parent.gameObject.SetActive(false);
+
+            var so = new SerializedObject(view);
+            so.FindProperty("_phaseLabel").objectReferenceValue = phase;
+            so.FindProperty("_attackLabel").objectReferenceValue = attack;
+            so.FindProperty("_defenseLabel").objectReferenceValue = defense;
+            foreach (bool cooling in new[] { false, true })
+            {
+                var array = so.FindProperty(cooling ? "_cooldownFeedback" : "_actorFeedback");
+                array.arraySize = 2;
+                for (int i = 0; i < 2; i++)
+                {
+                    float x = cooling ? (i == 0 ? 200f : -200f)
+                        : (i == 0 ? UiLayout.CharHeroX : UiLayout.CharMonsterX);
+                    var label = InformationLabel(root.transform, (cooling ? "Cooling" : "Actor") + i,
+                        cooling ? new Vector2(i, 1f) : Vector2.zero,
+                        new Vector2(x, cooling ? -112f : 728f),
+                        new Vector2(cooling ? 350f : 300f, 52f), font, 22f, Color.white);
+                    var feedbackRoot = label.transform.parent.gameObject;
+                    var group = feedbackRoot.AddComponent<CanvasGroup>();
+                    group.blocksRaycasts = false;
+                    group.interactable = false;
+                    var feedback = feedbackRoot.AddComponent<FloatTipView>();
+                    feedback.Configure(group, label, 2f, 0.1f, 18f);
+                    array.GetArrayElementAtIndex(i).objectReferenceValue = feedback;
+                }
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // Rebuild only this feature's nodes so scene-specific art and settings stay intact.
+        [MenuItem("魔法乱斗/重建战斗信息布局", priority = 4)]
+        public static void RebuildInformationLayout()
+        {
+            if (EditorApplication.isPlaying) throw new System.InvalidOperationException("Stop Play mode first.");
+            var canvas = GameObject.Find(CanvasName);
+            if (canvas == null) throw new System.InvalidOperationException("BattleCanvas not found.");
+            var stage = canvas.GetComponentInChildren<StageView>(true);
+            if (stage == null) throw new System.InvalidOperationException("StageView not found.");
+            foreach (string name in new[] { "PromptBar", "BattleInformation" })
+            {
+                var old = FindDeep(canvas.transform, name);
+                if (old != null) Object.DestroyImmediate(old.gameObject);
+            }
+            BuildStageExtras(stage.transform);
+            var dock = canvas.GetComponentInChildren<BattleDockView>(true);
+            if (dock != null)
+            {
+                var rect = (RectTransform)dock.transform;
+                rect.anchoredPosition = new Vector2(-UiLayout.DockRight, UiLayout.DockBottom);
+            }
+            PrefabUtility.SaveAsPrefabAssetAndConnect(canvas, PrefabDir + "/" + CanvasName + ".prefab",
+                InteractionMode.AutomatedAction);
+            EditorSceneManager.MarkSceneDirty(canvas.scene);
+            AssetDatabase.SaveAssets();
         }
 
         // ⚠ M20（2026-09-20）：这里原来有个 BuildFlash —— 一块铺满上部、掉血时压一层的红色 Image。

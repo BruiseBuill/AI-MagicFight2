@@ -44,7 +44,7 @@ namespace MagicBrawl.App
 
         public bool IsVisible
         {
-            get { return _root != null && _root.activeSelf; }
+            get { return UiPanelAnimator.IsShown(_root); }
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace MagicBrawl.App
             float headLen = Mathf.Min(_headLength, len);
             float shaftLen = Mathf.Max(0f, len - headLen);
 
-            _root.SetActive(true);
+            UiPanelAnimator.SetVisible(_root, true, interactive: false);
             _arrow.anchoredPosition = from;
             _arrow.localRotation = Quaternion.Euler(0f, 0f, angle);
 
@@ -104,7 +104,7 @@ namespace MagicBrawl.App
         {
             if (_root != null && _root.activeSelf)
             {
-                _root.SetActive(false);
+                UiPanelAnimator.SetVisible(_root, false, interactive: false);
             }
         }
 

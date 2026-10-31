@@ -77,7 +77,7 @@ namespace MagicBrawl.App
         /// <summary>设置面板是不是开着。</summary>
         public bool IsSettingsOpen
         {
-            get { return _settingsLayer != null && _settingsLayer.activeSelf; }
+            get { return UiPanelAnimator.IsShown(_settingsLayer); }
         }
 
         private void Awake()
@@ -146,9 +146,9 @@ namespace MagicBrawl.App
         /// <summary>打开设置面板（右上角那枚键 / 战斗顶栏齿轮都调它）。</summary>
         public void OpenSettings()
         {
-            if (_settingsLayer != null && !_settingsLayer.activeSelf)
+            if (_settingsLayer != null)
             {
-                _settingsLayer.SetActive(true);
+                UiPanelAnimator.SetVisible(_settingsLayer, true);
                 _settingsLayer.transform.SetAsLastSibling();
             }
 
@@ -158,12 +158,12 @@ namespace MagicBrawl.App
         /// <summary>关掉设置面板。</summary>
         public void CloseSettings()
         {
-            if (_settingsLayer == null || !_settingsLayer.activeSelf)
+            if (!IsSettingsOpen)
             {
                 return;
             }
 
-            _settingsLayer.SetActive(false);
+            UiPanelAnimator.SetVisible(_settingsLayer, false);
             NotifySettings(false);
         }
 

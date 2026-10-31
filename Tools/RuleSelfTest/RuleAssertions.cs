@@ -192,7 +192,7 @@ namespace MagicBrawl.SelfTest
 
             BattleEngine engine = BattleEngine.Create(seed);
             // 万局统计同样是 AI 对 AI → 套上回合上限（用户 2026-10-03 口径：最多 100 回合）。
-            engine.MaxTurns = BattleEngine.AiTurnLimit;
+            engine.UseAiTurnLimit();
             var watcher = new EventWatcher(engine);
             var brain = new SimpleAiAgent();
             var agent = new CheckingAgent(brain, engine, watcher);
@@ -446,7 +446,7 @@ namespace MagicBrawl.SelfTest
             // 自测里的对局都是 AI 对 AI → 套上回合上限（用户 2026-10-03 口径：最多 100 回合）。
             // 双方都严格执行「能防就防 + 交光环补值」时会不收敛（谁都不掉血），
             // 加限之前实测出现过 3000+ 回合的局 —— 见 BattleEngine.AiTurnLimit。
-            engine.MaxTurns = BattleEngine.AiTurnLimit;
+            engine.UseAiTurnLimit();
             engine.Start();
             int steps = 0;
             while (!engine.IsOver)

@@ -214,7 +214,7 @@ namespace MagicBrawl.SelfTest
 
                     if (!ShapeOk)
                     {
-                        return "选项结构不对（数量 = 对手手牌数、序号 = Value = 下标、且不该有 Skip）";
+                        return "选项结构不对（手牌候选和跳过选项、手牌序号须正确）";
                     }
 
                     return Why;
@@ -443,6 +443,7 @@ namespace MagicBrawl.SelfTest
                 Probe.Asked = true;
 
                 // ① 结构：每个选项都必须是「对手的一张手牌」，序号 = Value = 下标
+                // The optional confirmation occurs before this modal opens.
                 Probe.ShapeOk = req.MinSelect == 1 && req.MaxSelect == 1
                                && req.Options.Count == owner.Hand.Count
                                && req.SkipOption == null;
@@ -450,6 +451,7 @@ namespace MagicBrawl.SelfTest
                 for (int i = 0; i < req.Options.Count; i++)
                 {
                     Option o = req.Options[i];
+                    if (o.IsSkip) continue;
                     if (o.Index != i || o.Value != i || o.Card == null
                         || !owner.Hand.Contains(o.Card))
                     {

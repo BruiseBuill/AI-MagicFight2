@@ -123,7 +123,8 @@ namespace MagicBrawl.App
                 return;
             }
 
-            bool wasShowing = _showing;
+            bool wasShowing = _showing && !_closing;
+            bool wasActive = gameObject.activeInHierarchy;
             _showing = true;
             _closing = false;
 
@@ -162,17 +163,19 @@ namespace MagicBrawl.App
             {
                 _group.blocksRaycasts = true;
                 _group.interactable = true;
-                _group.alpha = 0f;
+                if (!wasActive) _group.alpha = 0f;
             }
+
+            if (wasShowing) return;
 
             // ⚠ UiTween.Setup 返回 void —— 不能写成 .Setup(...).Play()，必须分两句。
             TweenCanvasAlpha fadeIn = FadeFor();
-            fadeIn.Setup(0f, 1f, UiLayout.MonsterHandFadeSeconds, UiEaseKind.OutQuad);
+            fadeIn.Setup(_group == null ? 0f : _group.alpha, 1f, UiLayout.MonsterHandFadeSeconds, UiEaseKind.OutQuad);
             fadeIn.Play();
 
             // 面板弹出单独一支补间（它不参与任何状态机）
             TweenScale pop = PanelTween();
-            pop.Setup(Vector3.one * UiLayout.MonsterHandPanelPopFrom, Vector3.one,
+            pop.Setup(wasActive ? _panel.localScale : Vector3.one * UiLayout.MonsterHandPanelPopFrom, Vector3.one,
                 UiLayout.MonsterHandPanelPopSeconds, UiEaseKind.OutBack);
             pop.Play();
 
@@ -243,7 +246,7 @@ namespace MagicBrawl.App
                 ? UiLayout.MonsterHandPanelHeightOneRow
                 : UiLayout.MonsterHandPanelHeightTwoRows;
 
-            _panel.sizeDelta = new Vector2(UiLayout.MonsterHandPanelWidth, panelHeight);
+            UiSizeMotion.Resize(_panel, new Vector2(UiLayout.MonsterHandPanelWidth, panelHeight), gameObject.activeInHierarchy);
 
             float contentTop = panelHeight * 0.5f - UiLayout.PeekContentTop;
             float contentBottom = -panelHeight * 0.5f + UiLayout.PeekContentBottom;
@@ -277,7 +280,7 @@ namespace MagicBrawl.App
                     rt.anchorMax = new Vector2(0.5f, 0.5f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
                     rt.sizeDelta = new Vector2(UiLayout.MonsterHandCardWidth, UiLayout.MonsterHandCardHeight);
-                    rt.anchoredPosition = new Vector2(firstX + c * pitch, rowY);
+                    UiPositionMotion.MoveTo(rt, new Vector2(firstX + c * pitch, rowY), _showing);
                 }
             }
 

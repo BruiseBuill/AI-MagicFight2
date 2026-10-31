@@ -35,6 +35,12 @@ namespace MagicBrawl.App
                 case UiEaseKind.OutQuad:
                     return 1f - (1f - t) * (1f - t);
 
+                case UiEaseKind.OutCubic:
+                {
+                    float u = 1f - t;
+                    return 1f - u * u * u;
+                }
+
                 case UiEaseKind.InQuad:
                     return t * t;
 
@@ -138,6 +144,11 @@ namespace MagicBrawl.App
             }
 
             IsPlaying = false;
+        }
+
+        protected virtual void OnDisable()
+        {
+            Stop();
         }
 
         private IEnumerator Run()
@@ -256,4 +267,5 @@ namespace MagicBrawl.App
             }
         }
     }
+
 }

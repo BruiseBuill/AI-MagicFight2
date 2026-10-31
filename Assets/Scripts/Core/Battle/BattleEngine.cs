@@ -101,6 +101,9 @@ namespace MagicBrawl.Core
         private bool _gaveUp;
         private readonly List<CardInstance> _defenseCards = new List<CardInstance>();
         private int _defensePower;
+        private int _turnLimitLoser = -1;
+        private bool _allowDrawProposal;
+        private int _drawObservationStart;
 
         private BattleEngine(BattleState state, IDealPolicy dealPolicy, EffectRegistry effects)
         {
@@ -119,13 +122,22 @@ namespace MagicBrawl.Core
         /// `Tools/RuleSelfTest/HeuristicAgentScenario.cs`）。用户明确：这种不收敛
         /// <b>只出现在 AI 对 AI</b> 的对局里，给个上限即可，不必改规则。</para>
         ///
-        /// <para>⚠ 只在「<b>全员 AI</b>」的 setup 上自动生效（见 <see cref="Create(int, BattleSetup, IDealPolicy)"/>）；
-        /// 只要有一个座位是人类就<b>不设</b>上限 —— 玩家对局不该被截断。</para>
+        /// <para>全 AI 使用此保护上限；人机对局使用 40 回合判负，双人使用平局观察。</para>
         /// </summary>
         public const int AiTurnLimit = 100;
+        public const int HumanAiTurnLimit = 40;
+        public const int DrawObservationTurns = 4;
+        public int DrawObservationStartTurn { get { return _drawObservationStart; } }
+
+        public void UseAiTurnLimit()
+        {
+            MaxTurns = AiTurnLimit;
+            _turnLimitLoser = -1;
+            _allowDrawProposal = false;
+        }
 
         /// <summary>
-        /// 本局的回合上限；<b>0 = 不限</b>。到达时按<b>平局</b>收场（双方都没能取胜）。
+        /// 本局的回合上限；0 = 不限。人机对局到限判玩家失败，其余到限判平。
         ///
         /// <para>构造时由 <see cref="Create(int, BattleSetup, IDealPolicy)"/> 按「是否全员 AI」
         /// 自动给值；调用方可以覆盖它（自测里给「标着人类、实际由 AI 驱动」的座位显式设上限，
@@ -170,7 +182,14 @@ namespace MagicBrawl.Core
                 }
             }
 
-            engine.MaxTurns = allAi ? AiTurnLimit : 0;
+            int humans = 0;
+            int humanSeat = -1;
+            for (int i = 0; i < setup.Participants.Count; i++)
+                if (setup.Participants[i].Control == ControlKind.Human) { humans++; humanSeat = i; }
+            bool humanAiDuel = setup.Mode is DuelMode && humans == 1 && setup.Participants.Count == 2;
+            engine._turnLimitLoser = humanAiDuel ? humanSeat : -1;
+            engine._allowDrawProposal = setup.Mode is DuelMode && humans == 2;
+            engine.MaxTurns = allAi ? AiTurnLimit : humanAiDuel ? HumanAiTurnLimit : 0;
             return engine;
         }
 
@@ -211,6 +230,9 @@ namespace MagicBrawl.Core
                     if (State.Mode.AreEnemies(State, Pending.Seat, player.Seat)) enemies.Add(player.Seat);
                 Pending.EnemySeats = enemies.AsReadOnly();
                 Pending.AurasPrepared = _preparedAuras.Count > 0;
+                Pending.DrawStatus = _drawObservationStart == 0 ? string.Empty
+                    : State.TurnNumber < _drawObservationStart ? "平局观察 · 下回合开始"
+                    : "平局观察 · " + (State.TurnNumber - _drawObservationStart + 1) + " / " + DrawObservationTurns;
                 if (Pending.RequestId == 0) Pending.RequestId = ++_requestSequence;
             }
         }
@@ -227,6 +249,16 @@ namespace MagicBrawl.Core
                 throw new ArgumentException("决策不属于当前行动座位。");
             DecisionRequest req = Pending;
             if (response.RequestId != 0 && response.RequestId != req.RequestId) return;
+            if ((req.Kind == RequestKind.ChooseAttackCard || req.Kind == RequestKind.ChooseDefense)
+                && response.OptionIndices != null && response.OptionIndices.Length == 1)
+            {
+                foreach (Option option in req.Options)
+                    if (option.Index == response.OptionIndices[0] && option.Kind == OptionKind.ProposeDraw)
+                    {
+                        if (TryProposeDraw(req.Seat)) Pending = null;
+                        return;
+                    }
+            }
             if (_pendingEffectWindow != null)
             {
                 if (!_pendingEffectWindow.Submit(response)) return;
@@ -549,15 +581,21 @@ namespace MagicBrawl.Core
 
         private void DoBeginTurn()
         {
-            // 回合上限（只对「全员 AI」的对局生效，见 MaxTurns 的说明）：
-            // **上一回合已经用满**就收场 —— 判据放在自增之前，所以 TurnNumber 会**停在**
-            // MaxTurns（打完 100 回合 = TurnNumber 就是 100），而不是多算一个 101。
-            // 收场方式是**平局**：双方都没能取胜，而不是让引擎空转到天亮。
+            if (_drawObservationStart > 0 && State.TurnNumber >= _drawObservationStart + DrawObservationTurns - 1)
+            {
+                FinishByRule(new int[0], "平局：连续四个完整回合生命未减少");
+                return;
+            }
+            // Complete the previous full turn before applying the mode-specific outcome.
             if (MaxTurns > 0 && State.TurnNumber >= MaxTurns)
             {
-                State.Finish(new BattleOutcome(new int[0],
-                    "双方均未能在 " + MaxTurns + " 回合内取胜"));
-                _phase = Phase.Finished;
+                var winners = new List<int>();
+                if (_turnLimitLoser >= 0)
+                    foreach (PlayerState player in State.Players)
+                        if (State.Mode.AreEnemies(State, _turnLimitLoser, player.Seat)) winners.Add(player.Seat);
+                FinishByRule(winners, _turnLimitLoser >= 0
+                    ? "回合上限：玩家未能在 " + MaxTurns + " 回合内取胜"
+                    : "双方均未能在 " + MaxTurns + " 回合内取胜");
                 return;
             }
 
@@ -671,7 +709,7 @@ namespace MagicBrawl.Core
             if (State.Of(attacker).Hand.Count == 0)
             {
                 // 手上完全没牌才构成「无法攻击」→ 掉 1 点，该半场结束（规则 §3）
-                ApplyDamage(attacker, 1, "手上无牌，无法攻击");
+                if (!State.InCombo) ApplyDamage(attacker, 1, "手上无牌，无法攻击");
                 _phase = State.IsOver ? Phase.Finished : Phase.EndHalfTurn;
                 return;
             }
@@ -796,9 +834,7 @@ namespace MagicBrawl.Core
             // 2026-10-29：**有牌也可以不出**。用户口径：进攻是一次决策，不是义务 ——
             //   「一张牌都还没打出」和「连击打了一半不想再打」都要能主动收尾。
             //   所以只要手上有牌就补一条 Skip。
-            // 2026-10-30：这条 Skip 现在**要付代价**（掉 1 点，见 DoChooseAttackCard），
-            //   所以界面上必须把代价标出来（BattleUi 的动作区写「−1」）。手牌为空时仍不补
-            //   Skip —— 那一拍由 DoAnnounceHalfTurn 自动掉血，不该让玩家多点一次。
+            // Value carries the actual life cost to the UI; ending a follow-up is free.
             if (attacker.Hand.Count > 0)
             {
                 options.Add(new Option
@@ -806,9 +842,11 @@ namespace MagicBrawl.Core
                     Kind = OptionKind.Skip,
                     Seat = attacker.Seat,
                     Label = "结束进攻",
+                    Value = _atk.IsFollowUp ? 0 : 1,
                 });
             }
 
+            AppendDrawProposal(options);
             for (int i = 0; i < options.Count; i++)
             {
                 options[i].Index = i;
@@ -853,8 +891,9 @@ namespace MagicBrawl.Core
             //   两处都是先扣血、再按终局与否决定收尾，光环不消耗（本拍根本没出牌）。
             if (chosen == null)
             {
-                ApplyDamage(_atk.AttackerSeat, 1,
-                    attacker.Hand.Count > 0 ? "未出牌，进攻失败" : "手上无牌，无法攻击");
+                if (!_atk.IsFollowUp)
+                    ApplyDamage(_atk.AttackerSeat, 1,
+                        attacker.Hand.Count > 0 ? "未出牌，进攻失败" : "手上无牌，无法攻击");
                 _preparedAuras.Clear();
                 _phase = State.IsOver ? Phase.Finished : Phase.EndHalfTurn;
                 return;
@@ -1112,6 +1151,7 @@ namespace MagicBrawl.Core
                 State, defenderSeat, _atk.FinalPower, _atk.IsDouble, _defensePower);
 
             AppendAuras(options, BuildDefenseAuras(defender));
+            AppendDrawProposal(options);
 
             string prompt = (_atk.IsDouble
                                 ? "对方双发（力量 " + _atk.FinalPower + "）：需交出两张够挡的牌，否则放弃防御掉 1 点"
@@ -1247,7 +1287,7 @@ namespace MagicBrawl.Core
                 {
                     // 挡不住 → 不消耗、不出牌，把本拍原样重发一次（提示条说明差多少）。
                     // 绝不「打出一张挡不住的牌」：那是规则 §3 的硬性约束。
-                    _pendingRetryNote = "这批光环还不够：这张牌需要 +" + need + "，当前准备 +" + _defensePower;
+                    _pendingRetryNote = "当前防御效果不足：需要补值 +" + need + "，已准备 +" + _defensePower;
                     _phase = Phase.AwaitDefense;
                     return;
                 }
@@ -1756,6 +1796,7 @@ namespace MagicBrawl.Core
             amount = ApplyAbilities(seat, AbilityTrigger.BeforeDamage, amount);
             if (amount <= 0) return;
             p.Hp -= amount;
+            CancelDrawObservation();
             Emit(new DamageTakenEvent { Seat = seat, Amount = amount, Source = source });
             PublishHpLoss(seat);
             CheckDeath();
@@ -1801,6 +1842,7 @@ namespace MagicBrawl.Core
             if (p.Hp > p.MaxHp)
             {
                 p.Hp = p.MaxHp;
+                CancelDrawObservation();
                 // 削上限把 Hp 一起拉下来的那一格同样是「生命值减少」-> 火炬（ap）的 gamma 要复位。
                 PublishHpLoss(seat);
             }
@@ -1851,6 +1893,35 @@ namespace MagicBrawl.Core
             State.Finish(outcome);
             Pending = null;
             Emit(new GameOverEvent { WinnerSeat = State.WinnerSeat, Reason = State.EndReason });
+        }
+
+        private void FinishByRule(IEnumerable<int> winners, string reason)
+        {
+            State.Finish(new BattleOutcome(winners, reason));
+            Pending = null;
+            _phase = Phase.Finished;
+            Emit(new GameOverEvent { WinnerSeat = State.WinnerSeat, Reason = State.EndReason });
+        }
+
+        private void AppendDrawProposal(List<Option> options)
+        {
+            if (!_allowDrawProposal || _drawObservationStart != 0) return;
+            options.Add(new Option { Index = options.Count, Kind = OptionKind.ProposeDraw, Label = "提出平局" });
+        }
+
+        private bool TryProposeDraw(int seat)
+        {
+            if (!_allowDrawProposal || _drawObservationStart != 0 || State.IsOver) return false;
+            _drawObservationStart = State.TurnNumber + 1;
+            Emit(new DrawObservationEvent { Seat = seat, StartTurn = _drawObservationStart });
+            return true;
+        }
+
+        private void CancelDrawObservation()
+        {
+            if (_drawObservationStart == 0) return;
+            _drawObservationStart = 0;
+            Emit(new DrawObservationEvent { Cancelled = true });
         }
 
         private void FlushCooldown()

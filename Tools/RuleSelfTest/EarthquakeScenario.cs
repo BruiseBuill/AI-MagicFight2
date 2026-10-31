@@ -336,7 +336,6 @@ namespace MagicBrawl.SelfTest
                                 Hit.SlowAsked = true;
                             }
 
-                            Stop = true;
                         }
 
                         return First(req);

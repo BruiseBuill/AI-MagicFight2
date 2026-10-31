@@ -105,7 +105,7 @@ namespace MagicBrawl.App
             _open = true;
             if (_root != null)
             {
-                _root.SetActive(true);
+                UiPanelAnimator.SetVisible(_root, true);
             }
 
             if (_title != null)
@@ -126,7 +126,7 @@ namespace MagicBrawl.App
             _open = false;
             if (_root != null)
             {
-                _root.SetActive(false);
+                UiPanelAnimator.SetVisible(_root, false);
             }
         }
 
@@ -137,12 +137,7 @@ namespace MagicBrawl.App
                 return;
             }
 
-            Hide();
-            Action handler = Retried;
-            if (handler != null)
-            {
-                handler();
-            }
+            CloseThen(Retried);
         }
 
         private void OnQuitClicked()
@@ -152,12 +147,13 @@ namespace MagicBrawl.App
                 return;
             }
 
-            Hide();
-            Action handler = Quit;
-            if (handler != null)
-            {
-                handler();
-            }
+            CloseThen(Quit);
+        }
+
+        private void CloseThen(Action handler)
+        {
+            _open = false;
+            UiPanelAnimator.Close(_root, handler);
         }
     }
 }

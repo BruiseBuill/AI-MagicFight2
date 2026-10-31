@@ -336,7 +336,7 @@ namespace MagicBrawl.SelfTest
                     Probe.MultiSelectExpected = req.MaxSelect == candidates && candidates > 1;
 
                     if ((req.MinSelect != 0 || req.MaxSelect != candidates)
-                        && (req.MinSelect != 1 || req.MaxSelect != 1))
+                        && (req.MinSelect != 0 || req.MaxSelect != 1))
                     {
                         Probe._shapeOk = false;
                         Probe.Why = "认不出源头（进攻牌 " + (def != null ? def.Name : "?")

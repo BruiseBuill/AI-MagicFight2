@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace MagicBrawl.App
 {
     /// <summary>
-    /// 舞台视图（M8）：双方信息条 + 中央标记 + 顶部提示。
+    /// 舞台信息：阶段、攻防读数、手牌选择与对象附近的短反馈。
     ///
     /// <para>它只吃 <see cref="PlayerSnapshot"/> 与舞台文案，不碰规则 ——
     /// 「现在该谁操作」这件事由 <c>BattleDriver</c> 的决策请求推过来（<c>Prompt</c> 字段就是引擎给的）。</para>
@@ -29,9 +29,85 @@ namespace MagicBrawl.App
         [SerializeField] private TMP_Text _mark;
         [SerializeField] private Image _markBackdrop;
 
-        [Header("顶部提示条")]
+        [Header("手牌上方的当前选择")]
         [SerializeField] private GameObject _promptRoot;
         [SerializeField] private TMP_Text _prompt;
+
+        [Header("阶段与战况")]
+        [SerializeField] private TMP_Text _phaseLabel;
+        [SerializeField] private TMP_Text _attackLabel;
+        [SerializeField] private TMP_Text _defenseLabel;
+        [SerializeField] private FloatTipView[] _actorFeedback;
+        [SerializeField] private FloatTipView[] _cooldownFeedback;
+        private int _turn;
+        private bool _combo;
+
+        public void SetPhase(string text, int turn = 0)
+        {
+            if (turn > 0) _turn = turn;
+            SetLabel(_phaseLabel, string.IsNullOrEmpty(text) ? string.Empty
+                : (_turn > 0 ? "第 " + _turn + " 回合 · " : string.Empty) + text);
+        }
+
+        public void BeginTurn(bool local, bool combo, int turn)
+        {
+            _combo = combo;
+            ClearContext();
+            SetAttack(string.Empty);
+            SetPhase((local ? "你" : "对手") + (combo ? " · 连击进攻" : " · 进攻"), turn);
+        }
+
+        public void ShowLocalAttack()
+        {
+            SetAttack(string.Empty);
+            SetPhase(_combo ? "你 · 连击进攻" : "你的进攻");
+        }
+
+        public void SetAttack(string text)
+        {
+            SetLabel(_attackLabel, text);
+            SetLabel(_defenseLabel, string.Empty);
+        }
+
+        public void SetDefense(string text)
+        {
+            SetLabel(_defenseLabel, text);
+        }
+
+        public void ShowFeedback(bool local, string text, bool cooldown = false)
+        {
+            var views = cooldown ? _cooldownFeedback : _actorFeedback;
+            int index = local ? 0 : 1;
+            if (views != null && index < views.Length && views[index] != null)
+                views[index].Show(text);
+        }
+
+        public void ClearContext()
+        {
+            _flashing = false;
+            SetPrompt(string.Empty);
+            SetDefense(string.Empty);
+        }
+
+        public void ResetPresentation()
+        {
+            _turn = 0;
+            _combo = false;
+            ClearContext();
+            SetAttack(string.Empty);
+            SetPhase(string.Empty);
+            if (_actorFeedback != null)
+                foreach (var view in _actorFeedback) if (view != null) view.Hide();
+            if (_cooldownFeedback != null)
+                foreach (var view in _cooldownFeedback) if (view != null) view.Hide();
+        }
+
+        private static void SetLabel(TMP_Text label, string text)
+        {
+            if (label == null) return;
+            label.text = text ?? string.Empty;
+            UiPanelAnimator.SetVisible(label.transform.parent.gameObject, !string.IsNullOrEmpty(text), interactive: false);
+        }
 
         /// <summary>绑双方信息条。</summary>
         public void BindBars(PlayerSnapshot player, PlayerSnapshot enemy)
@@ -52,7 +128,7 @@ namespace MagicBrawl.App
         {
             if (_markRoot != null)
             {
-                _markRoot.SetActive(!string.IsNullOrEmpty(text));
+                UiPanelAnimator.SetVisible(_markRoot, !string.IsNullOrEmpty(text), interactive: false);
             }
 
             if (_mark != null)
@@ -72,8 +148,8 @@ namespace MagicBrawl.App
             SetMark(text, UiTheme.TextSecondary);
         }
 
-        [Header("事件短语（2026-10-29：横幅并入字幕条）")]
-        [Tooltip("一句事件短语在字幕条上停留多久（秒）。")]
+        [Header("手牌操作反馈")]
+        [Tooltip("操作反馈停留时间，随后恢复当前选择进度。")]
         [SerializeField] private float _flashSeconds = 1.2f;
 
         /// <summary>「底稿」文案：事件短语闪完之后要回到的那一句。</summary>
@@ -85,10 +161,7 @@ namespace MagicBrawl.App
         private float _flashUntil;
 
         /// <summary>
-        /// 顶部字幕（常驻那一句）。**短**：≤10 字，例如「你的进攻」「对手打出 6 点」。
-        ///
-        /// <para>2026-10-29：原来是引擎给的整句口径（「选择本次进攻打出的法术（有牌时必须进攻）」），
-        /// 28pt 横在屏幕顶上，说了三件玩家已经看得见的事 —— 现在由 <c>BattleUi</c> 派生短句。</para>
+        /// 手牌上方的选择状态；回合信息和结算事件使用各自的展示位置。
         /// </summary>
         public void SetPrompt(string text)
         {
@@ -102,7 +175,7 @@ namespace MagicBrawl.App
             Apply(_baseText, UiTheme.InkOnIvory);
         }
 
-        /// <summary>一句话事件（轮到你进攻 / 进攻结束 / 防御失败）。停 <see cref="_flashSeconds"/> 秒后回到底稿。</summary>
+        /// <summary>短暂操作反馈，结束后恢复选择状态。</summary>
         public void Flash(string text)
         {
             Flash(text, UiTheme.InkOnIvoryAccent);
@@ -125,7 +198,7 @@ namespace MagicBrawl.App
         {
             if (_promptRoot != null)
             {
-                _promptRoot.SetActive(!string.IsNullOrEmpty(text));
+                UiPanelAnimator.SetVisible(_promptRoot, !string.IsNullOrEmpty(text), interactive: false);
             }
 
             if (_prompt != null)

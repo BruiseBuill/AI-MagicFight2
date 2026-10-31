@@ -408,6 +408,8 @@ namespace MagicBrawl.App
                 }
 
                 RectTransform rt = (RectTransform)v.transform;
+                Vector3 fromWorld = rt.position;
+                bool reposition = v.HomeGroup != null;
 
                 if (rt.parent != slot)
                 {
@@ -418,7 +420,7 @@ namespace MagicBrawl.App
                 v.HomeGroup = slot;
 
                 // 只做「对齐槽位」——坐标在槽位自身上，这里不写。
-                rt.anchoredPosition = Vector2.zero;
+                UiPositionMotion.FromWorld(rt, fromWorld, Vector2.zero, reposition);
                 rt.localScale = Vector3.one;
                 rt.localRotation = Quaternion.identity;
             }

@@ -403,9 +403,8 @@ namespace MagicBrawl.Core
         public readonly int A;
         public readonly int B;
         public readonly int C;
-        public bool CanSkip { get { return !Mandatory && (Op == EffectOp.Haste || Op == EffectOp.Slow
-            || Op == EffectOp.HasteZone || Op == EffectOp.SlowZone
-            || Op == EffectOp.HastePerHpLoss || Op == EffectOp.SlowIfLastTwoHand || Op == EffectOp.SlowIfUnblocked); } }
+        public bool IsConstraint { get { return Op == EffectOp.NoAtkBuff || Op == EffectOp.RuleNote; } }
+        public bool CanSkip { get { return !Mandatory && !IsConstraint; } }
         public readonly bool Mandatory;
 
         public EffectDef(EffectTrigger trigger, EffectOp op, int a = 0, int b = 0, int c = 0,
@@ -455,9 +454,7 @@ namespace MagicBrawl.Core
                 rules.Add(new EffectCondition("hand-at-play", 1));
             if (rules.Contains(null)) throw new System.ArgumentException("Null effect condition.");
             Conditions = rules.AsReadOnly();
-            Mandatory = mandatory || !(legacy == EffectOp.Haste || legacy == EffectOp.Slow
-                || legacy == EffectOp.HasteZone || legacy == EffectOp.SlowZone
-                || legacy == EffectOp.HastePerHpLoss || legacy == EffectOp.SlowIfLastTwoHand || legacy == EffectOp.SlowIfUnblocked);
+            Mandatory = mandatory;
         }
         public int Arg(string name, int fallback = 0) { return Arguments.TryGetValue(name, out int value) ? value : fallback; }
 

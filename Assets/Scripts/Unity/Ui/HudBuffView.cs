@@ -365,7 +365,7 @@ namespace MagicBrawl.App
                     continue;
                 }
 
-                if (v.IsDragging) continue;
+                if (v.IsDragging || v.IsFlying) continue;
 
                 RectTransform slot = SlotAt(group, i);
                 if (slot == null)
@@ -374,6 +374,8 @@ namespace MagicBrawl.App
                 }
 
                 RectTransform rt = (RectTransform)v.transform;
+                Vector3 fromWorld = rt.position;
+                bool reposition = v.HomeGroup != null;
 
                 if (rt.parent != slot)
                 {
@@ -386,7 +388,7 @@ namespace MagicBrawl.App
 
                 // 这里只做「对齐槽位」——不写任何坐标常量（坐标在槽位自身上）。
                 // 缩放任一 / 旋转归零是拖拽后的复位，与摆位无关。
-                rt.anchoredPosition = Vector2.zero;
+                UiPositionMotion.FromWorld(rt, fromWorld, Vector2.zero, reposition);
                 rt.localScale = Vector3.one;
                 rt.localRotation = Quaternion.identity;
             }

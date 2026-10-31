@@ -54,15 +54,16 @@ namespace MagicBrawl.App
                 _hint.color = data.Usable ? UiTheme.AuraReady : UiTheme.TextSecondary;
             }
 
-            _panel.gameObject.SetActive(true);
-            _panel.anchoredPosition = Clamp(anchor);
+            bool wasShown = UiPanelAnimator.IsShown(_panel.gameObject);
+            UiPositionMotion.MoveTo(_panel, Clamp(anchor), wasShown);
+            UiPanelAnimator.SetVisible(_panel.gameObject, true, interactive: false);
         }
 
         public void Hide()
         {
             if (_panel != null)
             {
-                _panel.gameObject.SetActive(false);
+                UiPanelAnimator.SetVisible(_panel.gameObject, false, interactive: false);
             }
         }
 

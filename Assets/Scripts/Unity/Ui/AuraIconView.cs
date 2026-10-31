@@ -602,6 +602,7 @@ namespace MagicBrawl.App
         /// </summary>
         public void CancelFly()
         {
+            UiPositionMotion.Cancel(transform as RectTransform);
             _flying = false;
             _flySurface = null;
             _flyTarget = null;
@@ -762,11 +763,13 @@ namespace MagicBrawl.App
             if (DragLayer != null)
             {
                 RectTransform rt = (RectTransform)transform;
-                rt.SetParent(DragLayer, false);
+                Vector3 fromWorld = rt.position;
+                rt.SetParent(DragLayer, true);
                 rt.anchorMin = new Vector2(0.5f, 0.5f);
                 rt.anchorMax = new Vector2(0.5f, 0.5f);
                 rt.pivot = new Vector2(0.5f, 0.5f);
                 rt.localScale = Vector3.one;
+                rt.position = fromWorld;
 
                 // 压到同层最后一个：拖到手上时不能被手牌盖住
                 //（ArtLayer 在 Canvas 里的兄弟序很靠前，光换父节点还不够）。
@@ -824,7 +827,7 @@ namespace MagicBrawl.App
         /// <summary>回到「家」那个组（锚点 / 轴心交回给 <see cref="HudBuffView.Layout"/> 重设）。</summary>
         public void ReturnHome()
         {
-            if (HomeGroup == null)
+            if (HomeGroup == null || _flying)
             {
                 return;
             }
@@ -832,7 +835,9 @@ namespace MagicBrawl.App
             RectTransform rt = (RectTransform)transform;
             if (rt.parent != HomeGroup)
             {
+                Vector3 fromWorld = rt.position;
                 rt.SetParent(HomeGroup, false);
+                UiPositionMotion.FromWorld(rt, fromWorld, Vector2.zero);
             }
         }
 

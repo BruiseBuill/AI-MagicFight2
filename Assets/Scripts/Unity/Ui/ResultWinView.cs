@@ -242,7 +242,7 @@ namespace MagicBrawl.App
             //   卡面都绑好了、点击监听却还没接上，症状是「卡片看得见但点不动」，零报错。
             if (_root != null)
             {
-                _root.SetActive(true);
+                UiPanelAnimator.SetVisible(_root, true);
             }
 
             RecordHome();
@@ -357,7 +357,7 @@ namespace MagicBrawl.App
             ResetSlots();
             if (_root != null)
             {
-                _root.SetActive(false);
+                UiPanelAnimator.SetVisible(_root, false);
             }
         }
 
@@ -551,13 +551,12 @@ namespace MagicBrawl.App
 
             yield return new WaitForSecondsRealtime(UiLayout.ResultWinCloseSeconds);
             _closing = null;
-            Hide();
-
-            Action<int> handler = ContinueClicked;
-            if (handler != null)
+            UiPanelAnimator.Close(_root, () =>
             {
-                handler(picked);
-            }
+                Hide();
+                Action<int> handler = ContinueClicked;
+                if (handler != null) handler(picked);
+            });
         }
 
         private void StopClosing()
@@ -592,7 +591,7 @@ namespace MagicBrawl.App
                     pos.y += UiLayout.ResultWinCardLift;
                 }
 
-                card.transform.localPosition = pos;
+                UiPositionMotion.MoveLocalTo((RectTransform)card.transform, pos);
             }
         }
 

@@ -202,6 +202,7 @@ namespace MagicBrawl.App
             }
 
             _closing = true;
+            if (_group != null) _group.interactable = false;
             StopHold();
 
             TweenCanvasAlpha fadeOut = FadeFor();
@@ -253,7 +254,7 @@ namespace MagicBrawl.App
                 ? UiLayout.PeekPanelHeightOneRow
                 : UiLayout.PeekPanelHeightTwoRows;
 
-            _panel.sizeDelta = new Vector2(UiLayout.PeekPanelWidth, panelHeight);
+            UiSizeMotion.Resize(_panel, new Vector2(UiLayout.PeekPanelWidth, panelHeight), gameObject.activeInHierarchy);
 
             float contentTop = panelHeight * 0.5f - UiLayout.PeekContentTop;
             float contentBottom = -panelHeight * 0.5f + UiLayout.PeekContentBottom;
@@ -282,7 +283,7 @@ namespace MagicBrawl.App
                     rt.anchorMax = new Vector2(0.5f, 0.5f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
                     rt.sizeDelta = new Vector2(UiLayout.PeekCardWidth, UiLayout.PeekCardHeight);
-                    rt.anchoredPosition = new Vector2(firstX + c * pitch, rowY);
+                    UiPositionMotion.MoveTo(rt, new Vector2(firstX + c * pitch, rowY), _showing && gameObject.activeInHierarchy);
                 }
             }
         }

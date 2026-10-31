@@ -56,6 +56,8 @@ namespace MagicBrawl.App
             public Pose From;
             public float Elapsed;
             public float Delay;
+            public bool Exiting;
+            public float ExitRise;
         }
 
         [Header("构件（场景预建，构建器接线）")]
@@ -158,6 +160,7 @@ namespace MagicBrawl.App
                 }
 
                 face.gameObject.SetActive(true);
+                face.SetAlpha(1f);
 
                 // 锚点 / 轴心都在中心：ApplyPose 用 localPosition 直接摆到「世界角点算出的中心」，
                 // 与 FlightTemplate 那张 Image 同一套口径 —— 不依赖卡面 Prefab 自己的锚点怎么设。
@@ -178,6 +181,7 @@ namespace MagicBrawl.App
                 Image reused = _ghostPool[last];
                 _ghostPool.RemoveAt(last);
                 reused.gameObject.SetActive(true);
+                reused.color = Color.white;
                 return reused.rectTransform;
             }
 
@@ -241,6 +245,55 @@ namespace MagicBrawl.App
             _playedOrigins[uid] = ReadPose(rect);
         }
 
+        public bool TryGetHandOrigin(int uid, out Vector3 world)
+        {
+            world = Vector3.zero;
+            if (_layer == null) return false;
+            CardView view = _hand == null ? null : _hand.FindCard(uid);
+            if (view != null)
+            {
+                var rect = (RectTransform)view.transform;
+                world = rect.TransformPoint(rect.rect.center);
+                return true;
+            }
+            Pose pose;
+            if (!_handOrigins.TryGetValue(uid, out pose)) return false;
+            world = _layer.TransformPoint(pose.Center);
+            return true;
+        }
+
+        public void PlayDeparture(CardSnapshot card, bool removed)
+        {
+            if (_layer == null) return;
+            CardView source = Find(card.Uid, true, card.OwnerSeat) ?? Find(card.Uid, false, card.OwnerSeat);
+            Pose from;
+            if (source != null) from = ReadPose((RectTransform)source.transform);
+            else if (!_handOrigins.TryGetValue(card.Uid, out from)
+                && !_coolingOrigins[card.OwnerSeat == LocalSeat ? 0 : 1].TryGetValue(card.Uid, out from)) return;
+            for (int i = _flights.Count - 1; i >= 0; i--)
+                if (_flights[i].Uid == card.Uid) Finish(i);
+            CardView face;
+            RectTransform ghost = TakeGhost(out face);
+            if (ghost == null) return;
+            if (face != null)
+            {
+                face.Bind(card, CardView.ViewMode.Mini, 0);
+                face.SetFaceWidth(from.Size.x);
+                face.SetReadOnly();
+                face.SetAlpha(1f);
+            }
+            else
+            {
+                Image image = ghost.GetComponent<Image>();
+                image.sprite = CardArtLibrary.Instance == null ? null : CardArtLibrary.Instance.GetIllustration(card.CardId);
+                image.color = Color.white;
+            }
+            ApplyPose(ghost, from);
+            if (source != null) source.SetPresentationHidden(true);
+            _flights.Add(new Flight { Uid = card.Uid, Seat = card.OwnerSeat, Ghost = ghost,
+                Face = face, From = from, Exiting = true, ExitRise = removed ? 35f : -80f });
+        }
+
         private void Capture(IReadOnlyList<CardSnapshot> cards, bool hand, int seat,
             HashSet<int> previous, Dictionary<int, Pose> origins)
         {
@@ -278,8 +331,9 @@ namespace MagicBrawl.App
                     continue;
                 }
 
-                Pose from = _coolingOrigins[fromSeat][hand[i].Uid];
-                _coolingOrigins[fromSeat].Remove(hand[i].Uid);
+                int originIndex = fromSeat == LocalSeat ? 0 : 1;
+                Pose from = _coolingOrigins[originIndex][hand[i].Uid];
+                _coolingOrigins[originIndex].Remove(hand[i].Uid);
                 Launch(hand[i], from, true, returning++ * 0.07f, LocalSeat);
             }
 
@@ -290,6 +344,7 @@ namespace MagicBrawl.App
             // Snapshot refreshes must not reveal the destination before the moving face arrives.
             for (int i = 0; i < _flights.Count; i++)
             {
+                if (_flights[i].Exiting) continue;
                 CardView target = Find(_flights[i].Uid, _flights[i].Returning, _flights[i].Seat);
                 if (target != null) target.SetPresentationHidden(true);
             }
@@ -304,7 +359,6 @@ namespace MagicBrawl.App
         private void DepartCooling(IReadOnlyList<CardSnapshot> cooling, int seat)
         {
             HashSet<int> previous = _previousCooling[seat == LocalSeat ? 0 : 1];
-            Dictionary<int, Pose> origins = _coolingOrigins[seat == LocalSeat ? 0 : 1];
 
             for (int i = 0; i < cooling.Count; i++)
             {
@@ -325,10 +379,10 @@ namespace MagicBrawl.App
                     continue;
                 }
 
-                if (origins.TryGetValue(cooling[i].Uid, out from))
+                if (_handOrigins.TryGetValue(cooling[i].Uid, out from))
                 {
                     Launch(cooling[i], from, false, 0f, seat);
-                    origins.Remove(cooling[i].Uid);
+                    _handOrigins.Remove(cooling[i].Uid);
                 }
             }
         }
@@ -399,6 +453,18 @@ namespace MagicBrawl.App
             for (int i = _flights.Count - 1; i >= 0; i--)
             {
                 Flight flight = _flights[i];
+                if (flight.Exiting)
+                {
+                    flight.Elapsed += Time.unscaledDeltaTime;
+                    float t = Mathf.Clamp01(flight.Elapsed / 0.26f);
+                    Pose exiting = flight.From;
+                    exiting.Center += Vector3.up * (flight.ExitRise * UiEase.Evaluate(UiEaseKind.InQuad, t));
+                    ApplyPose(flight.Ghost, exiting);
+                    if (flight.Face != null) flight.Face.SetAlpha(1f - t);
+                    else flight.Ghost.GetComponent<Image>().color = new Color(1f, 1f, 1f, 1f - t);
+                    if (t >= 1f) Finish(i);
+                    continue;
+                }
                 CardView target = Find(flight.Uid, flight.Returning, flight.Seat);
                 if (target == null) { Finish(i); continue; }
                 flight.Elapsed += Time.unscaledDeltaTime;
@@ -487,6 +553,11 @@ namespace MagicBrawl.App
             Flight flight = _flights[index];
             CardView target = Find(flight.Uid, flight.Returning, flight.Seat);
             if (target != null) target.SetPresentationHidden(false);
+            if (flight.Exiting)
+            {
+                CardView handSource = Find(flight.Uid, true, flight.Seat);
+                if (handSource != null) handSource.SetPresentationHidden(false);
+            }
             ReleaseGhost(flight.Ghost, flight.Face);
             _flights.RemoveAt(index);
         }

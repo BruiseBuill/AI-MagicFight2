@@ -40,6 +40,7 @@
     <Compile Include="WeakenScenario.cs" />
     <Compile Include="NewCardsScenario.cs" />
     <Compile Include="CardAuditScenario.cs" />
+    <Compile Include="RuleAlignmentScenario.cs" />
     <Compile Include="HeuristicAgentScenario.cs" />
     <Compile Include="MonsterScenario.cs" />
     <Compile Include="CardPriorityScenario.cs" />

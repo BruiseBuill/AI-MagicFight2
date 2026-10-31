@@ -37,7 +37,7 @@ namespace MagicBrawl.App
         /// <b>切场景的唯一入口</b>：先判它在不在 Build Settings（<c>LoadScene</c> 对不存在的场景
         /// 会当场抛，而抛出点是「玩家点了按键的时候」），再切。
         /// </summary>
-        /// <returns>真的切过去了才返回 <c>true</c>。</returns>
+        /// <returns>加载请求已接收时返回 true；运行时包含淡出、异步加载与淡入。</returns>
         public static bool TryLoad(string sceneName)
         {
             if (string.IsNullOrEmpty(sceneName))
@@ -52,6 +52,7 @@ namespace MagicBrawl.App
                 return false;
             }
 
+            if (Application.isPlaying) return SceneTransition.Load(sceneName);
             SceneManager.LoadScene(sceneName);
             return true;
         }

@@ -9,8 +9,7 @@ namespace MagicBrawl.Core
         /// <summary>
         /// 进攻：出哪张牌。<b>光环选项与出牌选项同在这一拍里</b>
         ///
-        /// <para>2026-10-29 起有牌也允许跳过（<see cref="OptionKind.Skip"/>）；<b>跳过 = 掉 1 点</b>
-        /// （2026-10-30 用户口径）。</para>
+        /// <para>有牌也允许跳过；整个进攻回合未出牌时掉 1 点，放弃追加连击免费。</para>
         ///
         /// （2026-09-18：取消独立的光环选择环节，光环由玩家提前拖到判定区准备、随出牌一并提交）。
         /// </summary>
@@ -85,6 +84,9 @@ namespace MagicBrawl.Core
 
         /// <summary>替换掉某张牌。</summary>
         Replace = 6,
+
+        ExecuteEffect = 7,
+        ProposeDraw = 8,
     }
 
     /// <summary>一个合法选项。UI 只渲染 <see cref="Label"/>，AI 只读结构字段。</summary>
@@ -148,6 +150,7 @@ namespace MagicBrawl.Core
     /// </summary>
     public sealed class DecisionRequest
     {
+        public string DrawStatus;
         public long RequestId;
         public IReadOnlyList<int> EnemySeats = new int[0];
         public bool AurasPrepared;

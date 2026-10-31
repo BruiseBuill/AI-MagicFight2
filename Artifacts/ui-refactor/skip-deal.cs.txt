@@ -1,0 +1,6 @@
+var deal = UnityEngine.Object.FindObjectOfType<MagicBrawl.App.DealView>();
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+if (deal == null || !deal.IsOpen) return "No deal decision";
+var button = (UnityEngine.UI.Button)typeof(MagicBrawl.App.DealView).GetField("_skipButton", flags).GetValue(deal);
+button.onClick.Invoke();
+return "Clicked deal skip";

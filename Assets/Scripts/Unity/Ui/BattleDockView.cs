@@ -85,7 +85,7 @@ namespace MagicBrawl.App
 
         private void OnClick()
         {
-            if (Clicked != null)
+            if (_visible && Clicked != null)
             {
                 Clicked();
             }
@@ -104,10 +104,7 @@ namespace MagicBrawl.App
         {
             _visible = visible;
 
-            if (gameObject.activeSelf != visible)
-            {
-                gameObject.SetActive(visible);
-            }
+            UiPanelAnimator.SetVisible(gameObject, visible);
 
             if (!visible)
             {

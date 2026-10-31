@@ -37,7 +37,7 @@ namespace MagicBrawl.App
 
         public bool IsOpen
         {
-            get { return _panel != null && _panel.activeSelf; }
+            get { return UiPanelAnimator.IsShown(_panel); }
         }
 
         private void Awake()
@@ -51,7 +51,7 @@ namespace MagicBrawl.App
                 }
             }
 
-            Hide();
+            UiPanelAnimator.SetVisible(_panel, false, immediate: true);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace MagicBrawl.App
 
             // 一个可点的按钮都没有（比如「有牌必须出」的进攻决策，选项全在实体卡上）——
             // 整个浮层收起来，别在屏幕中央留一块空面板。
-            _panel.SetActive(used > 0);
+            UiPanelAnimator.SetVisible(_panel, used > 0);
         }
 
         public void Hide()
@@ -129,7 +129,7 @@ namespace MagicBrawl.App
 
             if (_panel != null)
             {
-                _panel.SetActive(false);
+                UiPanelAnimator.SetVisible(_panel, false);
             }
         }
 

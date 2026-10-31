@@ -1,32 +1,21 @@
-﻿# 项目文档
+# 项目文档
 
-> 状态：现行索引 · 核对日期：**2026-10-28**（玩法大改后重写） · 范围：导航与文档归属
+> 状态：现行 · 更新日期：2026-10-30 · 范围：文档导航。
 
-先读 [当前基线](00-当前基线.md)，了解已落地内容、验证边界和遗留问题；再按任务进入下表。
-规则、当前规范、变更记录和历史资料分开维护；日期较新不等于经过完整验收。
+规则说明设计要求，[当前基线](00-当前基线.md)说明代码现状及差异；实现记录和验证报告只说明对应日期的情况。
 
-| 要做什么 | 入口 |
+| 内容 | 入口 |
 |---|---|
-| 改玩法、卡牌或效果 | [规则基线](rules/01-规则基线.md) · [卡牌图鉴](rules/02-卡牌图鉴.md) |
-| 理解当前交互 | [战斗交互](design/战斗交互.md) |
-| 查已删的冒险 / 商店 / 强化怎么做的 | [删减归档](archive/20261028-删减冒险/README.md) |
-| 改架构或接口 | [架构与接口](engineering/04-架构与接口.md) · [工程规划](engineering/03-工程规划.md)；新模块结合 [实现索引](implementation/README.md) 核对 |
-| 修改 UI 或查实现原因 | [实现与补丁索引](implementation/README.md) |
-| 放置代码、资源或产物 | [目录规范](engineering/项目目录规范.md) · [美术与字体规范](engineering/06-美术与字体规范.md) |
-| 分析卡牌插画或生成新图 | [卡牌插画美术与 AI 生图工作流](engineering/07-卡牌插画美术与AI生图工作流.md) · [提示词模板](templates/卡牌插画生图提示词模板.md) |
-| 写文档或整理历史 | [文档规范](engineering/文档规范.md) · [模板](templates/README.md) |
-| 启动、连接、排障 | [Unity MCP](operations/Unity-MCP.md) |
-| 跑工具与检查 | [工具入口](../Tools/README.md) |
-| 查验证证据 | [验证索引](validation/README.md) · [截图](../Captures/README.md) · [原始产物](../Artifacts/README.md) |
-| 追溯废弃方案 | [历史档案](archive/README.md) |
+| 基础规则与结算顺序 | [规则基线](rules/01-规则基线.md) |
+| 当前 44 张卡牌 | [卡牌图鉴](rules/02-卡牌图鉴.md) |
+| 未落实规则、配置差异、待确认边界 | [规则与实现差异](rules/03-规则与实现差异.md) |
+| 界面操作与信息位置 | [设计索引](design/README.md) · [战斗交互](design/战斗交互.md) · [战斗信息布局](design/战斗信息布局.md) |
+| 开发范围与技术接口 | [工程规划](engineering/03-工程规划.md) · [架构与接口](engineering/04-架构与接口.md) |
+| 目录与美术 | [目录规范](engineering/项目目录规范.md) · [美术与字体规范](engineering/06-美术与字体规范.md) |
+| 卡牌插画制作 | [美术与生图工作流](engineering/07-卡牌插画美术与AI生图工作流.md) |
+| 文档维护 | [文档规范](engineering/文档规范.md) · [模板](templates/README.md) |
+| 运行与检查 | [Unity MCP](operations/Unity-MCP.md) · [工具入口](../Tools/README.md) |
+| 变更与验证证据 | [实现记录](implementation/README.md) · [验证记录](validation/README.md) · [截图](../Captures/README.md) · [原始产物](../Artifacts/README.md) |
+| 已废弃方案 | [历史档案](archive/README.md) |
 
-## 目录边界
-
-- `rules/`、`design/`、`engineering/`、`operations/`：按主题维护的规范或指南。
-- `implementation/`：单次实现快照；旧参数不自动代表当前行为。
-- `validation/`：实际执行过的验证报告；原始日志和 JSON 在 `Artifacts/validation/`。
-- `archive/`：已被替代的内容，保留来由与替代入口。
-- `templates/`：新建记录的骨架，不计作完成或验收证据。
-
-截图不进入 Docs，工具源码不与生成报告混放。维护细则只在 [文档规范](engineering/文档规范.md) 更新。
-仓库内的文档应足够让新成员开始工作，个人工具记忆不作为必备依赖。
+`rules/`、`design/`、`engineering/`、`operations/` 按主题维护当前说明；`implementation/` 保存单次变更，`validation/` 保存实际验证，`archive/` 保存已被替代的内容。

@@ -118,15 +118,15 @@ namespace MagicBrawl.App
 
                 if (!withinLimit)
                 {
-                    dot.color = UiTheme.HpGone;
+                    UiColorMotion.Set(dot, UiTheme.HpGone);
                 }
                 else if (i < p.Hp)
                 {
-                    dot.color = UiTheme.HpFull;
+                    UiColorMotion.Set(dot, UiTheme.HpFull);
                 }
                 else
                 {
-                    dot.color = UiTheme.HpEmpty;
+                    UiColorMotion.Set(dot, UiTheme.HpEmpty);
                 }
             }
         }

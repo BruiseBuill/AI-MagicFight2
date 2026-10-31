@@ -67,6 +67,9 @@ namespace MagicBrawl.App
         }
 
         private readonly List<CardView> _catalogCards = new List<CardView>();
+        private readonly Dictionary<CardView, Vector2> _slotHomes = new Dictionary<CardView, Vector2>();
+        private int _tab = -1;
+        private bool _tabChanged;
 
         private UnityAction _playerTabHandler;
         private UnityAction _enemyTabHandler;
@@ -218,6 +221,32 @@ namespace MagicBrawl.App
                 return;
             }
 
+            var origins = new Dictionary<string, Vector3>();
+            var remaining = new HashSet<string>();
+            if (cards != null) foreach (CardDef card in cards) if (card != null) remaining.Add(card.Id);
+            foreach (CardView old in _slotViews)
+            {
+                if (old == null) continue;
+                if (!_slotHomes.ContainsKey(old)) _slotHomes.Add(old, ((RectTransform)old.transform).anchoredPosition);
+                if (!_tabChanged && old.HasCard && UiPanelAnimator.IsShown(old.gameObject))
+                {
+                    origins[old.Card.CardId] = old.transform.position;
+                    if (!remaining.Contains(old.Card.CardId) && Application.isPlaying)
+                    {
+                        CardView departing = Instantiate(old, old.transform.parent);
+                        departing.name = "DepartingDeckCard";
+                        departing.SetReadOnly();
+                        departing.SetAlpha(1f);
+                        UiPanelAnimator.Close(departing.gameObject, () =>
+                        {
+                            if (departing != null) Destroy(departing.gameObject);
+                        });
+                        var rect = (RectTransform)departing.transform;
+                        UiPositionMotion.MoveTo(rect, rect.anchoredPosition + Vector2.down * 24f);
+                    }
+                }
+            }
+
             for (int i = 0; i < _slotViews.Length; i++)
             {
                 CardView view = _slotViews[i];
@@ -229,23 +258,41 @@ namespace MagicBrawl.App
                 CardDef def = cards != null && i < cards.Count ? cards[i] : null;
                 if (def == null)
                 {
-                    view.Clear();
-                    view.gameObject.SetActive(false);
+                    // Surviving identities are now rendered in their new slots; do not fade duplicate faces.
+                    UiPanelAnimator.SetVisible(view.gameObject, false, interactive: false, immediate: true);
                     continue;
                 }
 
-                view.gameObject.SetActive(true);
+                bool sameCard = view.HasCard && view.Card.CardId == def.Id && !_tabChanged;
+                Vector3 origin;
+                bool hasOrigin = origins.TryGetValue(def.Id, out origin);
+                if (!hasOrigin && !_tabChanged)
+                {
+                    CardView source = _catalogCards.Find(c => c != null && c.HasCard && c.Card.CardId == def.Id);
+                    if (source != null) { origin = source.transform.position; hasOrigin = true; }
+                }
+                UiPanelAnimator.SetVisible(view.gameObject, true, interactive: false);
                 view.Bind(CardSnapshot.FromDef(def, 0, def.Cooldown), CardView.ViewMode.Hand, i);
                 view.SetFaceWidth(DeckSlotFaceWidth);
                 view.SetReadOnly();
                 view.SetSelected(false);
                 view.SetDimmed(false);
+                RectTransform rect = (RectTransform)view.transform;
+                if (hasOrigin) UiPositionMotion.FromWorld(rect, origin, _slotHomes[view]);
+                else UiPositionMotion.MoveTo(rect, _slotHomes[view], false);
+                if (_tabChanged && !sameCard)
+                {
+                    UiPanelAnimator.RevealContent(view.gameObject);
+                }
             }
+            _tabChanged = false;
         }
 
         /// <summary>切换页签的高亮，并刷新两边的计数（0/8）。</summary>
         public void SetTab(int index, int playerCount, int enemyCount)
         {
+            _tabChanged = _tab != index;
+            _tab = index;
             if (_playerTabGlow != null && _playerTabGlow.activeSelf != (index == 0))
             {
                 _playerTabGlow.SetActive(index == 0);

@@ -85,8 +85,8 @@ namespace MagicBrawl.Core
         public static BattleSetup Default()
         {
             return new BattleSetup(new[] {
-                new ParticipantSetup(CharacterDefinition.DefaultPlayer(), ControlKind.Human, 0),
-                new ParticipantSetup(CharacterDefinition.DefaultMonster(), ControlKind.Ai, 1)
+                new ParticipantSetup(CharacterDefinition.DefaultPlayer().WithDeal(DealProfile.Duel()), ControlKind.Human, 0),
+                new ParticipantSetup(CharacterDefinition.DefaultMonster().WithDeal(DealProfile.Duel()), ControlKind.Ai, 1)
             });
         }
     }
