@@ -13,7 +13,7 @@ internal static class Program
             CheckHealthAndAbilities();
             CheckControllers();
             CheckModeExtension();
-            Console.WriteLine("PASS: independent pools, minimum sizes, depletion/replacement, health, ability isolation, controller parity, four-seat mode extension.");
+            Console.WriteLine("PASS: shared finite pool, minimum sizes, depletion/replacement, health, ability isolation, controller parity, four-seat mode extension.");
             return 0;
         }
         catch (Exception error)
@@ -35,17 +35,18 @@ internal static class Program
 
     private static void CheckPools()
     {
-        var ids = CardLibrary.All.Take(8).Select(card => card.Id).ToArray();
-        var definition = Character("test", ids);
+        // 2026-10-31：一副实体牌堆要同时喂饱双方开局各 6 张，烟测也用 16 张不重复卡。
+        var ids = CardLibrary.All.Take(16).Select(card => card.Id).ToArray();
+        var definition = Character("test", ids, 16);
         CardPool draft = definition.CreateCardPool();
         draft.Remove(ids[0]);
         string error;
-        Require(!draft.Validate(8, out error), "Seven-card pool must fail validation.");
+        Require(!draft.Validate(16, out error), "Fifteen-card pool must fail validation.");
         bool rejected = false;
         try { definition.WithCardPool(draft); }
         catch (ArgumentException) { rejected = true; }
         Require(rejected, "Invalid pool must also fail at core boundary.");
-        Require(definition.CreateCardPool().Count == 8, "Draft must not mutate definition.");
+        Require(definition.CreateCardPool().Count == 16, "Draft must not mutate definition.");
 
         var setup = new BattleSetup(new[] {
             new ParticipantSetup(definition, ControlKind.Human, 0),
@@ -54,20 +55,19 @@ internal static class Program
         BattleEngine first = BattleEngine.Create(239, setup);
         BattleEngine second = BattleEngine.Create(239, setup);
         first.Start(); first.Advance(); second.Start(); second.Advance();
-        Require(first.State.Of(0).Deck != first.State.Of(1).Deck, "Decks cannot share mutable state.");
+        Require(ReferenceEquals(first.State.Of(0).Deck, first.State.Of(1).Deck), "Both seats must share the battle deck.");
         Require(first.State.Of(0).Hand.Count == 6 && first.State.Of(1).Hand.Count == 6, "Each seat must receive six cards.");
         Require(first.State.Of(0).Hand.Select(card => card.Def.Id).SequenceEqual(second.State.Of(0).Hand.Select(card => card.Def.Id)), "Seed must reproduce hand.");
         Require(first.State.Of(0).Hand.All(card => ids.Contains(card.Def.Id)), "Draw escaped configured pool.");
-        var foeBefore = first.State.Of(1).Deck.Snapshot().Select(card => card.Id).ToArray();
         Option replace = first.Pending.Options.First(option => option.Kind == OptionKind.Replace);
         first.Submit(DecisionResponse.Of(0, replace.Index));
-        Require(first.State.Of(0).Hand.Count == 6 && first.State.Of(0).Deck.Remaining == 2, "Replacement broke conservation.");
-        Require(first.State.Of(1).Deck.Snapshot().Select(card => card.Id).SequenceEqual(foeBefore), "Replacement touched opponent deck.");
+        Require(first.State.Of(0).Hand.Count == 6 && first.State.Of(0).Deck.Remaining == 4, "Replacement broke conservation.");
+        Require(first.State.Of(0).Deck.Snapshot()[^1].Id == replace.Card.Def.Id, "Returned card must go to deck bottom.");
         var seen = new HashSet<string>();
         foreach (CardInstance card in first.State.Of(0).Hand) Require(seen.Add(card.Def.Id), "Duplicate hand card.");
         while (first.State.Of(0).Deck.Remaining > 0)
             Require(seen.Add(first.State.Of(0).Deck.Draw().Id), "Duplicate remaining card.");
-        Require(first.State.Of(0).Deck.Draw() == null && seen.Count == 8, "Finite deck must exhaust.");
+        Require(first.State.Of(0).Deck.Draw() == null && seen.Count == 10, "Finite deck must exhaust without duplicates.");
 
         var six = Character("six", ids.Take(6), 6);
         var shortGame = BattleEngine.Create(13, new BattleSetup(new[] {
@@ -131,7 +131,7 @@ internal static class Program
             game.Submit(DecisionResponse.Skip(game.Pending.Seat));
         }
         Require(decisionSeats.SetEquals(new[] { 0, 1, 2, 3 }), "Four-seat setup did not dispatch every seat.");
-        Require(game.State.Players.All(player => player.Hand.Count == 6 && player.Deck.Remaining == 34), "Four-seat deck isolation failed.");
+        Require(game.State.Players.All(player => player.Hand.Count == 6 && player.Deck.Remaining == 20), "Four seats must draw from one finite deck.");
     }
 
     private sealed class FourSeatProbe : IBattleMode

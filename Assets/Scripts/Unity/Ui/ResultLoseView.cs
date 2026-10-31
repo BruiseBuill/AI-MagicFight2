@@ -118,6 +118,26 @@ namespace MagicBrawl.App
                 _hint.text = hint ?? string.Empty;
                 _hint.gameObject.SetActive(!string.IsNullOrEmpty(hint));
             }
+
+            // 2026-10-31：这枚键的行为一直是「回主菜单」（BattleUi.HandleQuitBattle →
+            // SceneRoutes.LoadHome），文案却写着「退出」—— 玩家读不出它去哪。
+            // 构建器里那句旧文案留着不删（没跑重构的旧 Prefab 还在用），这里运行时覆盖。
+            SetButtonLabel(_quitButton, "返回主菜单");
+        }
+
+        /// <summary>改一枚按钮上的文字（找不到就跳过，不报错）。</summary>
+        private static void SetButtonLabel(Button button, string text)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.text = text;
+            }
         }
 
         /// <summary>立刻收掉。</summary>

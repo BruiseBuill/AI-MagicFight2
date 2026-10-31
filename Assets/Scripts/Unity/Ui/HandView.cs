@@ -60,6 +60,10 @@ namespace MagicBrawl.App
         [Tooltip("长按手牌时弹出完整卡面。")]
         [SerializeField] private bool _peekOnLongPress = true;
 
+        [Header("换牌投放区（2026-10-31 · 由 DealView 运行时接进来）")]
+        [Tooltip("换牌决策时，把手牌向上拖进这块区域 = 把这张牌换掉。null = 关掉这条手势。")]
+        [SerializeField] private RectTransform _replaceZone;
+
         [Header("M15 光环落区")]
         [Tooltip("把 HudBuff 的光环图标拖进手牌区时亮起的那一层提示底（很淡）。")]
         [SerializeField] private GameObject _auraDropHint;
@@ -120,10 +124,16 @@ namespace MagicBrawl.App
         /// </summary>
         private int _dropIntentSeat = -1;
 
-        // ── 滑动选牌（2026-10-30）──────────────────────────────
+        // ── 滑动选牌 = 画刷（2026-10-31 重做）──────────────────
         //
-        //  用户口径：像斗地主那样「按住手牌横向划过去，划到的牌依次选中」；
-        //  单选的那些拍（进攻 / 防御只能打一张）**后面划到的不顶掉前面的**。
+        //  用户口径（原文）：「整次滑动被当成一支画笔，笔尖扫过哪些牌，哪些牌就统一变成
+        //  同一个状态」—— 不是「逐张点击」的批量版。所以：
+        //    · 笔刷状态在按下那一刻由**起点牌**决定：起点没选过 → 整次都「加选」；
+        //      起点已经选过 → 整次都「取消」（划到已选中的牌不会把它反选掉）；
+        //    · 上限按场景不同（进攻 / 单防 1 张、双发 2 张、开局换牌 3 张、补牌 1 张），
+        //      满了以后继续划过的牌**一律不选**，也**不**顶掉前面已选的；
+        //    · 指针按**线段**补点（OnDrag 一帧只来一次，快速划过会跳格），
+        //      笔尖路径压到哪张就算哪张。
         //
         //  与拖牌的关系：两者抢同一串指针事件，由 TryBeginSlide 按**主轴方向**分派 ——
         //  向上（进判定区）= 出牌，横向 = 选牌。滑动期间牌不跟手、不重排。
@@ -131,17 +141,59 @@ namespace MagicBrawl.App
         /// <summary>正在滑动选牌。</summary>
         private bool _sliding;
 
+        /// <summary>本次滑动的笔刷状态：true = 一路「取消」，false = 一路「加选」。</summary>
+        private bool _slideErase;
+
+        /// <summary>上一条 Slide 报来的指针位置（画刷按线段补点用）。</summary>
+        private Vector2 _slideLastScreen;
+
         /// <summary>本次滑动已经处理过的牌（同一张划两次既不重复选、也不来回取消）。</summary>
         private readonly HashSet<int> _slideTouched = new HashSet<int>();
 
         /// <summary>本次滑动已作废（决策已经交出去了）—— 之后划到的牌一律不理。</summary>
         private bool _slideDead;
 
+        /// <summary>这一帧收到过「抬起」（见 <see cref="LateUpdate"/> 的兜底）。</summary>
+        private bool _releasePending;
+
+        /// <summary>
+        /// 滑动选牌总开关（2026-10-31 用户临时口径：false = 任何手势都按「拖动」处理）。
+        /// 恢复滑动 = 改回 true，方向判据（SlideMinPixels / SlideHorizontalRatio）原样保留。
+        /// 故意用 static 字段而不是 const：const 会让编译器把判据代码判成不可达（CS0162）。
+        /// </summary>
+        private static bool _slideSelectEnabled = false;
+
         /// <summary>横向位移至少这么多像素才可能是滑动（太小 = 手抖，交给点击 / 拖拽）。</summary>
         private const float SlideMinPixels = 12f;
 
         /// <summary>横向位移要超过纵向的多少倍才算「滑动选牌」，否则按向上拖牌出牌处理。</summary>
         private const float SlideHorizontalRatio = 1.35f;
+
+        /// <summary>画刷补点的步长（屏幕像素）：一帧内跨过的牌全部算划过。</summary>
+        private const float SlideSamplePixels = 10f;
+
+        /// <summary>一次 Slide 最多补多少个采样点（极快甩动时封顶，别白算）。</summary>
+        private const int SlideMaxSamples = 240;
+
+        /// <summary>
+        /// 画刷把「选中 / 取消」交给谁 —— 发牌台 / 选牌弹窗手里那份选中集合才是真源，
+        /// 它们改完会回写 <see cref="_multi"/>。为 null 时本视图自己管（单选拍 / 双发拍）。
+        /// </summary>
+        private Action<int, bool> _paintSink;
+
+        /// <summary>本次决策最多能同时选几张（发牌台 / 选牌弹窗按引擎的 MaxSelect 给）。0 = 按模式兜底。</summary>
+        private int _paintLimit;
+
+        // ── 换牌投放区（2026-10-31）──────────────────────────
+        //
+        //  这块区域不是「判定区」的复用：判定区在画面中央、只在出牌拍亮；
+        //  投放区贴在手牌区上方、只在换牌拍出现。所以单开一组状态，别把两套语义拌在一起。
+
+        /// <summary>投放区此刻是否被牌压住（决定松手时是「换掉」还是「滑回扇形」）。</summary>
+        private bool _dragOverReplace;
+
+        /// <summary>通知外面把投放区切成高亮 / 常态（发牌台自己管那两块底图的 active）。</summary>
+        private Action<bool> _replaceZoneHot;
 
         // ── 拖拽状态 ─────────────────────────────────────────
         private readonly List<int> _order = new List<int>();
@@ -151,11 +203,28 @@ namespace MagicBrawl.App
         private Vector2 _dragLocal;
         private int _dragHoverSeat = -1;
 
+        /// <summary>
+        /// 跟着一起被拖的牌（2026-10-31：双发防御时两张一起拖）。
+        /// 第一位永远是被按住的那张，后面是同一「已选」集合里的其它牌；
+        /// <see cref="_dragGroupOffsets"/> 与之一一对应，是相对第一张的横向偏移。
+        /// </summary>
+        private readonly List<int> _dragGroupUids = new List<int>();
+        private readonly List<float> _dragGroupOffsets = new List<float>();
+
         /// <summary>点了一张牌（BattleUi 判断它对应哪个合法选项）。</summary>
         public event Action<CardView> CardClicked;
 
         /// <summary>手牌被拖放到某个座位上（0 = 自己 → 防御，1 = 对方 → 进攻）。</summary>
         public event Action<CardView, int> CardDropped;
+
+        /// <summary>
+        /// 手牌被拖进了<b>换牌投放区</b>（2026-10-31）—— 发牌台收到就立刻把这张换掉。
+        ///
+        /// <para>与 <see cref="CardDropped"/> 的区别：那个是「拖进中央判定区 = 出牌」，
+        /// 只在进攻 / 防御拍有效；这个只在换牌决策期间有效，方向也是**向上**推到
+        /// 手牌区上方那条槽里，两者不会同时成立。</para>
+        /// </summary>
+        public event Action<CardView> ReplaceDropped;
 
         public int CardCount
         {
@@ -330,6 +399,24 @@ namespace MagicBrawl.App
             ClearTargetHighlight();
         }
 
+        /// <summary>
+        /// 接上 / 摘掉<b>换牌投放区</b>（2026-10-31）。
+        ///
+        /// <para><paramref name="zone"/> 为 null = 这一拍没有换牌语义（关掉整条手势）。
+        /// <paramref name="hot"/> 是给外面把投放区切成高亮的回调 —— 本视图不碰
+        /// 那块区域的任何视觉，只负责报「牌进没进去」（与判定区同一条分工）。</para>
+        /// </summary>
+        public void SetReplaceZone(RectTransform zone, Action<bool> hot)
+        {
+            _replaceZone = zone;
+            _replaceZoneHot = hot;
+            _dragOverReplace = false;
+            if (hot != null)
+            {
+                hot(false);
+            }
+        }
+
         // ══════════════════════════════════════════════════════
         //  滑动选牌（2026-10-30 · ICardSlideHost）
         // ══════════════════════════════════════════════════════
@@ -341,12 +428,22 @@ namespace MagicBrawl.App
         /// 且 ≥ 纵向位移的 <see cref="SlideHorizontalRatio"/> 倍。向上拖（出牌）天然
         /// 不满足这两条，所以「拖进判定区」那条路一点都不受影响。</para>
         ///
-        /// <para><b>起点牌算第一张</b>：按住那张立即被选中 —— 与斗地主的手感一致。
-        /// 「只能选一张」的拍由 <see cref="SlideTouch"/> 拦住后来的，所以不会出现
-        /// 「划过去一片、最后停在哪张就换成哪张」。</para>
+        /// <para><b>笔刷状态在这里定死</b>：起点牌<b>还没选</b> → 整次都加选；
+        /// 起点牌<b>已经选了</b> → 整次都取消。一次手势只有一种状态 ——
+        /// 中途不会因为划到已选中的牌就把它反选掉（那正是「逐张点击」的行为）。</para>
+        ///
+        /// <para><b>起点牌算第一张</b>：按住那张立即按笔刷状态刷一遍 —— 与斗地主的手感一致。
+        /// 上限由 <see cref="PaintLimit"/> 把着：进攻只能打一张，所以从第二张起就不再生效。</para>
         /// </summary>
         public bool TryBeginSlide(CardView card, Vector2 pressScreenPos, Vector2 screenPos)
         {
+            // ⚠ 2026-10-31 临时口径：滑动选牌整体关掉，一切手势先按「拖动」处理
+            //   （开关见 _slideSelectEnabled，恢复滑动 = 改回 true）。
+            if (!_slideSelectEnabled)
+            {
+                return false;
+            }
+
             if (card == null || !card.HasCard)
             {
                 return false;
@@ -358,6 +455,9 @@ namespace MagicBrawl.App
                 return false;
             }
 
+            // ⚠ 本拍不合法（被压暗）的牌**不**在这里早退：横向滑动照样吃掉这个手势，
+            // 否则它会落到「拖拽」那条路 —— 玩家看到的是「把一张不能出的牌拖着满屏跑」。
+            // 「一张都不刷上」由 SlideTouch 自己把关（它逐张查 _playable）。
             Vector2 delta = screenPos - pressScreenPos;
             float ax = Mathf.Abs(delta.x);
             float ay = Mathf.Abs(delta.y);
@@ -366,14 +466,24 @@ namespace MagicBrawl.App
                 return false;
             }
 
+            // 滑动一旦成立，任何残留的拖拽姿态都必须先收掉 —— 牌回扇形再刷。
+            ResetDragPose();
+
             _sliding = true;
             _slideDead = false;
             _slideTouched.Clear();
+            _slideLastScreen = pressScreenPos;
             _hoverIndex = -1;
             HidePeek();
 
-            // 与拖牌同一条口径：手一动，上一次点击留下的辉光就该让位给这次手势。
-            _selectedUid = -1;
+            // 笔刷状态 = 起点牌现在的状态取反（未选 → 加选；已选 → 取消）。
+            _slideErase = IsMarked(card.Card.Uid);
+
+            // 与拖牌同一条口径：加选笔刷一开始，上一次点击留下的单选辉光就该让位给这次手势。
+            if (!_slideErase)
+            {
+                _selectedUid = -1;
+            }
 
             _slideTouched.Add(card.Card.Uid);
             SlideTouch(card);
@@ -384,11 +494,69 @@ namespace MagicBrawl.App
         public void EndSlide()
         {
             _sliding = false;
+            _slideErase = false;
             _slideDead = true;
             _slideTouched.Clear();
+
+            // 决策收尾 / 手牌重绑的同一刻：拖拽姿态也一并收掉（牌必须回到扇形）。
+            ResetDragPose();
         }
 
-        /// <summary>滑动中：把指针下面那张牌收进「本次已划到」，并交给 <see cref="SlideTouch"/>。</summary>
+        /// <summary>
+        /// 把「正在拖动」这套姿态整个收掉：牌回扇形、箭头与目标高亮一并清。
+        ///
+        /// <para><b>为什么要有这个收口</b>（用户 2026-10-31 口径）：「手牌里绝不该有牌是正着的 ——
+        /// 正着只属于拖动；没拖出去、拖出去之后回来，都必须恢复原来的倾斜弧度」。
+        /// 原来只有 <see cref="EndDrag"/> 一条路清 <c>_dragIndex</c>，一旦 DragEnd 没送到
+        ///（手势被别的层吞掉 / 指针在窗口外抬起），那张牌就永远停在正立姿态上，
+        /// 而且还能继续划选别的牌。</para>
+        /// </summary>
+        private void ResetDragPose()
+        {
+            _dragIndex = -1;
+            _dragHoverSeat = -1;
+            _dragGroupUids.Clear();
+            _dragGroupOffsets.Clear();
+            ClearReplaceHover();
+            HideArrow();
+            ClearTargetHighlight();
+        }
+
+        /// <summary>
+        /// 抬起事件的兜底（2026-10-31）：<c>Release</c> 一定在 <c>OnPointerUp</c> 里送到，
+        /// 而 <c>DragEnd</c> 是同一个 <c>EventSystem.Update</c> 里紧随其后派的 ——
+        /// 到了 LateUpdate 还挂着拖拽姿态，就说明这一手 DragEnd 丢了，必须收掉。
+        ///
+        /// <para>为什么不直接在 <c>Release</c> 里收：Button 的 onClick 与 DragEnd 都排在
+        /// <c>OnPointerUp</c> <b>之后</b>，那一帧立刻清 <c>_dragIndex</c> 会把
+        /// 「拖进判定区松手出牌」整条路废掉。挪到 LateUpdate 就只剩「真的没送 DragEnd」这一种情况。</para>
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (!_releasePending)
+            {
+                return;
+            }
+
+            _releasePending = false;
+
+            if (_dragIndex >= 0)
+            {
+                ResetDragPose();
+            }
+        }
+
+        /// <summary>
+        /// 滑动中：把「上一条指针位置 → 当前位置」这条线段扫过的牌依次刷过去。
+        ///
+        /// <para><b>为什么不是只看当前这一点</b>：<c>OnDrag</c> 一帧只来一次，
+        /// 快速划过时两帧之间能跨过两三张牌 —— 只测当前点等于「跳着选」，
+        /// 玩家看到的是「我明明划过了它却没选中」。这里按 <see cref="SlideSamplePixels"/>
+        /// 补点，整条笔迹都算数。</para>
+        ///
+        /// <para>去重交给 <see cref="_slideTouched"/>：同一张牌一次手势只处理一次，
+        /// 所以来回划不会把已经刷上的状态又刷回去。</para>
+        /// </summary>
         private void Slide(Vector2 screenPos)
         {
             if (!_sliding || _slideDead)
@@ -396,64 +564,217 @@ namespace MagicBrawl.App
                 return;
             }
 
-            CardView card = CardAt(screenPos);
-            if (card == null || !card.HasCard)
-            {
-                return;
-            }
+            Vector2 from = _slideLastScreen;
+            _slideLastScreen = screenPos;
 
-            if (!_slideTouched.Add(card.Card.Uid))
-            {
-                return;
-            }
+            float distance = Vector2.Distance(from, screenPos);
+            int steps = Mathf.Clamp(Mathf.CeilToInt(distance / SlideSamplePixels), 1, SlideMaxSamples);
 
-            SlideTouch(card);
+            for (int s = 1; s <= steps; s++)
+            {
+                Vector2 point = Vector2.Lerp(from, screenPos, s / (float)steps);
+                CardView card = CardAt(point);
+                if (card == null || !card.HasCard)
+                {
+                    continue;
+                }
+
+                if (!_slideTouched.Add(card.Card.Uid))
+                {
+                    continue;
+                }
+
+                SlideTouch(card);
+
+                // 这一刷把决策交出去了（单选拍点一下就提交）→ 剩下的采样点不用再算。
+                if (_slideDead)
+                {
+                    return;
+                }
+            }
         }
 
         /// <summary>
-        /// 滑动划到一张牌 → 与「点一下」同一套语义（<see cref="OnCardClicked"/> 的分发），
-        /// 只差两条：
+        /// 笔尖刷到一张牌 → 把它<b>置成</b>本次笔刷的状态（不是切换）。
+        ///
+        /// <para>三条规矩：</para>
         /// <list type="number">
-        /// <item><b>只加不减</b>：划到已经选中的牌不会取消它（点击才会切换）；</item>
-        /// <item><b>不顶掉前面的</b>：双发满两张就不再加；出牌拍（只能打一张）
-        ///       第一张亮起后就固定住。替换 / 弹窗的上限由它们自己把着
-        ///       （<see cref="DealView.Toggle"/> / <see cref="HandPickView.Toggle"/>）。</item>
+        /// <item>已经是目标状态的牌不动 —— 划回来不会反选，这是「画刷」与「逐张点击」的分界；</item>
+        /// <item>「加选」笔刷碰上已达上限的拍 → 直接不理，也<b>不</b>顶掉前面已选的
+        ///       （用户口径：「最多扫到三张牌之后就不会再额外增加了」）；</item>
+        /// <item>「取消」笔刷只取消、不新增（取消不受上限约束）。</item>
         /// </list>
         /// </summary>
         private void SlideTouch(CardView card)
         {
-            if (card == null || _slideDead)
+            if (card == null || _slideDead || !card.HasCard)
             {
+                return;
+            }
+
+            int uid = card.Card.Uid;
+
+            if (_restrict && !_playable.Contains(uid))
+            {
+                return;
+            }
+
+            bool marked = IsMarked(uid);
+
+            if (_slideErase)
+            {
+                if (marked)
+                {
+                    SetMarked(uid, false);
+                }
+
+                return;
+            }
+
+            if (marked || MarkedCount >= PaintLimit)
+            {
+                return;
+            }
+
+            SetMarked(uid, true);
+        }
+
+        /// <summary>这张牌现在是不是「已选中」（三种拍各有各的账本）。</summary>
+        private bool IsMarked(int uid)
+        {
+            if (uid < 0)
+            {
+                return false;
+            }
+
+            if (_multiMode)
+            {
+                return _multi.Contains(uid);
+            }
+
+            if (_accumulatePick)
+            {
+                return _picked.Contains(uid);
+            }
+
+            return _selectedUid == uid;
+        }
+
+        /// <summary>这一拍已经选了几张。</summary>
+        private int MarkedCount
+        {
+            get
+            {
+                if (_multiMode)
+                {
+                    return _multi.Count;
+                }
+
+                if (_accumulatePick)
+                {
+                    return _picked.Count;
+                }
+
+                return _selectedUid >= 0 ? 1 : 0;
+            }
+        }
+
+        /// <summary>
+        /// 这一拍最多能同时选几张：发牌台 / 选牌弹窗按引擎的 <c>MaxSelect</c> 塞进来
+        /// （开局 3 / 补牌 1 / 磁暴·充能 1~N）；没塞过就按本视图的模式兜底 ——
+        /// 双发两张、其余（进攻 / 单防）只能一张。
+        /// </summary>
+        private int PaintLimit
+        {
+            get
+            {
+                if (_paintLimit > 0)
+                {
+                    return _paintLimit;
+                }
+
+                return _accumulatePick ? MaxPicked : 1;
+            }
+        }
+
+        /// <summary>
+        /// 把一张牌置成「选中 / 未选中」。
+        ///
+        /// <para>有 <see cref="_paintSink"/> 时交给上层：发牌台 / 选牌弹窗手里那份
+        /// <c>_selected</c> 才是真源，它们改完会回写 <see cref="_multi"/> ——
+        /// 本视图不另存一份，免得两处账本对不上。</para>
+        /// </summary>
+        private void SetMarked(int uid, bool on)
+        {
+            if (uid < 0)
+            {
+                return;
+            }
+
+            if (_paintSink != null && _multiMode)
+            {
+                _paintSink(uid, on);
+                return;
+            }
+
+            if (_multiMode)
+            {
+                if (on)
+                {
+                    _multi.Add(uid);
+                }
+                else
+                {
+                    _multi.Remove(uid);
+                }
+
                 return;
             }
 
             if (_accumulatePick)
             {
-                // ⚠ 与点击那条**刻意不同**：点击满两张后再点第三张会顶掉最早那张
-                //   （保证「刚表达的那张」一定在集合里）；滑动按用户口径
-                //   「不得超过上限」，满了就不再接受新的。
-                if (_picked.Contains(card.Card.Uid) || _picked.Count >= MaxPicked)
+                if (on)
                 {
-                    return;
+                    if (!_picked.Contains(uid))
+                    {
+                        AddPick(uid);
+                    }
+                }
+                else
+                {
+                    _picked.Remove(uid);
                 }
 
-                AddPick(card.Card.Uid);
-                if (CardClicked != null)
-                {
-                    CardClicked(card);
-                }
-
+                RaiseCardClicked(uid);
                 return;
             }
 
-            // 出牌拍（SetDropIntent 给了方向）：点击本来就不提交、也只能打一张 ——
-            // 第一张划到的那张固定，后面的划过不顶掉它。
-            if (_dropIntentSeat >= 0 && _selectedUid >= 0 && _selectedUid != card.Card.Uid)
+            _selectedUid = on ? uid : -1;
+
+            // 取消不补通知：单选拍（选目标 / 光环…）的「点一下」本身就是提交，
+            // 把「取消选中」也发过去等于替玩家把这张牌交出去。
+            if (on)
+            {
+                RaiseCardClicked(uid);
+            }
+        }
+
+        /// <summary>
+        /// 刷过之后补一次「这张牌变了」的通知 —— 双发靠它刷提示条张数；
+        /// 单选拍本来就靠点击提交，也走这里。
+        /// </summary>
+        private void RaiseCardClicked(int uid)
+        {
+            if (CardClicked == null)
             {
                 return;
             }
 
-            OnCardClicked(card);
+            CardView view = FindCard(uid);
+            if (view != null)
+            {
+                CardClicked(view);
+            }
         }
 
         /// <summary>屏幕点上压着的那张手牌（没有 → null）。倒序找 = 取画在最上面的那张。</summary>
@@ -538,6 +859,8 @@ namespace MagicBrawl.App
             _shown.Clear();
             _dragIndex = -1;
             _dragHoverSeat = -1;
+            _dragGroupUids.Clear();
+            _dragGroupOffsets.Clear();
             ClearTargetHighlight();
 
             if (hand != null)
@@ -689,6 +1012,19 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
+        /// 把画刷的「选中 / 取消」接到上层的选中集合上（发牌台 / 选牌弹窗）。
+        ///
+        /// <para><paramref name="sink"/> 为 null = 解除，之后本视图自己管账本
+        /// （单选拍 / 双发拍就是这么走的）。<paramref name="limit"/> ≤ 0 = 由
+        /// <see cref="PaintLimit"/> 按模式兜底。</para>
+        /// </summary>
+        public void SetPaintSink(Action<int, bool> sink, int limit)
+        {
+            _paintSink = sink;
+            _paintLimit = Mathf.Max(0, limit);
+        }
+
+        /// <summary>
         /// 给手牌里的每张牌下一个「力量加值预览」（M24 #4）。
         ///
         /// <para><paramref name="select"/> 由调用方（<see cref="BattleUi"/>）决定这张牌该不该
@@ -828,10 +1164,18 @@ namespace MagicBrawl.App
                 float targetRot = -aMaxRad * kk * Mathf.Rad2Deg;
                 float targetScale = 1f;
 
-                if (i == _dragIndex)
+                // 拖动中的这一组：「正在拖动」是第三种状态 —— 摆正（0°）+ 放大 + 跟手；
+                // 与「已选中」（仍在扇形里、保留倾斜）区分开。双发时这组里有两张，
+                // 按原槽位差横着排开一起搬（见 BuildDragGroup）。
+                bool dragPose = _dragIndex >= 0 && _dragIndex < _shown.Count;
+                int groupAt = dragPose && _dragGroupUids.Count > 0
+                    ? _dragGroupUids.IndexOf(v.Card.Uid)
+                    : -1;
+                bool dragging = dragPose && (groupAt >= 0 || i == _dragIndex);
+
+                if (dragging)
                 {
-                    // 正被拖着：跟着指针、摆正、放大
-                    targetX = _dragLocal.x;
+                    targetX = _dragLocal.x + (groupAt >= 0 ? _dragGroupOffsets[groupAt] : 0f);
                     targetY = _dragLocal.y;
                     targetRot = 0f;
                     targetScale = UiLayout.HandDragScale;
@@ -852,11 +1196,10 @@ namespace MagicBrawl.App
                     }
 
                     // 单选模式看 _selectedUid（普通进攻 / 防御拍，一次只亮一张）；
-                    // 多选模式看 _multi（M9 替换可同时标多张）；
-                    // _picked 是双发防御那一拍的「已选」（点两张都亮，见 SetAccumulatePick）。
-                    bool marked = _multiMode
-                        ? _multi.Contains(v.Card.Uid)
-                        : v.Card.Uid == _selectedUid || _picked.Contains(v.Card.Uid);
+                    // 多选模式看 _multi（M9 替换 / 选牌弹窗可同时标多张）；
+                    // _picked 是双发防御那一拍的「已选」。三本账的统一入口就是 IsMarked ——
+                    // 画刷也读它，两边必须同一套判据，否则会出现「亮着但划不动 / 划得动却不亮」。
+                    bool marked = IsMarked(v.Card.Uid);
 
                     if (marked)
                     {
@@ -950,6 +1293,8 @@ namespace MagicBrawl.App
 
                 case CardGesture.Release:
                     HidePeek();
+                    // 抬手了 → 记一笔，LateUpdate 里核对 DragEnd 有没有真的送到。
+                    _releasePending = true;
                     break;
 
                 case CardGesture.DragBegin:
@@ -974,6 +1319,7 @@ namespace MagicBrawl.App
 
                 case CardGesture.SlideEnd:
                     _sliding = false;
+                    _slideErase = false;
                     _slideTouched.Clear();
                     break;
             }
@@ -1008,12 +1354,77 @@ namespace MagicBrawl.App
 
             _dragIndex = idx;
             _dragHoverSeat = -1;
+            BuildDragGroup(card, idx);
 
             // 把指针位置先按「卡原位」初始化一下，免得第一帧跳到别处
             _dragLocal = ((RectTransform)card.transform).anchoredPosition;
 
             // 拖起来的那张要盖在最上面
             card.transform.SetAsLastSibling();
+        }
+
+        /// <summary>
+        /// 组出「这次拖拽要一起搬走的那几张」。
+        ///
+        /// <para><b>为什么需要它</b>（用户 2026-10-31 口径）：「在防御双发时，拖拽时应当是
+        /// 这两张牌一起被拖动」。双发本来就要求交出两张 —— 已经选好的那两张如果只跟着拖一张，
+        /// 看着就像「另一张被丢下了」，玩家会以为要重选。</para>
+        ///
+        /// <para><b>只有双发这一拍才成群</b>：那个「已选」集合本来就是「本拍要一起交出去的牌」。
+        /// 换牌 / 普通单选拖拽只搬一张 —— 别的时候把旁边的牌一起拖走只会让人以为排序乱了。</para>
+        ///
+        /// <para>偏移取<b>扇形原槽位</b>的横向差：两张牌并排保持原来的左右关系，
+        /// 拖动时都摆正、同高；松手（没进判定区）又各自回到扇形、恢复倾斜。</para>
+        /// </summary>
+        private void BuildDragGroup(CardView card, int index)
+        {
+            _dragGroupUids.Clear();
+            _dragGroupOffsets.Clear();
+
+            _dragGroupUids.Add(card.Card.Uid);
+            _dragGroupOffsets.Add(0f);
+
+            // 组员从哪来：
+            //   · 双发防御拍 —— `_picked`（点选累积，2026-09-30）
+            //   · 换牌拍    —— `_multi`（手牌上已标记要换掉的那几张，2026-10-31 第二轮）
+            // 两处都要求「被按住这张本身在组里」：拖一张没标记的牌，就只拖它自己。
+            List<int> members = null;
+            if (_accumulatePick && _picked.Count >= 2 && _picked.Contains(card.Card.Uid))
+            {
+                members = _picked;
+            }
+            else if (_multiMode && _multi.Count >= 2 && _multi.Contains(card.Card.Uid))
+            {
+                members = new List<int>(_multi);
+            }
+
+            if (members == null)
+            {
+                return;
+            }
+
+            float baseX = FanSlotX(index, _shown.Count);
+
+            for (int i = 0; i < members.Count; i++)
+            {
+                int uid = members[i];
+                if (uid == card.Card.Uid)
+                {
+                    continue;
+                }
+
+                int at = IndexOfUid(uid);
+                if (at < 0)
+                {
+                    continue;
+                }
+
+                _dragGroupUids.Add(uid);
+                _dragGroupOffsets.Add(FanSlotX(at, _shown.Count) - baseX);
+
+                // 同组的一起抬到最上层（被按住那张随后再抬一次，压在最上面）
+                _shown[at].transform.SetAsLastSibling();
+            }
         }
 
         private void MoveDrag(Vector2 screenPos)
@@ -1035,7 +1446,16 @@ namespace MagicBrawl.App
             // 判定区说了算：进了区才算「要出牌」，出箭头 + 点亮目标；
             // 没进区什么都不发生，松手牌自己滑回扇形。
             _dragHoverSeat = CanDropDraggedCard() && InPlayZone() ? _dropIntentSeat : -1;
-            if (_dragHoverSeat < 0 && IsInHandArea(screenPos)) ReorderAtPointer();
+
+            // 换牌拍（2026-10-31）：牌压进手牌区上方那条槽 → 点亮它，松手就换掉。
+            // 与出牌互斥 —— 换牌拍的 _dropIntentSeat 恒为 -1，_dragHoverSeat 也就恒为 -1。
+            _dragOverReplace = _replaceZone != null && InReplaceZone();
+            if (_replaceZoneHot != null)
+            {
+                _replaceZoneHot(_dragOverReplace);
+            }
+
+            if (_dragHoverSeat < 0 && !_dragOverReplace && IsInHandArea(screenPos)) ReorderAtPointer();
             ApplyTargetHighlight(_dragHoverSeat);
             UpdateArrow();
         }
@@ -1049,15 +1469,33 @@ namespace MagicBrawl.App
 
             MoveDrag(screenPos);
             CardView card = _dragIndex < _shown.Count ? _shown[_dragIndex] : null;
+            bool toReplace = _dragOverReplace && _replaceZone != null;
             bool dropped = CanDropDraggedCard() && InPlayZone();
 
             _dragIndex = -1;
             _dragHoverSeat = -1;
+            _dragGroupUids.Clear();
+            _dragGroupOffsets.Clear();
+            ClearReplaceHover();
             HideArrow();
             ClearTargetHighlight();
 
             if (card == null)
             {
+                return;
+            }
+
+            // 换牌拍：牌落在投放区里 → 报给发牌台去换掉它。
+            // 这一条排在出牌前面：换牌拍的 _dropIntentSeat 是 -1，两条路本来就不会同时成立，
+            // 排前面只是让「换牌」这件事在代码里读起来优先。
+            if (toReplace)
+            {
+                if (ReplaceDropped != null)
+                {
+                    ReplaceDropped(card);
+                }
+
+                RestoreSiblingOrder();
                 return;
             }
 
@@ -1098,6 +1536,12 @@ namespace MagicBrawl.App
 
         private void ReorderAtPointer()
         {
+            // 双发那两张是「一起搬」的，途中挪排序只会把它们的相对位置打散。
+            if (_dragGroupUids.Count > 1)
+            {
+                return;
+            }
+
             CardView dragged = _shown[_dragIndex];
             int target = _dragIndex;
             // Compare against stable fan slots, not the moving neighbours.
@@ -1176,6 +1620,42 @@ namespace MagicBrawl.App
                              + new Vector2(0f, UiLayout.HandCardHeight * UiLayout.HandDragScale * 0.5f);
             Vector2 centerScreen = RectTransformUtility.WorldToScreenPoint(null, _row.TransformPoint(center));
             return RectTransformUtility.RectangleContainsScreenPoint(_playZone, centerScreen, null);
+        }
+
+        /// <summary>
+        /// 被拖的那张牌是否压在<b>换牌投放区</b>里（2026-10-31）。
+        ///
+        /// <para>口径与 <see cref="InPlayZone"/> 完全一致：判的是<b>牌的落点</b>
+        /// （指针换算出的牌心），不是指针本身 —— 指针被刻意压在牌下沿
+        /// （<see cref="UiLayout.DragLiftAbove"/>），拿指针判会有一段「看着推进去了其实没进」。</para>
+        /// </summary>
+        private bool InReplaceZone()
+        {
+            if (_replaceZone == null || _row == null || _dragIndex < 0 || _dragIndex >= _shown.Count
+                || !_replaceZone.gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            Vector2 center = _dragLocal
+                             + new Vector2(0f, UiLayout.HandCardHeight * UiLayout.HandDragScale * 0.5f);
+            Vector2 centerScreen = RectTransformUtility.WorldToScreenPoint(null, _row.TransformPoint(center));
+            return RectTransformUtility.RectangleContainsScreenPoint(_replaceZone, centerScreen, null);
+        }
+
+        /// <summary>把投放区切回常态（抬手 / 手势作废 / 决策收尾都要走一遍）。</summary>
+        private void ClearReplaceHover()
+        {
+            if (!_dragOverReplace)
+            {
+                return;
+            }
+
+            _dragOverReplace = false;
+            if (_replaceZoneHot != null)
+            {
+                _replaceZoneHot(false);
+            }
         }
 
         /// <summary>

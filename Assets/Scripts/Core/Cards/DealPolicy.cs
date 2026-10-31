@@ -4,13 +4,13 @@ using System.Collections.Generic;
 namespace MagicBrawl.Core
 {
     /// <summary>
-    /// 本局有限牌堆，每名角色独立持有。
-    /// 替换时从剩余池随机取，被换掉的牌<strong>回池</strong>；第 2、3 回合补牌同池。
+    /// 本局的<b>唯一实体牌堆</b>（2026-10-31 用户口径：双方共用同一副）。
+    /// 构造时洗一次；之后所有座位都只从<b>堆顶</b>抽牌，被换掉的牌<b>回堆底</b> ——
+    /// 同一张实体牌同一时刻只会在一个地方，因此两个座位不可能拿到相同的牌。
     /// </summary>
     public sealed class Deck
     {
         private readonly List<CardDef> _cards;
-        private readonly Rng _rng;
 
         public Deck(IEnumerable<CardDef> defs, Rng rng)
         {
@@ -24,18 +24,17 @@ namespace MagicBrawl.Core
                 throw new ArgumentNullException("rng");
             }
 
-            _rng = rng;
             _cards = new List<CardDef>(defs);
-            _rng.Shuffle(_cards);
+            rng.Shuffle(_cards);
         }
 
-        /// <summary>池中剩余张数。</summary>
+        /// <summary>堆中剩余张数。</summary>
         public int Remaining
         {
             get { return _cards.Count; }
         }
 
-        /// <summary>抽一张；池空返回 null。</summary>
+        /// <summary>从堆顶抽一张；堆空返回 null。</summary>
         public CardDef Draw()
         {
             if (_cards.Count == 0)
@@ -43,13 +42,12 @@ namespace MagicBrawl.Core
                 return null;
             }
 
-            int i = _rng.Next(_cards.Count);
-            CardDef def = _cards[i];
-            _cards.RemoveAt(i);
+            CardDef def = _cards[0];
+            _cards.RemoveAt(0);
             return def;
         }
 
-        /// <summary>把一张牌放回池中（随机位置，保持洗牌感）。</summary>
+        /// <summary>把一张牌放回<b>堆底</b>（用户口径：换掉的牌塞回堆底）。</summary>
         public void Return(CardDef def)
         {
             if (def == null)
@@ -57,8 +55,7 @@ namespace MagicBrawl.Core
                 return;
             }
 
-            int i = _cards.Count == 0 ? 0 : _rng.Next(_cards.Count + 1);
-            _cards.Insert(i, def);
+            _cards.Add(def);
         }
 
         /// <summary>只读快照（自测与调试用）。</summary>

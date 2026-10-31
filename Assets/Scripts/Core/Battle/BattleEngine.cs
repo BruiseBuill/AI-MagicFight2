@@ -78,6 +78,16 @@ namespace MagicBrawl.Core
         private Phase _replaceNextPhase = Phase.BeginTurn;
         private readonly List<CardInstance> _replaceTargets = new List<CardInstance>();
 
+        /// <summary>
+        /// 本趟替换**已经换掉几张**（2026-10-31）。
+        ///
+        /// <para><b>为什么需要它</b>：拖着手牌往上一扔就换掉一张之后，这一次替换拍并不结束 ——
+        /// 引擎原地重发同一条 <see cref="RequestKind.ChooseReplace"/>，让玩家继续扔下一张。
+        /// 重发时额度必须扣掉已用掉的张数，否则每重发一次 <c>MaxSelect</c> 又回到 3，
+        /// 开局就能把整手牌换一遍。</para>
+        /// </summary>
+        private int _replaceUsed;
+
         // 半场上下文
         private AttackContext _atk;
 
@@ -156,16 +166,30 @@ namespace MagicBrawl.Core
             if (setup == null) throw new ArgumentNullException(nameof(setup));
             var rng = new Rng(seed);
             var state = new BattleState(rng, setup.Mode);
+            // 2026-10-31 用户口径：一局只有一副实体牌堆。所有座位的卡池求并集
+            //（同一张卡只进这一副），开局洗一次；之后每个座位都从堆顶抽、换掉的牌回堆底。
+            var sharedDefs = new List<CardDef>();
+            var sharedIds = new HashSet<string>(StringComparer.Ordinal);
             for (int seat = 0; seat < setup.Participants.Count; seat++)
             {
-                // 每个座位独立随机流；其他角色换牌不会消耗自己的抽牌随机数。
-                var deckRng = new Rng(unchecked(seed + (seat + 1) * (int)0x9E3779B9u));
-                state.Players.Add(new PlayerState(seat, setup.Participants[seat], deckRng));
+                foreach (CardDef def in setup.Participants[seat].Character.CreateCardPool().Resolve())
+                {
+                    if (sharedIds.Add(def.Id))
+                    {
+                        sharedDefs.Add(def);
+                    }
+                }
             }
+
+            var sharedDeck = new Deck(sharedDefs, rng);
+            for (int seat = 0; seat < setup.Participants.Count; seat++)
+            {
+                state.Players.Add(new PlayerState(seat, setup.Participants[seat], sharedDeck));
+            }
+
             var effects = setup.Effects;
-            foreach (PlayerState player in state.Players)
-                foreach (CardDef card in player.Deck.Snapshot())
-                    foreach (EffectDef effect in card.Effects) effects.Validate(effect);
+            foreach (CardDef card in sharedDeck.Snapshot())
+                foreach (EffectDef effect in card.Effects) effects.Validate(effect);
 
             var engine = new BattleEngine(state, dealPolicy, effects);
 
@@ -420,6 +444,7 @@ namespace MagicBrawl.Core
             }
 
             _replaceSeat = 0;
+            _replaceUsed = 0;
             _phase = Phase.AwaitReplace;
         }
 
@@ -432,7 +457,7 @@ namespace MagicBrawl.Core
             }
 
             PlayerState p = State.Of(_replaceSeat);
-            if (p.IsDead) { _replaceSeat++; return; }
+            if (p.IsDead) { _replaceSeat++; _replaceUsed = 0; return; }
             List<CardInstance> pool = _replaceIsInitial ? p.Hand : _replaceTargets;
 
             // 本座的替换上限现算（开局那趟用角色的开局上限；补牌那趟用它本回合的上限）——
@@ -441,9 +466,14 @@ namespace MagicBrawl.Core
                 ? InitialReplaceLimitOf(p)
                 : ReplaceLimitOnTurnOf(p, State.TurnNumber);
 
-            if (limit <= 0 || pool.Count == 0 || p.Deck.Remaining == 0)
+            // 2026-10-31：一张一张换 —— 每换完一张本趟会原地重发这次决策，
+            // 所以额度要扣掉已经用掉的张数（否则重发一次就又满额了）。
+            int left = limit - _replaceUsed;
+
+            if (left <= 0 || pool.Count == 0 || p.Deck.Remaining == 0)
             {
                 _replaceSeat++;
+                _replaceUsed = 0;
                 return;
             }
 
@@ -462,6 +492,14 @@ namespace MagicBrawl.Core
                     continue;
                 }
 
+                // 2026-10-31：只列**此刻还在手上**的牌。逐张换之后，上一张已经被替换掉
+                // （Zone 回到 Deck），它仍留在本趟的 _replaceTargets 里 —— 不挡掉就会变成一个
+                // 点了没反应的假选项（补牌那趟尤其明显：候选只有那一张）。
+                if (c.Zone != CardZone.Hand)
+                {
+                    continue;
+                }
+
                 options.Add(new Option
                 {
                     Kind = OptionKind.Replace,
@@ -475,6 +513,7 @@ namespace MagicBrawl.Core
             if (options.Count == 0)
             {
                 _replaceSeat++;
+                _replaceUsed = 0;
                 return;
             }
 
@@ -497,34 +536,69 @@ namespace MagicBrawl.Core
                 Seat = p.Seat,
                 Kind = RequestKind.ChooseReplace,
                 Prompt = _replaceIsInitial
-                    ? "选择要替换掉的手牌（至多 " + limit + " 张）"
-                    : "可替换刚补到的这张牌",
+                    ? "把要换掉的手牌向上拖进换牌区（还可换 " + left + " 张）"
+                    : "把这手牌向上拖进换牌区即可换掉它",
                 Options = options,
                 MinSelect = 0,
                 // 用过滤后的候选数，不是 pool.Count —— 补牌那趟 pool 含对面的牌，
                 // 拿它当上限会给出「能换 2 张其实只有 1 张可选」的错数。
-                MaxSelect = Math.Min(limit, candidateCount),
+                MaxSelect = Math.Min(left, candidateCount),
             };
         }
 
         private void DoReplace(List<Option> picked)
         {
             PlayerState p = State.Of(_replaceSeat);
+
+            // ① 先把这批要换掉的牌收集齐（同一张只算一次，只认自己手上还没被换走的）。
+            var outgoing = new List<CardInstance>();
             for (int i = 0; i < picked.Count; i++)
             {
                 CardInstance old = picked[i].Card;
-                if (old == null || old.OwnerSeat != p.Seat)
+                if (old == null || old.OwnerSeat != p.Seat || old.Zone != CardZone.Hand)
                 {
                     continue;
                 }
 
-                CardDef fresh = p.Deck.Draw();
-                if (fresh == null)
+                if (outgoing.Contains(old))
+                {
+                    continue;
+                }
+
+                outgoing.Add(old);
+            }
+
+            if (outgoing.Count == 0)
+            {
+                _replaceSeat++;
+                _replaceUsed = 0;
+                return;
+            }
+
+            // ② 抽新牌 —— ⚠ 这一步必须**在任何 Return 之前**做完。
+            //
+            //   原来的写法是「抽一张 → 立刻把旧牌回池 → 抽下一张」，于是第 2 张就可能
+            //   抽到第 1 张刚退回去的牌（开局牌堆只剩 2 张时概率 50%，第 3 张更高）——
+            //   玩家看到的就是「被换掉的牌几乎必然又被抽回来」（2026-10-31 用户报的正是这个）。
+            //   现在整批抽完之后才回池，同一批换牌绝不会抽回自己。
+            var fresh = new List<CardDef>(outgoing.Count);
+            for (int i = 0; i < outgoing.Count; i++)
+            {
+                CardDef def = p.Deck.Draw();
+                if (def == null)
                 {
                     break;
                 }
 
-                var inst = State.CreateCard(fresh, p.Seat);
+                fresh.Add(def);
+            }
+
+            // ③ 逐张落位；换掉的牌攒到最后统一回池。
+            var spent = new List<CardInstance>(fresh.Count);
+            for (int i = 0; i < fresh.Count; i++)
+            {
+                CardInstance old = outgoing[i];
+                var inst = State.CreateCard(fresh[i], p.Seat);
                 inst.ToHand();
 
                 int idx = p.Hand.IndexOf(old);
@@ -538,12 +612,34 @@ namespace MagicBrawl.Core
                 }
 
                 old.ToPool();
-                p.Deck.Return(old.Def);
+                spent.Add(old);
 
                 Emit(new ReplaceEvent { Seat = p.Seat, Returned = old, Gained = inst });
             }
 
+            for (int i = 0; i < spent.Count; i++)
+            {
+                p.Deck.Return(spent[i].Def);
+            }
+
+            // ④ 还有额度、牌堆里也还有牌 → **原地重发这一次替换决策**。
+            //
+            //   这就是「拖一张换一张」：玩家把一张牌拖进换牌区，界面不会整个收掉，
+            //   而是刷成剩下可换的张数，等着接下一张。额度用完（或牌堆空了）才轮到下一位。
+            _replaceUsed += spent.Count;
+
+            int limit = _replaceIsInitial
+                ? InitialReplaceLimitOf(p)
+                : ReplaceLimitOnTurnOf(p, State.TurnNumber);
+
+            if (_replaceUsed < limit && p.Deck.Remaining > 0)
+            {
+                _phase = Phase.AwaitReplace;
+                return;
+            }
+
             _replaceSeat++;
+            _replaceUsed = 0;
         }
 
         private int OwnedCardCount(PlayerState player)

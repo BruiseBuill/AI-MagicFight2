@@ -74,6 +74,32 @@ namespace MagicBrawl.App
         private readonly HashSet<int> _playable = new HashSet<int>();
 
         /// <summary>
+        /// 本批里「要走慢一点」的那几张牌（uid → 时长，秒）—— 2026-10-31。
+        ///
+        /// <para><b>为什么要按牌带时长</b>：玩家自己的牌被减速时，那一格要滑得足够慢才注意得到
+        /// （用户口径：至少 0.7 秒），但同一批里别人的牌 / 进冷却区的牌不该陪着一起变慢。
+        /// <c>UiPositionMotion</c> 的时长是每次请求可带的，所以这里只记「哪些 uid 用多长」。</para>
+        ///
+        /// <para>用完即弃：<see cref="BindBoth"/> 绑完两侧就清空。下一次绑定没重新下，
+        /// 就回到标准时长 —— 不会因为上一批是减速，让下一批的位移莫名其妙变慢。</para>
+        /// </summary>
+        private readonly Dictionary<int, float> _cardMoveSeconds = new Dictionary<int, float>();
+
+        /// <summary>给某一张牌单独指定本批的位移时长（只在接下来这一次绑定里有效）。</summary>
+        public void SetCardMoveSeconds(int uid, float seconds)
+        {
+            _cardMoveSeconds[uid] = Mathf.Max(0.01f, seconds);
+        }
+
+        private float MoveSecondsFor(int uid)
+        {
+            float seconds;
+            return _cardMoveSeconds.TryGetValue(uid, out seconds)
+                ? seconds
+                : UiPositionMotion.MoveSeconds;
+        }
+
+        /// <summary>
         /// 是否处在「本拍有冷却区目标」的限制态（整片只有 <see cref="_playable"/> 里的牌能点）。
         ///
         /// <para><b>为什么不能再用「哪一方的冷却区」来切</b>：加速 / 减速的目标<b>横跨双方</b>
@@ -510,6 +536,9 @@ namespace MagicBrawl.App
         {
             Bind(LocalSeat, player);
             Bind(OpponentSeat, enemy);
+
+            // 「这一批哪几张走多慢」用完即弃：下一次绑定没重新下就回到标准时长。
+            _cardMoveSeconds.Clear();
         }
 
         // ══════════════════════════════════════════════════════
@@ -655,8 +684,9 @@ namespace MagicBrawl.App
                     float x = playerSide ? offset : -offset;
 
                     // 竖直：跟槽行居中对齐
+                    // 时长按牌取：被减速的那一张可能被要求走得更慢（见 _cardMoveSeconds）。
                     UiPositionMotion.FromWorld(rt, fromWorld,
-                        new Vector2(x, -(rowH - h) * 0.5f), reused);
+                        new Vector2(x, -(rowH - h) * 0.5f), reused, MoveSecondsFor(cards[i].Uid));
                 }
 
                 v.transform.SetAsLastSibling();

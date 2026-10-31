@@ -240,6 +240,11 @@ namespace MagicBrawl.App
             _longFired = false;
             _pressed = false;
 
+            // ⚠ 每一次起手都从「不在滑动」开始。上一次的手势如果没收到收尾
+            //（2026-10-31 的 SlideEnd 丢失 bug），这个标志会卡在 true ——
+            // 那会让下一拖的 OnDrag 只报 Slide、牌根本不跟手。
+            _sliding = false;
+
             // 滑动选牌（2026-10-30）：横向按住划过手牌 = 连续勾选，牌**不跟手**。
             // 方向与「这一拍能不能选」都由接收方判（手牌视图知道本拍上限、哪些能选）。
             ICardSlideHost slideHost = Host as ICardSlideHost;
@@ -296,11 +301,13 @@ namespace MagicBrawl.App
                 return;
             }
 
-            if (!_dragging)
-            {
-                return;
-            }
-
+            // ⚠⚠ `_sliding` 必须判在 `!_dragging` **前面**（2026-10-31 修）。
+            //
+            // 滑动选牌那条路里 `_dragging` 从头到尾都是 false（牌不跟手），
+            // 放在后面等于「滑动永远收不了尾」：`SlideEnd` 发不出去 →
+            // 本类的 `_sliding` 卡 true → 下一拖只报 Slide 不报 DragEnd →
+            // 手牌里那张牌永远停在「正立 + 放大」的拖动姿态上，
+            // 而且还能继续划选别的牌（用户 2026-10-31 报的正是这个）。
             if (_sliding)
             {
                 _sliding = false;
@@ -313,6 +320,11 @@ namespace MagicBrawl.App
                     Card.SetGestureHold(false);
                 }
 
+                return;
+            }
+
+            if (!_dragging)
+            {
                 return;
             }
 

@@ -9,7 +9,7 @@ namespace MagicBrawl.App
     /// </summary>
     public enum BattleModeKind
     {
-        /// <summary><b>标准战斗</b>：双方各从全卡表随机抽 8 张，直接开打。</summary>
+        /// <summary><b>标准战斗</b>：一局只有一副实体牌堆，双方都从堆顶抽、换牌回堆底。</summary>
         Standard = 0,
 
         /// <summary><b>自定义战斗</b>：开战前玩家自己挑双方的 8 张。</summary>
@@ -27,9 +27,8 @@ namespace MagicBrawl.App
     /// <para><b>⚠ 它<b>不</b>落盘</b>：这是「这一局用什么牌」的一次性参数，不是存档。
     /// 退出游戏 / 退出 Play 就归零 —— 下次进来回到标准战斗的随机口径。</para>
     ///
-    /// <para><b>⚠ 标准战斗的牌组<b>不</b>存在这里</b>：它由对局种子派生
-    /// （见 <see cref="BattleDriver"/> 的 <c>RandomDeck</c>），这样
-    /// 「重试 = 同一颗种子 → 同一副 8 张」自动成立，不需要在这里另存一份快照。</para>
+    /// <para><b>⚠ 标准战斗的牌组<b>不</b>存在这里</b>：引擎按对局种子把整表洗成一副实体牌堆，
+    /// 「重试 = 同一颗种子 → 同一副牌」自动成立，不需要在这里另存一份快照。</para>
     /// </summary>
     public static class BattleLaunch
     {
@@ -78,7 +77,7 @@ namespace MagicBrawl.App
         /// <list type="number">
         /// <item>两边都正好 <see cref="DeckSize"/> 张；</item>
         /// <item>每一张都在卡表里（按 ID 精确匹配）；</item>
-        /// <item>同一侧不重复（<see cref="CardPool"/> 本身就是「每种卡最多一张」）。</item>
+        /// <item>同一侧不重复，且双方之间也不重复（共用同一副牌）。</item>
         /// </list>
         /// </summary>
         public static bool TrySetCustom(IReadOnlyList<string> playerIds,
@@ -86,6 +85,18 @@ namespace MagicBrawl.App
         {
             if (!Validate(playerIds, "你的牌组", out error)) return false;
             if (!Validate(monsterIds, "对手的牌组", out error)) return false;
+
+            var occupied = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < playerIds.Count; i++) occupied.Add(CardIds.BaseOf(playerIds[i]));
+            for (int i = 0; i < monsterIds.Count; i++)
+            {
+                string id = CardIds.BaseOf(monsterIds[i]);
+                if (occupied.Contains(id))
+                {
+                    error = "双方不能选择相同的牌：" + id;
+                    return false;
+                }
+            }
 
             _playerIds = Copy(playerIds);
             _monsterIds = Copy(monsterIds);

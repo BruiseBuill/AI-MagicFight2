@@ -126,6 +126,11 @@ namespace MagicBrawl.App
             get { return _tab == 0 ? _playerIds : _enemyIds; }
         }
 
+        private List<string> OtherIds
+        {
+            get { return _tab == 0 ? _enemyIds : _playerIds; }
+        }
+
         private void OnTabClicked(int index)
         {
             _tab = index == 1 ? 1 : 0;
@@ -146,6 +151,12 @@ namespace MagicBrawl.App
             if (at >= 0)
             {
                 ids.RemoveAt(at);
+            }
+            else if (OtherIds.Contains(id))
+            {
+                Refresh();
+                _view.SetHint("这张牌已被另一方选走 —— 双方共用同一副牌，不能重复。");
+                return;
             }
             else if (ids.Count >= BattleLaunch.DeckSize)
             {

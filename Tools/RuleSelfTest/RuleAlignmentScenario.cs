@@ -122,6 +122,19 @@ namespace MagicBrawl.SelfTest
         {
             var engine = New(first, second);
             var plain = new CardDef(0, "fixture", "Fixture", 5, 1, new EffectDef[0]);
+
+            // 2026-10-31：牌堆改成「一局只有一副」后，这里必须把真实卡表残牌清掉，
+            // 否则第 2 回合起双方会从共用牌堆里抽到真实效果牌，确定性僵局被打破。
+            while (engine.State.Of(0).Deck.Remaining > 0)
+            {
+                engine.State.Of(0).Deck.Draw();
+            }
+
+            for (int i = 0; i < 40; i++)
+            {
+                engine.State.Of(0).Deck.Return(plain);
+            }
+
             for (int seat = 0; seat < 2; seat++)
             {
                 engine.State.Of(seat).Hand.Clear();

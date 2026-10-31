@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace MagicBrawl.Core
@@ -20,11 +20,12 @@ namespace MagicBrawl.Core
         public readonly ControlKind Control;
         public readonly int Team;
         public readonly int InitialHp;
+        /// <summary>本局所有座位共用的实体牌堆（堆顶抽 / 堆底回）。</summary>
         public readonly Deck Deck;
         internal readonly List<ICharacterAbility> Abilities = new List<ICharacterAbility>();
         public bool IsAi { get { return Control == ControlKind.Ai; } }
 
-        internal PlayerState(int seat, ParticipantSetup setup, Rng rng)
+        internal PlayerState(int seat, ParticipantSetup setup, Deck deck)
         {
             Seat = seat;
             Definition = setup.Character;
@@ -34,7 +35,7 @@ namespace MagicBrawl.Core
             InitialHp = Definition.InitialHp;
             Hp = InitialHp;
             MaxHp = Definition.MaxHp;
-            Deck = new Deck(Definition.CreateCardPool().Resolve(), rng);
+            Deck = deck ?? throw new ArgumentNullException(nameof(deck));
             Hand = new List<CardInstance>();
             CoolingZone = new List<CardInstance>();
             foreach (ICharacterAbilityDefinition ability in Definition.Abilities)

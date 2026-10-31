@@ -339,6 +339,40 @@ namespace MagicBrawl.App
         /// </summary>
         private bool _effectBatchShown;
 
+        // ── 演出态冷却区（2026-10-31）────────────────────────────
+        //
+        //  冷却区原来每一拍都从引擎重读（`_driver.CollectCooling`）—— 而引擎是
+        //  「一次 Advance 把整批算完」：回放到「减速 +1」这一拍时，那张牌的剩余冷却
+        //  早就被同一个批次里的「进攻开始 −1」改回去了。界面照着终态画，牌直接被摆回
+        //  原行，**位移动画一次都没起**。用户看到的「减速了但牌不动」就是这么来的，
+        //  不是两段动画抵消，是根本只有一段（而且那一段画的是终态）。
+        //
+        //  这里按 CooldownChangedEvent / CardRemovedEvent **增量**维护一份「已播到当前拍」
+        //  的冷却区，回放期间用它绑定：
+        //    · 减速拍 → 牌从旧行滑到新行（真的动了）；
+        //    · 回合开始拍 → 不动；
+        //    · 进攻开始 −1 拍 → 再滑回来。
+        //  回放结束后（`BattleDriver.IsPlayingBeats == false`）一律以引擎重建，
+        //  任何时刻都不会和规则跑偏 —— 这也让「决策拍读到的状态」永远是引擎真值。
+
+        /// <summary>座位 → 演出态冷却区（按 <c>CardInstance.Uid</c> 配对，顺序即摆位顺序）。</summary>
+        private readonly Dictionary<int, List<CardSnapshot>> _coolingLive = new Dictionary<int, List<CardSnapshot>>();
+
+        /// <summary>演出态是否已经建立过（首帧 / 重开一局必须重建一次，否则是空表）。</summary>
+        private bool _coolingLiveValid;
+
+        /// <summary>
+        /// 本批冷却演出里「玩家被减速」那一下要多停多久（秒）—— 2026-10-31。
+        ///
+        /// <para><b>为什么不直接写 <see cref="_pendingHold"/></b>：那个字段每条事件开头都会被
+        /// 清零，而一批冷却事件只在<b>末条</b>刷新 + 等待。减速那条写进去的值会被末条
+        /// （通常是非减速的那几张）整个盖掉 —— 今天 16:15 踩过这个坑。所以跨条的状态单独放这里，
+        /// 只有「遇上非冷却拍」才清零（与 <see cref="_effectBatchShown"/> 同一条批次边界线）。</para>
+        ///
+        /// <para><b>只影响演出</b>：减速本身早在引擎里结算完了，这里只是「这一拍让玩家看清」。</para>
+        /// </summary>
+        private float _slowHold;
+
         /// <summary>准备标记条是否已经接过线（<see cref="EnsurePreparedBar"/> 幂等用）。</summary>
         private bool _preparedWired;
 
@@ -597,6 +631,7 @@ namespace MagicBrawl.App
             if (_resultWin != null)
             {
                 _resultWin.ContinueClicked += HandleResultWinContinue;
+                _resultWin.HomeClicked += HandleQuitBattle;
             }
 
             if (_resultLose != null)
@@ -622,6 +657,7 @@ namespace MagicBrawl.App
             if (_resultWin != null)
             {
                 _resultWin.ContinueClicked -= HandleResultWinContinue;
+                _resultWin.HomeClicked -= HandleQuitBattle;
             }
         }
 
@@ -732,6 +768,10 @@ namespace MagicBrawl.App
                 _monster.Revive();
                 _monster.PlayIdle();
             }
+
+            // 新一局：演出态冷却区必须重建 —— 座位可能换了、上一局的牌全部作废。
+            // 紧接着的 RefreshAll 会以引擎（此刻是空的）重建它。
+            _coolingLiveValid = false;
 
             RefreshAll();
         }
@@ -1089,9 +1129,65 @@ namespace MagicBrawl.App
             }
 
             // 「一批区域改动」的边界：遇上别的节拍就重开（见 _effectBatchShown 的说明）
-            if (!(e is CooldownChangedEvent))
+            //
+            // ⚠ 2026-10-31：回手（CardReturnedEvent）是 FlushCooldown 夹在两条冷却事件之间的
+            //   附属事件 —— 它属于**同一批冷却**，不能拿来当边界。否则「区域减速 → 某张回手
+            //   → 剩下的减速」会被当成两批：提示条报两次，_slowHold 也会被中途清掉。
+            bool coolingBeat = e is CooldownChangedEvent || e is CardReturnedEvent;
+            if (!coolingBeat)
             {
                 _effectBatchShown = false;
+                _slowHold = 0f;
+            }
+
+            // 2026-10-31：冷却变化要**等卡牌滑到新行**再进下一拍。
+            //
+            // 冷却区按剩余冷却分行（CooldownView.BindGrouped），加速 / 减速会把迷你卡
+            // 从一行挪到另一行，走的是 UiPositionMotion（0.24s）。原来这一拍的节拍只有
+            // 0.06s —— 命中多张时卡片还在滑，下一拍就刷新了；若这批效果是本回合最后一个，
+            // 紧接着就是对方进攻，动画等于被截断（用户看到的是「快速播放 / 省略掉」）。
+            //
+            // ⚠ 只加等待、不改规则：什么时候能动下一拍仍然由引擎的决策点决定，
+            //   这里只是把「这一拍的演出还没演完」如实报给 driver（BeatHold 的既有用途）。
+            if (e is CooldownChangedEvent)
+            {
+                var change = ((CooldownChangedEvent)e).Change;
+
+                // 先记账再刷新：这一拍的冷却区要用「事件累加出来的那一刻」来画，
+                // 否则读引擎终态会让减速那一格直接画在原行（见 _coolingLive 的说明）。
+                ApplyCoolingLive(change);
+
+                // 2026-10-31（用户口径）：**玩家自己的牌被减速时，那一格要走够 0.7 秒**。
+                // 判据只看事件本身 —— 谁的牌 + 剩余冷却变大（减速 / 重置冷却），不涉及规则。
+                // 时长按 uid 下给 CooldownView，同批里别人的牌仍然走标准的 0.24s。
+                if (change.Card != null
+                    && change.Card.OwnerSeat == LocalSeat
+                    && change.To > change.From)
+                {
+                    _slowHold = Mathf.Max(_slowHold, UiLayout.SlowShiftSeconds);
+
+                    if (_cooldown != null)
+                    {
+                        _cooldown.SetCardMoveSeconds(change.Card.Uid, UiLayout.SlowShiftSeconds);
+                    }
+                }
+
+                // 跨条累积：一批冷却只在末条刷新/等待，写在 _pendingHold 里会被末条盖掉，
+                // 所以这里每条都按「当前累积到的最大时长」重算一次。
+                _pendingHold = Mathf.Max(_pendingHold,
+                    Mathf.Max(UiPositionMotion.MoveSeconds, _slowHold) + 0.06f);
+            }
+
+            // 批末正好是「回手」时也要带上前面累积的停顿（它自己不产生冷却事件）
+            if (e is CardReturnedEvent && _slowHold > 0f)
+            {
+                _pendingHold = Mathf.Max(_pendingHold, _slowHold + 0.06f);
+            }
+
+            // 移出游戏（漩涡）是唯一一条不发冷却事件却改冷却区的路径，单独记账。
+            if (e is CardRemovedEvent)
+            {
+                DropCoolingLive(((CardRemovedEvent)e).Card);
             }
 
             if (e is TurnStartedEvent)
@@ -2007,8 +2103,12 @@ namespace MagicBrawl.App
             // M35：两侧冷却区都要参与配对 —— 玩家的牌与怪物的牌都会从头顶飞向各自的槽
             if (_transit != null) _transit.CaptureBeforeBind(_handBuf, _playerCoolingBuf, _enemyCoolingBuf);
             _driver.CollectHand(LocalSeat, _handBuf);
-            _driver.CollectCooling(LocalSeat, _playerCoolingBuf);
-            _driver.CollectCooling(OpponentSeat, _enemyCoolingBuf);
+
+            // 冷却区取「演出态」而不是引擎现值（见 _coolingLive 的说明）：
+            // 回放中读引擎会读到整批算完的终态，减速那一格位移会被直接跳过。
+            SyncCoolingLive();
+            CopyCoolingLive(LocalSeat, _playerCoolingBuf);
+            CopyCoolingLive(OpponentSeat, _enemyCoolingBuf);
 
             if (_hand != null)
             {
@@ -2051,6 +2151,132 @@ namespace MagicBrawl.App
             DetectPlayedDepartures();
 
             if (_transit != null) _transit.AnimateAfterBind(_handBuf, _playerCoolingBuf, _enemyCoolingBuf);
+        }
+
+        /// <summary>
+        /// 需要时把演出态冷却区与引擎对齐（见 <see cref="_coolingLive"/> 的说明）。
+        ///
+        /// <para><b>只在回放之外重建</b>：回放期间引擎已经是终态，重建就等于把后面几拍
+        /// 的结果提前画出来 —— 那正是要修的那个 bug。回放中保持事件累加的结果不动。</para>
+        ///
+        /// <para>回放结束后必然会走到一次（决策拍 / 玩家操作引发的刷新），所以不会长期漂移。</para>
+        /// </summary>
+        private void SyncCoolingLive()
+        {
+            if (_coolingLiveValid && _driver != null && _driver.IsPlayingBeats)
+            {
+                return;
+            }
+
+            _coolingLive.Clear();
+
+            int seats = _driver == null ? 0 : _driver.ParticipantCount;
+            for (int seat = 0; seat < seats; seat++)
+            {
+                var list = new List<CardSnapshot>();
+                _driver.CollectCooling(seat, list);
+                _coolingLive[seat] = list;
+            }
+
+            _coolingLiveValid = true;
+        }
+
+        /// <summary>把某个座位的演出态复制进渲染缓冲（<c>BindBoth</c> 的入参）。</summary>
+        private void CopyCoolingLive(int seat, List<CardSnapshot> sink)
+        {
+            sink.Clear();
+
+            List<CardSnapshot> live;
+            if (_coolingLive.TryGetValue(seat, out live) && live != null)
+            {
+                sink.AddRange(live);
+            }
+        }
+
+        /// <summary>
+        /// 把一条 <see cref="CooldownChangedEvent"/> 记进演出态。
+        ///
+        /// <para><b>只动「已播到」的显示数据，不碰规则</b>：这张牌真实剩几回合仍然只由引擎决定；
+        /// 这里只回答「演到这一拍时，界面上该显示几」。数值取事件的 <c>To</c> 而不是
+        /// <c>CardInstance.RemainingCooldown</c> —— 后者是终态，可能已经被同一批后面的效果改过。</para>
+        /// </summary>
+        private void ApplyCoolingLive(CooldownChange change)
+        {
+            if (!_coolingLiveValid || change.Card == null)
+            {
+                // Card == null = 「无匹配目标」的占位事件（CooldownOps.ApplyZone），没有牌要动
+                return;
+            }
+
+            List<CardSnapshot> live;
+            if (!_coolingLive.TryGetValue(change.Card.OwnerSeat, out live) || live == null)
+            {
+                return;
+            }
+
+            int index = IndexOfUid(live, change.Card.Uid);
+
+            if (change.ReturnedToHand || change.To <= 0)
+            {
+                if (index >= 0)
+                {
+                    live.RemoveAt(index);
+                }
+
+                return;
+            }
+
+            CardSnapshot snapshot = CardSnapshot.From(change.Card);
+            snapshot.RemainingCooldown = change.To;
+            snapshot.InCoolingZone = true;
+
+            if (index >= 0)
+            {
+                live[index] = snapshot;
+            }
+            else
+            {
+                live.Add(snapshot);
+            }
+        }
+
+        /// <summary>
+        /// 一张牌被移出游戏（漩涡）—— 冷却区里把它抹掉。
+        ///
+        /// <para>这是唯一一条<b>不发 <see cref="CooldownChangedEvent"/></b> 却会改冷却区的路径
+        /// （<c>CooldownOps.RemoveFromGame</c> 直接摘列表，事件由 <c>CardRemovedEvent</c> 带出）。</para>
+        /// </summary>
+        private void DropCoolingLive(CardInstance card)
+        {
+            if (!_coolingLiveValid || card == null)
+            {
+                return;
+            }
+
+            List<CardSnapshot> live;
+            if (!_coolingLive.TryGetValue(card.OwnerSeat, out live) || live == null)
+            {
+                return;
+            }
+
+            int index = IndexOfUid(live, card.Uid);
+            if (index >= 0)
+            {
+                live.RemoveAt(index);
+            }
+        }
+
+        private static int IndexOfUid(List<CardSnapshot> cards, int uid)
+        {
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i].Uid == uid)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         /// <summary>

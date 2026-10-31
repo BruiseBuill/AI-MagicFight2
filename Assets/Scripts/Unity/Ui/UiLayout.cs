@@ -510,6 +510,17 @@ namespace MagicBrawl.App
         /// <summary>「继续」键中心的纵向偏移。</summary>
         public const float ResultWinButtonY = -355f;
 
+        /// <summary>
+        /// 胜利界面的<b>次按钮</b>「返回主菜单」（2026-10-31）—— 排在「再来一局」下方。
+        ///
+        /// <para>比主按钮窄一档、矮一档：一眼看出哪个是默认动作。位置由
+        /// <see cref="ResultWinHomeOffsetY"/> 相对主按钮下移得到，两者不用各写一套坐标。</para>
+        /// </summary>
+        public const float ResultWinHomeWidth = 300f;
+        public const float ResultWinHomeHeight = 72f;
+        public const float ResultWinHomeOffsetY = -104f;
+        public const float FontSizeResultWinHome = 28f;
+
         /// <summary>胜利结算的金币奖励（用户 2026-10-04 口径）。</summary>
         public const int ResultWinGoldReward = 20;
 
@@ -781,6 +792,19 @@ namespace MagicBrawl.App
         //  改任何一个数值前先回来核对这张表。
 
         /// <summary>发牌台宽 —— 与选项浮层同宽，都被中央净空（左右信息条各 ±360 占 300）卡死。</summary>
+        //  ── 换牌投放区（2026-10-31）────────────────────────────
+        //
+        //  用户口径：「拖动区域应当略高于手牌区」—— 玩家把要换掉的牌往上轻轻一推
+        //  就够得到，同时又不会被手牌扇面本身盖住（扇面顶端 ≈ HandAreaHeight）。
+        //  宽度取 720：比 8 张手牌摊开的宽度窄，读起来是「手牌上方的一条槽」，
+        //  而不是第二排手牌。高度 132 够放一行提示 + 留出拖动余量。
+        //  ⚠ 这块区域是 **DealView 运行时创建的**（见 DealView.EnsureDropZone），
+        //    不进 Prefab —— 所以改这几个数不用重跑任何构建器。
+        public const float ReplaceZoneWidth = 720f;
+        public const float ReplaceZoneHeight = 132f;
+        public const float ReplaceZoneY = HandAreaHeight + 120f;
+        public const float FontSizeReplaceZone = 26f;
+
         public const float DealWidth = 420f;
 
         /// <summary>发牌台顶部起算 = 提示条底边（16 + 58）+ 12 间隙。</summary>
@@ -1617,6 +1641,20 @@ namespace MagicBrawl.App
         /// 玩家看得见却点不动。末尾 0.1 s 是「淡出最后一帧到 <c>SetActive(false)</c>」的余量。</para>
         /// </summary>
         public const float PeekBeatHoldSeconds = PeekResultHoldSeconds + PeekFadeSeconds + 0.1f;
+
+        // ── 玩家被减速时的冷却位移（2026-10-31）────────────
+
+        /// <summary>
+        /// 玩家<b>自己的牌被减速</b>时，那一格从旧行滑到新行要走多久（秒）。
+        ///
+        /// <para><b>为什么单独给一个时长</b>：标准位移是 0.24 s（<see cref="UiPositionMotion.MoveSeconds"/>），
+        /// 玩家盯着对面出牌时很容易错过自己冷却区里「往后退一格」。用户 2026-10-31 口径：
+        /// 「至少要 0.7 秒的动画，不然很难注意到」。</para>
+        ///
+        /// <para>只对「本机座位的牌 + 剩余冷却变大」生效（<c>BattleUi.HandleBeat</c> 判据），
+        /// 同一批里其它牌仍走标准时长。这一拍之后的等待 = 本值 + 0.06 s 余量。</para>
+        /// </summary>
+        public const float SlowShiftSeconds = 0.7f;
 
         // ── M25b AI 偷看手牌的眼睛提示（2026-10-08）────────────
         //

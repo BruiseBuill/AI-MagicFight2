@@ -232,6 +232,10 @@ namespace MagicBrawl.App
             {
                 _hand.SetMultiSelect(true);
                 _hand.SetMultiSelected(null);
+
+                // 画刷式滑动选牌（2026-10-31）：上限 = 引擎给这一拍的 MaxSelect
+                //（电弧 1 张、磁暴 / 充能可能更多），笔尖扫满就不再增加。
+                _hand.SetPaintSink(Paint, _maxSelect);
             }
 
             gameObject.SetActive(true);
@@ -283,6 +287,7 @@ namespace MagicBrawl.App
                 // 手牌退出多选标记模式、辉光收掉。做在 HideImmediate 里（不是 Hide 里）——
                 // 淡出的那 0.18 s 里手牌还得看得见标记；真收起来时一起清。
                 //（候选在冷却区时 _hand 本来就是 null，这段自然跳过。）
+                _hand.SetPaintSink(null, 0);
                 _hand.SetMultiSelect(false);
                 _hand.SetMultiSelected(null);
                 _hand = null;
@@ -325,26 +330,56 @@ namespace MagicBrawl.App
                 return;   // 不在候选里（例如就是这轮打出去的那张）→ 静默忽略
             }
 
-            int at = IndexOfSelected(target);
-            if (at >= 0)
+            Paint(uid, IndexOfSelected(target) < 0);
+        }
+
+        /// <summary>
+        /// 画刷式选中（2026-10-31）：把一张牌<b>置为</b>选中 / 未选中，<b>不切换</b>。
+        ///
+        /// <para>滑动选牌是一支画笔：笔尖扫过的牌统一变成同一个状态。划到一张已经选中的牌时，
+        /// 加选笔刷原样留着它 —— 逐张 Toggle 会把玩家刚划过的牌反选掉，那正是要修的行为。</para>
+        ///
+        /// <para>上限是引擎给的 <c>MaxSelect</c>（电弧 1 张、磁暴 / 充能 1~N）：
+        /// 满了静默忽略，不顶掉前面已选的。</para>
+        /// </summary>
+        public void Paint(int uid, bool on)
+        {
+            if (!_showing || _closing)
             {
-                _selected.RemoveAt(at);
-                Layout();
-                RefreshConfirm();
-                ApplyHandSelection();
                 return;
             }
 
-            if (_selected.Count >= _maxSelect)
+            Option target = FindByUid(uid);
+            if (target == null)
+            {
+                return;
+            }
+
+            int at = IndexOfSelected(target);
+
+            if (on)
             {
                 // 选满（电弧就是这种：放了一张就不能再放第二张）。
-                // 不弹出提示条 —— 确认键已经亮了，玩家能看出「只能一张」；
-                // 这里只让刚点的那格不被点亮即可。
-                return;
+                // 不弹出提示条 —— 确认键已经亮了，玩家能看出「只能一张」。
+                if (at >= 0 || _selected.Count >= _maxSelect)
+                {
+                    return;
+                }
+
+                _selected.Add(target);
+                Layout(_selected.Count - 1);   // 面板按新张数变宽 + 新落进来的那一格播大回弹
+            }
+            else
+            {
+                if (at < 0)
+                {
+                    return;
+                }
+
+                _selected.RemoveAt(at);
+                Layout();
             }
 
-            _selected.Add(target);
-            Layout(_selected.Count - 1);   // 面板按新张数变宽 + 新落进来的那一格播大回弹
             RefreshConfirm();
             ApplyHandSelection();
         }

@@ -163,6 +163,25 @@ namespace MagicBrawl.App
         /// <summary>本轮 <see cref="BattleEngine.Advance"/> / <c>Submit</c> 累积的待演出事件。</summary>
         private readonly List<BattleEvent> _buffer = new List<BattleEvent>();
 
+        /// <summary>
+        /// 是否正在逐拍回放缓冲事件（2026-10-31）。
+        ///
+        /// <para><b>为什么表现层需要知道这件事</b>：事件是「事后回放」的 —— 一次
+        /// <c>Advance</c> 会把整个批次算完，<b>引擎状态早就走到终态</b>，而这些事件还要
+        /// 按节拍一条条演。界面若在回放中途重读引擎（<c>CollectCooling</c> / <c>CollectHand</c>），
+        /// 读到的是终态而不是「这一拍该有的样子」。</para>
+        ///
+        /// <para>最典型的一例（用户 2026-10-31 报的「减速后牌原地不动」）：引擎依次发出
+        /// 「减速 +1」→「对方半场开始」→「进攻开始 −1」，三条事件一次性算完；回放到
+        /// 「减速 +1」那一拍时，那张牌的剩余冷却已经是 −1 之后的值 —— 界面照着终态画，
+        /// 牌直接被画在原行，**一次位移都没发生**。看起来像「向前向后抵消」，其实是
+        /// 第一次位移压根没画出来。</para>
+        ///
+        /// <para>本属性给 <c>BattleUi</c> 一个门控：回放中（true）用<b>事件累加出来的演出态</b>，
+        /// 回放外（false）才以引擎重建 —— 后者保证任何时刻都不会和规则跑偏。</para>
+        /// </summary>
+        public bool IsPlayingBeats { get; private set; }
+
         private readonly List<string> _log = new List<string>();
 
         private bool _waitingPlayer;
@@ -478,6 +497,8 @@ namespace MagicBrawl.App
             _waitingPlayer = false;
             _pending = default(DecisionSnapshot);
             _activeController = null;
+            // 回放协程被停掉时 IsPlayingBeats 会留在 true（迭代器没有 finally 复位）
+            IsPlayingBeats = false;
             foreach (IParticipantController controller in _controllers.Values) controller.Cancel();
             _controllers.Clear();
             _paused = false;
@@ -600,6 +621,9 @@ namespace MagicBrawl.App
 
             _buffer.RemoveRange(0, count);
 
+            // 从这里到循环结束，引擎状态都是「整批算完的终态」——
+            // 界面必须改用事件累加出来的演出态（见 IsPlayingBeats 的说明）。
+            IsPlayingBeats = true;
             for (int i = 0; i < beats.Count; i++)
             {
                 while (_paused) yield return null;
@@ -614,6 +638,43 @@ namespace MagicBrawl.App
                 if (OnBeat != null)
                 {
                     OnBeat(e);
+                }
+
+                // 2026-10-31：**开局发牌合并成一拍**。
+                //
+                // 发牌事件一拍一张，每拍都会 RaiseStateChanged → BattleUi.RefreshAll
+                // 重建整副手牌（还带飞行 ghost）——12 张牌就是 12 次全量刷新，实测
+                // 「开局到换牌界面」要 4~5 秒。而发牌这件事根本不需要逐张刷新：
+                // 手牌一次性铺开、逐张冒出来的观感交给 HandView 的入场错开（EnterDelay）。
+                //
+                // 判据是「后面紧跟着的还是发牌」，不是「事件总数」—— 效果抽牌（抽 2 张）
+                // 同样合在一拍里，收尾那一张照常刷新 + 等待。
+                if (e is CardDrawnEvent && i + 1 < beats.Count && beats[i + 1] is CardDrawnEvent)
+                {
+                    // 连一帧都不让出：发牌这一段整批在**同一帧**里过完。
+                    // 让出帧只是为了让玩家看到逐张落下，而这件事现在由最后的
+                    // 一次性刷新 + HandView 的入场错开承担 —— 多让 11 帧纯属白等。
+                    continue;
+                }
+
+                // 2026-10-31：**连续的冷却变化也合成一拍**。
+                //
+                // 一次区域减速 / 加速会命中整档（最多 4~5 张），引擎每张发一条
+                // CooldownChangedEvent。逐条刷新 = 迷你卡一张一张挪（相邻两条只隔 0.06s，
+                // 后一张刚开始动、前一张还没到位）；若这一批正好是本回合最后一个效果，
+                // 下一拍（对方进攻）会紧跟着压上来 —— 玩家看到的就是「被快进 / 直接省略」。
+                //
+                // 合并之后：整批在同一帧刷新一次（所有受影响的牌**同时**起动画），
+                // 然后由 BattleUi 把这一拍的等待抬到冷却位移动画长度（0.24s + 余量），
+                // 动画播完才轮到下一拍。日志与逐条提示照旧在 OnBeat 里过。
+                //
+                // ⚠ 判据不能只写「下一条也是 CooldownChangedEvent」：冷却归零回手的那一张，
+                //   引擎会在它自己那条冷却事件后**紧跟一条 CardReturnedEvent**（FlushCooldown），
+                //   那样整批会被回手切成两半 —— 回合开始「冷却区全体前进」就变成几张一起动、
+                //   后面几张各自一拍，观感是「一张一张往前挪」。判据收进 ContinuesCooldownBatch。
+                if (ContinuesCooldownBatch(beats, i))
+                {
+                    continue;
                 }
 
                 RaiseStateChanged();
@@ -631,6 +692,48 @@ namespace MagicBrawl.App
                     yield return null;
                 }
             }
+
+            // 回放结束 = 所有事件都演完了，引擎状态与演出态此刻等价。
+            // 下一次界面刷新会以引擎重建（见 BattleUi.SyncCoolingLive）。
+            IsPlayingBeats = false;
+        }
+
+        /// <summary>
+        /// 这一条是不是「同一批冷却演出」里还要继续往后播的一条（2026-10-31）。
+        ///
+        /// <para><b>为什么要放宽判据</b>：<c>FlushCooldown</c> 逐条发事件时，一张牌若冷却
+        /// 归零回手，会在<b>它自己那条冷却事件后面紧跟一条 <see cref="CardReturnedEvent"/></b>。
+        /// 只判「下一条也是 <see cref="CooldownChangedEvent"/>」的话，回手会把整批切成两半：
+        /// 回合开始时「冷却区全体前进」就变成前几张同帧动、后面几张各自一拍，
+        /// 观感正是用户报的「一张一张往前挪」。回手是这批冷却演出的附属事件，不该打断它。</para>
+        ///
+        /// <para>判据只看事件本身（谁的牌、加还是减都不管），不涉及任何规则判断。</para>
+        /// </summary>
+        private static bool ContinuesCooldownBatch(List<BattleEvent> beats, int i)
+        {
+            BattleEvent e = beats[i];
+            bool cooling = e is CooldownChangedEvent;
+            if (!cooling && !(e is CardReturnedEvent))
+            {
+                return false;
+            }
+
+            int next = i + 1;
+            if (next >= beats.Count)
+            {
+                return false;
+            }
+
+            if (beats[next] is CooldownChangedEvent)
+            {
+                return true;
+            }
+
+            // 回手紧跟在它自己那条冷却事件后面：只要回手之后还接着冷却事件，
+            // 这一条（冷却事件或回手）都属于同一批。
+            return beats[next] is CardReturnedEvent
+                   && next + 1 < beats.Count
+                   && beats[next + 1] is CooldownChangedEvent;
         }
 
         private void RaiseStateChanged()
@@ -794,16 +897,11 @@ namespace MagicBrawl.App
 
             ICardCatalog catalog = GetCardCatalog();
 
-            // 2026-10-30 用户口径：**双方共用一个卡池** —— 整副牌只洗一次，
-            //   座位按顺序切走自己那份 8 张。所以两边的牌永不重复（旧的写法
-            //   是每个座位各洗一遍，同一种子下也可能撞牌）。
-            List<CardDef> shared = ShuffledCatalog(catalog, seed);
-
             var participants = new List<ParticipantSetup>();
             for (int seat = 0; seat < count; seat++)
             {
                 CharacterDefinition character = BaseDefinition(seat);
-                character = character.WithCardPool(DeckFor(seat, seed, catalog, shared)).WithDeal(DealProfile.Duel());
+                character = character.WithCardPool(DeckFor(seat, catalog)).WithDeal(DealProfile.Duel());
 
                 // 2026-10-30：**控制方式改由 GameSettings 决定** —— 主菜单里选的
                 // 「玩家对 AI / AI 对 AI / 玩家对玩家」才是这一局的真相。
@@ -821,9 +919,13 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 这一局给 <paramref name="seat"/> 用的牌组（正好 <see cref="BattleLaunch.DeckSize"/> 张）。
+        /// 这一局给 <paramref name="seat"/> 用的<b>卡池定义</b>。
+        ///
+        /// <para><b>2026-10-31 用户最终口径：一局只有一副实体牌堆</b> —— 引擎把所有座位的
+        /// 卡池求并集后洗成同一副，双方都从堆顶抽、换掉的牌回堆底。标准战斗的卡池就是
+        /// 整张卡表；自定义战斗仍是玩家挑出的 8 张（双方互斥）。</para>
         /// </summary>
-        private CardPool DeckFor(int seat, int seed, ICardCatalog catalog, List<CardDef> shared)
+        private CardPool DeckFor(int seat, ICardCatalog catalog)
         {
             if (BattleLaunch.HasCustomDecks)
             {
@@ -834,67 +936,7 @@ namespace MagicBrawl.App
                 }
             }
 
-            return RandomDeck(catalog, shared, seat);
-        }
-
-        /// <summary>
-        /// 把整张卡表按对局种子<b>洗一次</b>，供所有座位<b>顺序切牌</b>
-        /// （2026-10-30 用户口径：双方共用一个卡池）。
-        ///
-        /// <para><b>为什么用 Core 的 <see cref="Rng"/> 而不是 <c>UnityEngine.Random</c></b>：
-        /// 「重试 = 同一种子重开」要连牌组一起复现。这里只洗一次，
-        /// 所以座位之间不需要再掺种子 —— 掺了就会各自洗一副，两边必然可能撞牌。</para>
-        /// </summary>
-        private static List<CardDef> ShuffledCatalog(ICardCatalog catalog, int seed)
-        {
-            IReadOnlyList<CardDef> all = catalog.All;
-            var shuffled = new List<CardDef>(all.Count);
-            for (int i = 0; i < all.Count; i++)
-            {
-                if (all[i] != null)
-                {
-                    shuffled.Add(all[i]);
-                }
-            }
-
-            var rng = new Rng(unchecked(seed * 397 ^ 7919));
-            rng.Shuffle(shuffled);
-            return shuffled;
-        }
-
-        /// <summary>
-        /// 从<b>已经洗好的同一副牌</b>里切走 <paramref name="seat"/> 那一段
-        /// （正好 <see cref="BattleLaunch.DeckSize"/> 张）。
-        ///
-        /// <para>座位 0 拿前 8 张、座位 1 拿接下来 8 张 …… 因此两边的牌<b>一定不重复</b>。
-        /// 牌数不够切（座位数 × 8 &gt; 卡表张数，当前 44 张最多容纳 5 个座位）时，
-        /// 才退回「按座位派生一颗种子各洗一副」的旧口径 —— 那种情况才可能撞牌，
-        /// 但至少不会因为凑不满 8 张而在开局当场抛异常。</para>
-        /// </summary>
-        private static CardPool RandomDeck(ICardCatalog catalog, List<CardDef> shared, int seat)
-        {
-            int start = seat * BattleLaunch.DeckSize;
-            var ids = new List<string>(BattleLaunch.DeckSize);
-
-            if (start + BattleLaunch.DeckSize <= shared.Count)
-            {
-                for (int i = start; i < start + BattleLaunch.DeckSize; i++)
-                {
-                    ids.Add(shared[i].Id);
-                }
-
-                return new CardPool(ids, catalog);
-            }
-
-            var fallback = new List<CardDef>(shared);
-            var rng = new Rng(unchecked((seat + 1) * 7919 + shared.Count));
-            rng.Shuffle(fallback);
-            for (int i = 0; i < fallback.Count && i < BattleLaunch.DeckSize; i++)
-            {
-                ids.Add(fallback[i].Id);
-            }
-
-            return new CardPool(ids, catalog);
+            return CardPool.AllCards(catalog);
         }
 
         /// <summary>
@@ -991,12 +1033,16 @@ namespace MagicBrawl.App
 
             if (e is CardDrawnEvent)
             {
-                return 0.18f;
+                // 2026-10-31：发牌原本 0.18s/张 —— 开局双方各 6 张就是 2.16 秒，
+                // 玩家盯着手牌一张一张往外冒，进不了换牌。压到 0.06（约 4 帧一张），
+                // 逐张出现的观感交给 HandView 的入场动画，不再由节拍扛。
+                return 0.06f;
             }
 
             if (e is CardReturnedEvent)
             {
-                return 0.18f;
+                // 冷却结束回手 —— 与发牌同一档，不必比它慢。
+                return 0.12f;
             }
 
             if (e is HandRevealedEvent)
@@ -1011,7 +1057,8 @@ namespace MagicBrawl.App
 
             if (e is ReplaceEvent)
             {
-                return 0.22f;
+                // 换牌只是「手上那张换成了别的」，不是一段演出；0.22 攒在 3 张上就是 0.66 秒。
+                return 0.12f;
             }
 
             if (e is SelfDestructEvent)

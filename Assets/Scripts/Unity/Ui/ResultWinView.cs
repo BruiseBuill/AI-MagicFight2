@@ -61,6 +61,12 @@ namespace MagicBrawl.App
         /// </summary>
         public event Action<int> ContinueClicked;
 
+        /// <summary>
+        /// 玩家点了「返回主菜单」（2026-10-31）—— 收起结算界面、回 <c>Home</c>。
+        /// 具体切哪个场景由 <see cref="BattleUi"/> 决定，本类只报事件（同 <see cref="ContinueClicked"/>）。
+        /// </summary>
+        public event Action HomeClicked;
+
         /// <summary>本局三张候选的卡 ID（与 <see cref="_cards"/> 对齐；空串 = 该位没有牌）。</summary>
         private readonly string[] _candidateIds = new string[UiLayout.ResultWinCardCount];
 
@@ -83,6 +89,15 @@ namespace MagicBrawl.App
         /// 不会报错，也不会把结算面板弄坏。</para>
         /// </summary>
         private GameObject[] _rewardNodes;
+
+        /// <summary>
+        /// 「返回主菜单」这枚次按钮（2026-10-31）。
+        ///
+        /// <para><b>运行时克隆「继续」键得到</b>：它要的底板 / 金边 / 两侧小菱形与主键完全同源，
+        /// 自己再拼一套只会做出一个「大体像、细节不一样」的按钮。克隆之后改尺寸、位置、文案、
+        /// 底板颜色 —— 这些都是运行时值，不写进任何 Prefab，也不用重跑 M7→M8→M11。</para>
+        /// </summary>
+        private Button _homeButton;
 
         private bool _homeRecorded;
         private bool _tweensBound;
@@ -147,6 +162,7 @@ namespace MagicBrawl.App
             }
 
             BindTweens();
+            EnsureHomeButton();
         }
 
         private void OnDestroy()
@@ -154,6 +170,11 @@ namespace MagicBrawl.App
             if (_continueButton != null)
             {
                 _continueButton.onClick.RemoveListener(OnContinueClicked);
+            }
+
+            if (_homeButton != null)
+            {
+                _homeButton.onClick.RemoveListener(OnHomeClicked);
             }
 
             if (_cards != null)
@@ -496,6 +517,84 @@ namespace MagicBrawl.App
             {
                 PunchSlot(index);
             }
+        }
+
+        /// <summary>
+        /// 建「返回主菜单」次按钮（幂等）。
+        ///
+        /// <para>⚠ 克隆必须在 <c>Awake</c> 之后：整块界面默认是<b>失活</b>的，
+        /// 失活节点上的 <c>Awake</c> 不会跑；第一次 <see cref="Show"/> 把它激活时才走到这里 ——
+        /// 那时父节点的布局已经生效，锚点 / 位置都能照抄主按钮。</para>
+        /// </summary>
+        private void EnsureHomeButton()
+        {
+            if (_homeButton != null || _continueButton == null)
+            {
+                return;
+            }
+
+            Transform parent = _continueButton.transform.parent;
+            if (parent == null)
+            {
+                return;
+            }
+
+            GameObject clone = Instantiate(_continueButton.gameObject, parent);
+            clone.name = "HomeButton";
+            clone.transform.SetAsLastSibling();
+
+            var rt = (RectTransform)clone.transform;
+            var src = (RectTransform)_continueButton.transform;
+            rt.anchoredPosition = src.anchoredPosition + new Vector2(0f, UiLayout.ResultWinHomeOffsetY);
+            rt.sizeDelta = new Vector2(UiLayout.ResultWinHomeWidth, UiLayout.ResultWinHomeHeight);
+
+            // 底板压成暗紫：它是次按钮，不该和「再来一局」抢眼。
+            Transform plate = clone.transform.Find("Plate");
+            if (plate != null)
+            {
+                Image img = plate.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.color = UiTheme.ResultWinBannerPlate;
+                }
+            }
+
+            TMP_Text label = clone.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.text = "返回主菜单";
+                label.fontSize = UiLayout.FontSizeResultWinHome;
+                label.color = UiTheme.ResultWinTitle;
+            }
+
+            _homeButton = clone.GetComponent<Button>();
+            if (_homeButton != null)
+            {
+                // 克隆不携带运行时监听（UnityEvent 只在编辑器里持久化的那部分会被复制），
+                // 这里先清一遍再挂自己的，免得以后有人给主键配了持久监听被一起带过来。
+                _homeButton.onClick.RemoveAllListeners();
+                _homeButton.onClick.AddListener(OnHomeClicked);
+            }
+        }
+
+        private void OnHomeClicked()
+        {
+            if (!_open)
+            {
+                return;
+            }
+
+            _open = false;
+            StopClosing();
+            UiPanelAnimator.Close(_root, () =>
+            {
+                Hide();
+                Action handler = HomeClicked;
+                if (handler != null)
+                {
+                    handler();
+                }
+            });
         }
 
         private void OnContinueClicked()
