@@ -74,13 +74,28 @@ namespace MagicBrawl.Core
         public readonly IReadOnlyList<ParticipantSetup> Participants;
         public readonly IBattleMode Mode;
         public readonly EffectRegistry Effects;
-        public BattleSetup(IEnumerable<ParticipantSetup> participants, IBattleMode mode = null, EffectRegistry effects = null)
+
+        /// <summary>
+        /// <b>牌堆口径</b>（2026-11-01 新增）。
+        ///
+        /// <para><c>true</c> = <b>所有座位共用一副</b>：把各自卡池求并集，开局洗一次，
+        /// 谁抽到什么全看运气。<b>标准战斗走这条</b>（每座卡池都是整张卡表，并集还是整表，
+        /// 语义就是「一局一副牌堆」）。</para>
+        ///
+        /// <para><c>false</c> = <b>每个座位一副</b>：各自洗自己的卡池。<b>自定义战斗走这条</b> ——
+        /// 玩家挑的 8 张只归玩家、对手挑的 8 张只归对手，不会串味。</para>
+        /// </summary>
+        public readonly bool ShareDeck;
+
+        public BattleSetup(IEnumerable<ParticipantSetup> participants, IBattleMode mode = null,
+            EffectRegistry effects = null, bool shareDeck = true)
         {
             if (participants == null) throw new ArgumentNullException(nameof(participants));
             var list = new List<ParticipantSetup>(participants);
             if (list.Count < 2 || list.Contains(null)) throw new ArgumentException("对局至少需要两名有效角色。");
             Participants = list.AsReadOnly(); Mode = mode ?? new DuelMode(); Mode.Validate(Participants);
             Effects = effects ?? EffectRegistry.CreateDefault();
+            ShareDeck = shareDeck;
         }
         public static BattleSetup Default()
         {

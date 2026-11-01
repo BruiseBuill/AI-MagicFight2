@@ -20,7 +20,11 @@ namespace MagicBrawl.Core
         public readonly ControlKind Control;
         public readonly int Team;
         public readonly int InitialHp;
-        /// <summary>本局所有座位共用的实体牌堆（堆顶抽 / 堆底回）。</summary>
+        /// <summary>
+        /// 这个座位的实体牌堆（堆顶抽 / 堆底回）。
+        /// 标准战斗里两个座位指向<b>同一个</b> <see cref="Deck"/>（整表并集洗一副）；
+        /// 自定义战斗里各指向自己那一副（见 <see cref="BattleSetup.ShareDeck"/>）。
+        /// </summary>
         public readonly Deck Deck;
         internal readonly List<ICharacterAbility> Abilities = new List<ICharacterAbility>();
         public bool IsAi { get { return Control == ControlKind.Ai; } }

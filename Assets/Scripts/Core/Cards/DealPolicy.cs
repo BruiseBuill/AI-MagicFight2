@@ -4,9 +4,11 @@ using System.Collections.Generic;
 namespace MagicBrawl.Core
 {
     /// <summary>
-    /// 本局的<b>唯一实体牌堆</b>（2026-10-31 用户口径：双方共用同一副）。
-    /// 构造时洗一次；之后所有座位都只从<b>堆顶</b>抽牌，被换掉的牌<b>回堆底</b> ——
-    /// 同一张实体牌同一时刻只会在一个地方，因此两个座位不可能拿到相同的牌。
+    /// 一副<b>实体牌堆</b>。构造时洗一次；之后只从<b>堆顶</b>抽牌，被换掉的牌<b>回堆底</b> ——
+    /// 同一张实体牌同一时刻只会在一个地方。
+    ///
+    /// <para><b>一局有几副</b>看 <see cref="BattleSetup.ShareDeck"/>：
+    /// 标准战斗两个座位指向同一副（整表并集），自定义战斗各有一副（各洗自己挑的 8 张）。</para>
     /// </summary>
     public sealed class Deck
     {

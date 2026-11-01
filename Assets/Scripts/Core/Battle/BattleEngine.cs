@@ -166,30 +166,58 @@ namespace MagicBrawl.Core
             if (setup == null) throw new ArgumentNullException(nameof(setup));
             var rng = new Rng(seed);
             var state = new BattleState(rng, setup.Mode);
-            // 2026-10-31 用户口径：一局只有一副实体牌堆。所有座位的卡池求并集
-            //（同一张卡只进这一副），开局洗一次；之后每个座位都从堆顶抽、换掉的牌回堆底。
-            var sharedDefs = new List<CardDef>();
-            var sharedIds = new HashSet<string>(StringComparer.Ordinal);
-            for (int seat = 0; seat < setup.Participants.Count; seat++)
+
+            // 牌堆口径（见 BattleSetup.ShareDeck）：
+            //   · 共用（标准战斗）—— 所有座位卡池求并集，开局洗一次，双方都从堆顶抽；
+            //   · 独享（自定义战斗）—— 每个座位洗自己的卡池，玩家挑的 8 张只归玩家。
+            // 2026-11-01 用户口径：自定义战斗必须各洗各的 —— 原来并集成 16 张，
+            // 玩家开局 6 张里平均 3 张是对手选的，表现成「我选的牌没变成我的牌」。
+            Deck sharedDeck = null;
+            if (setup.ShareDeck)
             {
-                foreach (CardDef def in setup.Participants[seat].Character.CreateCardPool().Resolve())
+                var sharedDefs = new List<CardDef>();
+                var sharedIds = new HashSet<string>(StringComparer.Ordinal);
+                for (int seat = 0; seat < setup.Participants.Count; seat++)
                 {
-                    if (sharedIds.Add(def.Id))
+                    foreach (CardDef def in setup.Participants[seat].Character.CreateCardPool().Resolve())
                     {
-                        sharedDefs.Add(def);
+                        if (sharedIds.Add(def.Id))
+                        {
+                            sharedDefs.Add(def);
+                        }
                     }
                 }
+
+                sharedDeck = new Deck(sharedDefs, rng);
             }
 
-            var sharedDeck = new Deck(sharedDefs, rng);
             for (int seat = 0; seat < setup.Participants.Count; seat++)
             {
-                state.Players.Add(new PlayerState(seat, setup.Participants[seat], sharedDeck));
+                // ⚠ 独立牌堆那一路必须在**同一次循环里按座位顺序** new —— 共用同一个 rng，
+                //   洗牌次序固定，同种子复现照样成立。
+                Deck seatDeck = sharedDeck;
+                if (seatDeck == null)
+                {
+                    var defs = new List<CardDef>(setup.Participants[seat].Character.CreateCardPool().Resolve());
+                    seatDeck = new Deck(defs, rng);
+                }
+
+                state.Players.Add(new PlayerState(seat, setup.Participants[seat], seatDeck));
             }
 
+            // 效果校验：共用时一副就够；独享时逐座位过一遍（每座都是不同的牌）。
             var effects = setup.Effects;
-            foreach (CardDef card in sharedDeck.Snapshot())
-                foreach (EffectDef effect in card.Effects) effects.Validate(effect);
+            if (sharedDeck != null)
+            {
+                foreach (CardDef card in sharedDeck.Snapshot())
+                    foreach (EffectDef effect in card.Effects) effects.Validate(effect);
+            }
+            else
+            {
+                foreach (PlayerState player in state.Players)
+                    foreach (CardDef card in player.Deck.Snapshot())
+                        foreach (EffectDef effect in card.Effects) effects.Validate(effect);
+            }
 
             var engine = new BattleEngine(state, dealPolicy, effects);
 
@@ -418,9 +446,25 @@ namespace MagicBrawl.Core
             return player.Definition.Deal != null ? player.Definition.Deal.InitialHandSize : _deal.InitialHandSize;
         }
 
+        /// <summary>
+        /// 开局可换张数 = <b>配置额度</b>与<b>牌堆剩余</b>取小（2026-11-01）。
+        ///
+        /// <para>为什么要裁这一刀：自定义战斗是「各洗各的 8 张」，发完开局 6 张后堆里只剩 2 张。
+        /// 额度若仍是 3，第 3 张会在旧牌 <see cref="Deck.Return"/> 回堆底之后被抽回来 ——
+        /// 实测「换完手牌和换之前一模一样」（`d,g,f → h,e,d`），换牌整个空转。</para>
+        ///
+        /// <para>裁成 min 之后：8 张牌堆换 2 张就把堆抽空，绝不回抽自己；
+        /// 标准战斗是整表 44 张，min 恒等于配置额度 3，行为一个字没变。</para>
+        /// </summary>
         private int InitialReplaceLimitOf(PlayerState player)
         {
-            return player.Definition.Deal != null ? player.Definition.Deal.InitialReplaceLimit : _deal.InitialReplaceLimit;
+            int configured = player.Definition.Deal != null
+                ? player.Definition.Deal.InitialReplaceLimit
+                : _deal.InitialReplaceLimit;
+
+            // ⚠ 只在开局这一趟裁 —— 补牌那一趟（ReplaceLimitOnTurnOf）不动：
+            //   它本来就只有 0/1 张，且手牌已经满了，堆剩余不该再改它的语义。
+            return configured < player.Deck.Remaining ? configured : player.Deck.Remaining;
         }
 
         private int DrawOnTurnOf(PlayerState player, int turnNumber)

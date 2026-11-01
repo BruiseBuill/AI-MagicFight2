@@ -917,8 +917,13 @@ namespace MagicBrawl.App
                     : seat;
                 participants.Add(new ParticipantSetup(character, GameSettings.ControlOf(seat), team));
             }
+            // 2026-11-01：牌堆口径跟着玩法走 ——
+            //   标准战斗：所有座位卡池求并集洗成一副（整表，本来就是同一副）；
+            //   自定义战斗：**各洗各的 8 张**。原来并集成 16 张，玩家开局 6 张里平均
+            //   3 张是对手选的，表现成「我选的牌没变成我的牌」。
             return new BattleSetup(participants, ModeFactory == null ? new DuelMode() : ModeFactory(),
-                EffectRegistryFactory == null ? null : EffectRegistryFactory());
+                EffectRegistryFactory == null ? null : EffectRegistryFactory(),
+                shareDeck: !BattleLaunch.HasCustomDecks);
         }
 
         /// <summary>

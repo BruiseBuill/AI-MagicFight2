@@ -7,14 +7,18 @@ using UnityEngine.SceneManagement;
 namespace MagicBrawl.App
 {
     /// <summary>
-    /// <b>自定义战斗 · 牌组编成的规则层</b>（2026-10-28 · 大改新增）。
+    /// <b>自定义战斗 · 牌组编成的规则层</b>（2026-10-28 新增，2026-11-01 跟进新版界面）。
     ///
     /// <para><b>状态只有两个列表</b>：<see cref="_playerIds"/> 与 <see cref="_enemyIds"/>，
     /// 各最多 <see cref="BattleLaunch.DeckSize"/> 张。<b>页签（<see cref="_tab"/>）只决定
     /// 「现在点卡表是在改哪一边」</b>，不是第三种状态。</para>
     ///
-    /// <para><b>点一张卡的语义</b>：已在当前页签里 → 移除；还不在且没满 → 加入；
-    /// 已满 → 什么都不做，只在提示行说一句。</para>
+    /// <para><b>点一张卡的语义</b>：已在当前页签里 → 移除；已被另一方选走 → 什么都不做，
+    /// 只在提示行说一句；还不在且没满 → 加入；已满 → 什么都不做，提示一句。</para>
+    ///
+    /// <para><b>2026-11-01 新增的两条入口</b>：8 格右上角的 × （<see cref="OnSlotRemoveClicked"/>）
+    /// 与底部「清空」（<see cref="OnClearClicked"/>）—— 都只是同一份状态的不同写法，
+    /// 改完统一走 <see cref="Refresh"/>，界面永远是数据的投影。</para>
     ///
     /// <para><b>开战</b>：两边都满 8 张才亮。点下去走
     /// <see cref="BattleLaunch.TrySetCustom"/>（<b>校验只有那一处</b>），成功才切战斗场景。</para>
@@ -70,8 +74,10 @@ namespace MagicBrawl.App
 
             _view.TabClicked += OnTabClicked;
             _view.CatalogCardClicked += OnCatalogCardClicked;
+            _view.SlotRemoveClicked += OnSlotRemoveClicked;
             _view.StartClicked += OnStartClicked;
             _view.BackClicked += OnBackClicked;
+            _view.ClearClicked += OnClearClicked;
 
             _tab = 0;
             Refresh();
@@ -117,8 +123,10 @@ namespace MagicBrawl.App
 
             _view.TabClicked -= OnTabClicked;
             _view.CatalogCardClicked -= OnCatalogCardClicked;
+            _view.SlotRemoveClicked -= OnSlotRemoveClicked;
             _view.StartClicked -= OnStartClicked;
             _view.BackClicked -= OnBackClicked;
+            _view.ClearClicked -= OnClearClicked;
         }
 
         private List<string> CurrentIds
@@ -155,7 +163,7 @@ namespace MagicBrawl.App
             else if (OtherIds.Contains(id))
             {
                 Refresh();
-                _view.SetHint("这张牌已被另一方选走 —— 双方共用同一副牌，不能重复。");
+                _view.SetHint("这张牌已被另一方选走 —— 双方共用同一张卡表，同一张不能重复。");
                 return;
             }
             else if (ids.Count >= BattleLaunch.DeckSize)
@@ -169,6 +177,26 @@ namespace MagicBrawl.App
                 ids.Add(id);
             }
 
+            Refresh();
+        }
+
+        /// <summary>8 格右上角的 ×：把那一格清掉。</summary>
+        private void OnSlotRemoveClicked(int slotIndex)
+        {
+            List<string> ordered = ResolveIds(CurrentIds);
+            if (slotIndex < 0 || slotIndex >= ordered.Count)
+            {
+                return;
+            }
+
+            CurrentIds.Remove(ordered[slotIndex]);
+            Refresh();
+        }
+
+        /// <summary>底部「清空」：只清当前页签这一方，不动另一边。</summary>
+        private void OnClearClicked()
+        {
+            CurrentIds.Clear();
             Refresh();
         }
 
@@ -197,16 +225,39 @@ namespace MagicBrawl.App
             _view.SetTab(_tab, _playerIds.Count, _enemyIds.Count);
 
             var picked = new HashSet<string>(CurrentIds);
-            _view.ShowCatalog(_cards, picked);
+            var taken = new HashSet<string>(OtherIds);
+            _view.ShowCatalog(_cards, picked, taken);
             _view.ShowDeck(Resolve(CurrentIds));
 
             bool ready = _playerIds.Count == BattleLaunch.DeckSize
                          && _enemyIds.Count == BattleLaunch.DeckSize;
             _view.SetStartInteractable(ready);
+            _view.SetClearInteractable(CurrentIds.Count > 0);
 
             _view.SetHint(ready
                 ? "两边各 " + BattleLaunch.DeckSize + " 张 · 点「开战」开始"
-                : "点卡表里的牌加入 / 移除　·　两边都满 " + BattleLaunch.DeckSize + " 张才能开战");
+                : "点卡表里的牌加入 / 移除　·　两边都满 " + BattleLaunch.DeckSize + " 张才能开战"
+                  + "　·　还差 " + (BattleLaunch.DeckSize - _playerIds.Count) + " 张（你）+ "
+                  + (BattleLaunch.DeckSize - _enemyIds.Count) + " 张（对手）");
+        }
+
+        /// <summary>
+        /// 把 ID 清单按<b>卡表顺序</b>排好 —— 8 格与「点 × 删哪一张」共用同一份次序，
+        /// 否则格子的下标和列表下标对不上（旧版就只按卡表顺序画、按点击顺序存）。
+        /// </summary>
+        private List<string> ResolveIds(IReadOnlyList<string> ids)
+        {
+            var list = new List<string>(ids.Count);
+            var set = new HashSet<string>(ids);
+            for (int i = 0; i < _cards.Count; i++)
+            {
+                if (set.Contains(_cards[i].Id))
+                {
+                    list.Add(_cards[i].Id);
+                }
+            }
+
+            return list;
         }
 
         /// <summary>把 ID 清单解析成卡定义（按卡表顺序，与 <c>CardPool.Resolve</c> 同口径）。</summary>
