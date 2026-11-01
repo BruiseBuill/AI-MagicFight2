@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using MagicBrawl.Core;
 using UnityEngine;
@@ -888,6 +889,100 @@ namespace MagicBrawl.App
             }
 
             return -1;
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  被减速的提示（2026-10-31）
+        // ══════════════════════════════════════════════════════
+        //
+        //  用户口径：光把位移放慢（0.7 s）还不够 ——「很容易注意不到」。
+        //    · 某一张牌被减速 → 这张牌的卡面自己要闪；
+        //    · 某一个区被减速 → 那一格冷却槽自己要闪。
+        //
+        //  两处都**只染已有节点的 Image.color**，不新建特效节点：
+        //    · 卡面走 CardView.PlaySlowFlash（染插画，见那边的说明）；
+        //    · 槽位就是 BindGrouped 用的那 4 行底图（SlotL_CD*/SlotR_CD*），
+        //      平时是纯白（把槽图画成原色），闪完再按「本拍是否可点」复位。
+        //
+        //  ⚠ 时序：这些方法必须在 BindBoth **之后**调（BattleUi.RefreshAll）——
+        //    冷却区每拍都可能重建 / 复用迷你卡，先闪再绑等于闪给已经不存在的节点看。
+
+        /// <summary>这一格槽位正在跑的闪烁（键 = 座位 × 10 + 行号）。</summary>
+        private readonly Dictionary<int, Coroutine> _slotFlash = new Dictionary<int, Coroutine>();
+
+        /// <summary>玩家自己的这几张迷你卡被减速了 → 卡面各闪两下。</summary>
+        public void FlashSlowCards(ICollection<int> uids)
+        {
+            if (uids == null || uids.Count == 0)
+            {
+                return;
+            }
+
+            FlashSide(_playerShown, uids);
+            FlashSide(_enemyShown, uids);
+        }
+
+        private static void FlashSide(List<CardView> shown, ICollection<int> uids)
+        {
+            for (int i = 0; i < shown.Count; i++)
+            {
+                CardView view = shown[i];
+                if (view != null && view.HasCard && uids.Contains(view.Card.Uid))
+                {
+                    view.PlaySlowFlash();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 玩家自己的某一格冷却槽被（区域）减速了 → 那一格闪两下。
+        ///
+        /// <para>行号口径与 <see cref="BindGrouped"/> 一致（0 = 冷却区4 … 3 = 冷却区1），
+        /// 由 <c>BattleUi</c> 按「减速之后的剩余冷却」换算后传入 —— 本类不碰规则。</para>
+        /// </summary>
+        public void FlashSlowZone(int seat, int rowIndex)
+        {
+            RectTransform[] rows = RowsFor(seat);
+            if (rows == null || rowIndex < 0 || rowIndex >= rows.Length || rows[rowIndex] == null)
+            {
+                return;
+            }
+
+            Image plate = rows[rowIndex].GetComponent<Image>();
+            if (plate == null)
+            {
+                return;
+            }
+
+            int key = seat * 10 + rowIndex;
+            Coroutine running;
+            if (_slotFlash.TryGetValue(key, out running) && running != null)
+            {
+                StopCoroutine(running);
+            }
+
+            _slotFlash[key] = StartCoroutine(CoFlashSlot(key, seat, plate));
+        }
+
+        private IEnumerator CoFlashSlot(int key, int seat, Image plate)
+        {
+            // 起点色 = 这一格此刻「本来该有的颜色」（区域决策那一拍是暖金，平时是纯白）。
+            Color baseColor = _zonePickable && _zoneSeats.Contains(seat) ? UiTheme.ZonePickableEdge : Color.white;
+
+            float duration = UiLayout.SlowFlashSeconds;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = duration <= 0f ? 1f : Mathf.Clamp01(elapsed / duration);
+                float wave = Mathf.Abs(Mathf.Sin(t * Mathf.PI * 2f));
+                plate.color = Color.Lerp(baseColor, UiTheme.SlowFlashZone, wave);
+                yield return null;
+            }
+
+            plate.color = baseColor;
+            _slotFlash.Remove(key);
         }
 
         // ══════════════════════════════════════════════════════

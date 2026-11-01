@@ -1280,92 +1280,102 @@ namespace MagicBrawl.App.EditorTools
 
             // ── 遮罩：**不吃射线**，让下层手牌仍然点得到 ──────────
             //
-            // ⚠ 这里刻意与 M25 的 PeekLayer 不同（那个是 raycastTarget = true，吃掉下层所有点击）：
-            //   本弹窗的**核心交互就是点自己的手牌**（点一张 → 飞进卡框 → 再点确认），
-            //   而 HandPickLayer 是 SetAsLastSibling 摆在最上层的 —— 遮罩一旦吃射线，
-            //   手牌区就整个点不动，玩家根本没有办法选牌（2026-09-22 实测到的正是这个）。
-            //   所以遮罩只做「视觉压暗」：把颜色调浅（见 UiTheme.HandPickVeil）让它像一层纱，
-            //   同时 raycastTarget = false，点击径直穿到下面的 HandArea。
-            //
-            //   代价是「点手牌区以外的空白」也会穿到下层（比如误触冷却区 / 角色）。
-            //   这是可接受的：那一拍 HandView.SetPlayable 只允许候选牌可点，
-            //   其余牌与冷却区的点击都会被 BattleUi 按 Options 过滤掉（铁律 3），
-            //   而本弹窗的确认键是唯一提交口 —— 不会因为穿透而产生错误的出牌。
+            //   本弹窗的核心交互就是点自己的手牌，而 HandPickLayer 是 SetAsLastSibling
+            //   压在最上层的 —— 遮罩一旦吃射线，手牌区就整个点不动。
+            //   所以它只做视觉压暗，点击径直穿到下面的 HandArea。
             GameObject veilGo = NewUi("Veil", go.transform);
             Stretch(Rt(veilGo));
             Image veil = AddImage(veilGo, UiTheme.HandPickVeil);
             veil.raycastTarget = false;
 
-            // ── 面板 ────────────────────────────────────────────
+            // ── 托盘 ────────────────────────────────────────────
+            //
+            //   一块圆角纯色板（CardBox_Line 九宫格染色），不挂任何美术图 ——
+            //   旧版用 Peek_Frame 横拉，内框与按钮座会一起抻变形，只能拿背板盖。
             GameObject panelGo = NewUi("Panel", go.transform);
             RectTransform panel = Rt(panelGo);
-            Box(panel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
+            Box(panel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, UiLayout.HandPickPanelCenterY),
                 new Vector2(UiLayout.HandPickPanelBaseWidth, UiLayout.HandPickPanelHeight));
-            Image panelImg = AddImage(panelGo, Color.white);
-            panelImg.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(HandPickPanelPath);
-            // 九宫格：横向拉伸（左右 border 落在躯干里），纵向**不**拉伸（上下 border 保住装饰）。
-            // border 只存在 .meta 里、重导就悄悄丢 → 每次构建都由 EnsureHandPickImporters 对一遍。
+            Image panelImg = AddImage(panelGo, UiTheme.HandPickTrayFill);
+            panelImg.sprite = LoadHandPickSprite(UiLayout.HandPickPanelSpritePath, "托盘");
             panelImg.type = Image.Type.Sliced;
-            // ⚠ 不吃射线：面板底边 y = (1080−556)/2 = 262，而手牌扇形最高那张的顶角到 y ≈ 294 ——
-            //   两者重迭了顶上约 31 px。对「牌整体在面板下方」的情形无碍（点牌身仍然过），
-            //   但让一块纯装饰的底板去吃掉手牌顶部那一条命中区是没道理的：牌多、摆角大时
-            //   玩家瞄着卡面上边点，反馈就是「点了没反应」。它没有任何点击语义，
-            //   交给下面的手牌即可（装饰不参与交互，与 AuraDropHint 一个口径）。
+            // 面板不吃射线：它压在扇形手牌的顶角上，吃掉那一条命中区没有道理。
             panelImg.raycastTarget = false;
 
-            GameObject titleGo = NewUi("Title", panelGo.transform);
-            Box(Rt(titleGo), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -UiLayout.HandPickTitleTop),
-                new Vector2(UiLayout.HandPickTitleWidth, UiLayout.HandPickTitleHeight));
+            // ── 标题铭牌（吊在面板上沿）──────────────────────────
+            GameObject tabGo = NewUi("TitleTab", panelGo.transform);
+            Box(Rt(tabGo), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, UiLayout.HandPickTitleTabOffsetY),
+                new Vector2(UiLayout.HandPickTitleTabWidth, UiLayout.HandPickTitleTabHeight));
+            Image tabImg = AddImage(tabGo, Color.white);
+            tabImg.sprite = LoadHandPickSprite(UiLayout.HandPickTitleTabSpritePath, "标题铭牌");
+            tabImg.raycastTarget = false;
+
+            GameObject titleGo = NewUi("Title", tabGo.transform);
+            Stretch(Rt(titleGo));
             TMP_Text titleLabel = AddText(titleGo, title, UiLayout.FontSizeHandPickTitle,
-                UiTheme.TextPrimary, TextAlignmentOptions.Center, "选择手牌");
-            // M30：标题从「卡名」改成「效果名」之后变长（最长「送入冷却增加力量（可选择多张）」= 15 字），
-            // 30 号字放不下 470 宽的牌位。开自动缩容：
-            //   · AddText 默认 enableWordWrapping = false + overflowMode = Overflow，
-            //     长文案会直接**溢出面板**（在美术图上就是压到内框上去），而且零报错；
-            //   · 这里改成「不换行 + 缩到框内」，配合 FontSizeHandPickTitleMin 兜底。
+                UiTheme.HandPickSeatTextOn, TextAlignmentOptions.Center, "选择手牌");
+            // 长效果名（「送入冷却增加力量（可选择多张）」）靠自动缩容压回铭牌里，
+            // 而不是溢出到面板外 —— 溢出会压到描边上，缩字号只是小一点。
             titleLabel.enableAutoSizing = true;
             titleLabel.fontSizeMin = UiLayout.FontSizeHandPickTitleMin;
             titleLabel.fontSizeMax = UiLayout.FontSizeHandPickTitleBase;
             titleLabel.overflowMode = TextOverflowModes.Truncate;
 
-            // ⚠ 2026-09-27：这里**不再建副标题**（原来是一条「已选 N / M」的计数，挂在标题正下方）。
-            //   用户口径：「选择牌的界面当中（磁暴 / 充能 / 电弧 / 漩涡），标题底下会有一个
-            //   当前选择牌数和当前手牌总数的数字显示，不需要显示这个」。
-            //   选了几张其实一眼就看得见 —— 牌就摆在中间的卡框里，面板还会跟着变宽；
-            //   那个「N / M」既和「最多能选几张」的语义有歧义（M 是候选数不是总数），
-            //   又占了标题与卡框之间那 40 px 的净空。
-            //   连同 `HandPickView._subTitle` 字段 / `RefreshConfirm` 里刷它的那几句 /
-            //   UiLayout 的三条 SubTitle 常量一起删掉了。
+            // ── 内凹槽（卡牌站的那块台面）────────────────────────
+            GameObject recessGo = NewUi("Recess", panelGo.transform);
+            RectTransform recess = Rt(recessGo);
+            Box(recess, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(UiLayout.HandPickTrayPad + UiLayout.HandPickSlotAreaPadding
+                            + UiLayout.HandPickSlotWidth * 0.5f, UiLayout.HandPickRowCenterY),
+                new Vector2(UiLayout.HandPickSlotWidth + 2f * UiLayout.HandPickSlotAreaPadding,
+                    UiLayout.HandPickRecessHeight));
+            Image recessImg = AddImage(recessGo, UiTheme.HandPickTrayRecess);
+            recessImg.sprite = LoadHandPickSprite(UiLayout.HandPickRecessSpritePath, "凹槽");
+            recessImg.type = Image.Type.Sliced;
+            recessImg.raycastTarget = false;
 
-            // ── 卡框区（运行时按张数改宽 / 改位置）──────────────
-            // 锚在面板中心：HandPickView.Layout 算的就是「以面板中心为原点」的坐标。
+            // ── 台沿灯线（贴着卡牌底边的一条青色细线）────────────
+            GameObject ledgeGo = NewUi("Ledge", panelGo.transform);
+            RectTransform ledge = Rt(ledgeGo);
+            Box(ledge, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(UiLayout.HandPickTrayPad + UiLayout.HandPickSlotAreaPadding
+                            + UiLayout.HandPickSlotWidth * 0.5f, UiLayout.HandPickLedgeY),
+                new Vector2(UiLayout.HandPickSlotWidth, UiLayout.HandPickLedgeHeight));
+            Image ledgeImg = AddImage(ledgeGo, UiTheme.HandPickTrayLedge);
+            ledgeImg.sprite = null;
+            ledgeImg.raycastTarget = false;
+
+            // ── 卡槽区（运行时按张数改宽）────────────────────────
             GameObject areaGo = NewUi("SlotArea", panelGo.transform);
             RectTransform area = Rt(areaGo);
-            Box(area, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
-                new Vector2(UiLayout.HandPickSlotWidth, UiLayout.HandPickSlotAreaHeight));
-
-            // 盖住面板原图内框装饰的纯色条（有牌时才亮）。
-            // 面板横向拉宽时原图内框的圆角描边 + 中心菱形花纹会跟着变形，所以整条压住它。
-            // 它**铺满 SlotArea**：SlotArea 已由 HandPickView.Layout 按张数算好宽高，
-            // 这里跟着拉伸即可（Stretch 的 offset 在运行时不会与 sizeDelta 打架，
-            // 因为没人会去改这个节点的 sizeDelta）。
-            GameObject backdropGo = NewUi("Backdrop", areaGo.transform);
-            // 上下各多盖 8 px：原图内框的亮色描边外还有一层薄辉光，只盖到 280 会在上下
-            // 各留一条发亮的边。左右不扩 —— 那两侧是面板躯干，本来就该露出来。
-            Stretch(Rt(backdropGo), 0f, -8f, 0f, -8f);
-            Image areaBackdrop = AddImage(backdropGo, UiTheme.HandPickPanelTorso);
-            areaBackdrop.sprite = null;      // 无图 = 纯色矩形（形状完全由 RectTransform 决定）
-
-            // 空卡框：一张没选时露出的那一块「可以放牌的地方」
-            GameObject emptyGo = NewUi("EmptyFrame", areaGo.transform);
-            RectTransform empty = Rt(emptyGo);
-            Box(empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
+            Box(area, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(UiLayout.HandPickTrayPad + UiLayout.HandPickSlotAreaPadding
+                            + UiLayout.HandPickSlotWidth * 0.5f, UiLayout.HandPickRowCenterY),
                 new Vector2(UiLayout.HandPickSlotWidth, UiLayout.HandPickSlotHeight));
-            Image emptyFill = AddImage(emptyGo, UiTheme.HandPickEmptyFill);
-            emptyFill.sprite = null;
-            // 描边：四根细条，颜色是「这里可以放牌」的冷蓝灰
-            MakeFrame(emptyGo.transform, UiLayout.HandPickEmptyOutline, UiTheme.HandPickEmptyEdge);
+
+            // 空卡位：一张没选时露出的那块虚线框（= 第一格槽位的位置）。
+            GameObject emptyGo = NewUi("EmptyFrame", areaGo.transform);
+            Box(Rt(emptyGo), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
+                new Vector2(UiLayout.HandPickSlotWidth, UiLayout.HandPickSlotHeight));
+            Image emptyImg = AddImage(emptyGo, Color.white);
+            emptyImg.sprite = LoadHandPickSprite(UiLayout.HandPickSlotDashSpritePath, "虚线卡位");
+            emptyImg.raycastTarget = false;
+
+            // 待放槽：还能再放的时候，在已选牌右边现身（放满就消失）。
+            // 它只是「还能放」的视觉信号，点击仍然落在下层手牌上。
+            GameObject addGo = NewUi("AddSlot", areaGo.transform);
+            RectTransform addSlot = Rt(addGo);
+            Box(addSlot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
+                new Vector2(UiLayout.HandPickSlotWidth, UiLayout.HandPickSlotHeight));
+            Image addImg = AddImage(addGo, Color.white);
+            addImg.sprite = LoadHandPickSprite(UiLayout.HandPickSlotDashSpritePath, "虚线卡位");
+            addImg.raycastTarget = false;
+
+            GameObject plusGo = NewUi("Plus", addGo.transform);
+            Stretch(Rt(plusGo));
+            AddText(plusGo, title, 58f, UiTheme.HandPickSlotPlus, TextAlignmentOptions.Center, "+");
 
             // ── 8 个预建卡框（运行时只激活前 N 个）─────────────
             var slots = new HandPickSlot[UiLayout.PeekSlotCount];
@@ -1374,83 +1384,42 @@ namespace MagicBrawl.App.EditorTools
                 slots[i] = BuildHandPickSlot(areaGo.transform, i, handPrefab);
             }
 
-            // ── 确认键 ─────────────────────────────────────────
+            // ── 确认键（挂在面板右沿内侧，跟着面板宽度走）────────
             //
-            // ⚠ M31（2026-09-22 用户第二条）：「确认键的背景框不需要随着卡牌的逐渐增多而变宽」。
-            //
-            //   原来 ConfirmButton 直接挂在 Panel 下 —— 而 Panel 的宽度会被
-            //   HandPickView.Layout 按张数改成 HandPickPanelWidthFor(count)
-            //   （431 → 670 → 885 …）。按钮自己虽然量着 258 宽没变，但它座在面板底边上，
-            //   玩家看到的「确认键那块背景」是**按钮 + 它底下那截面板**，面板一拉宽，
-            //   整个观感就是确认键跟着变宽了。
-            //
-            //   所以把按钮移出 Panel，改挂在一个**固定尺寸**的中间层 ConfirmSeat 上，
-            //   再把这个中间层挂在 HandPickLayer 根下（根是全屏 Stretch，不随面板变）。
-            //   中间层的尺寸就锁死成面板的基准宽度 —— 按钮相对它居中，
-            //   面板再怎么长，按钮与它脚下的那 431 宽底座都待在原地。
-            //
-            //   位置换算：原来锚 (0.5, 0)、y = CenterFromBottom − Height/2，是相对**面板中心**的。
-            //   面板中心在屏幕中心往上 HandPickPanelHeight/2 处，所以相对屏幕中心
-            //   y = HandPickPanelHeight/2 − CenterFromBottom。两者在同一根竖直轴上，
-            //   按钮的视觉位置**逐像素不变**（只是不再跟着面板横向漂）。
-            //
-            //   ⚠⚠ 上面这段口径本身是对的，但 M31 实现时符号写反了（写成了
-            //   `Height/2 − CenterFromBottom` 那个正号版），按钮于是被镜像到面板**顶部**、
-            //   压住标题牌位与「N / M」计数，底面那块原图自带的按钮座空着 —— 用户
-            //   2026-09-23 的截图就是这一条。现在这行换算收敛到
-            //   UiLayout.HandPickConfirmCenterYFromCenter()（负号 + 解释都在那边）。
-            GameObject seatGo = NewUi("ConfirmSeat", go.transform);
-            RectTransform seat = Rt(seatGo);
-            Box(seat, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, UiLayout.HandPickConfirmCenterYFromCenter()),
-                new Vector2(UiLayout.HandPickPanelBaseWidth, UiLayout.HandPickConfirmHeight));
-            // 纯定位容器：不吃射线（吃射线会在手牌区正中横一条看不见的挡板）。
-            // 也不挂 Image —— 用户要的就是「别再多一块变宽的背景」。
-
-            GameObject btnGo = NewUi("ConfirmButton", seatGo.transform);
-            Box(Rt(btnGo), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
+            //   锚点 (1, 0.5)：面板怎么变宽，它都贴着右沿不动 —— 旧版把按钮放在
+            //   屏幕中间的一个固定座上，是因为面板会横向拉伸、按钮不能跟着漂；
+            //   现在面板是纯色板，按钮直接当它的子节点最省事。
+            GameObject btnGo = NewUi("ConfirmButton", panelGo.transform);
+            RectTransform btnRt = Rt(btnGo);
+            Box(btnRt, new Vector2(1f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-UiLayout.HandPickConfirmRightInset, UiLayout.HandPickRowCenterY),
                 new Vector2(UiLayout.HandPickConfirmWidth, UiLayout.HandPickConfirmHeight));
 
-            // ⚠ ColorTint 的 tint 是作用在 CanvasRenderer 上的，与 Image.color **相乘**
-            //   → Image.color 必须是纯白，两态的实色交给 colors 那两个常量。
+            Sprite seat = LoadHandPickSprite(UiLayout.HandPickSeatSpritePath, "牌座");
+            Sprite seatOff = LoadHandPickSprite(UiLayout.HandPickSeatOffSpritePath, "牌座（暗态）");
+
             var btnImg = btnGo.AddComponent<Image>();
-            //
-            // ⚠ 2026-09-23（用户第二条）：「移除掉这个确认键的背景，就用按钮座那个背景」。
-            //   所以这里**刻意不给 sprite** —— Image 没有图时画的就是一块纯色矩形，
-            //   而可用色是透明的（UiTheme.HandPickConfirmOn），落下来就是「什么都没有」，
-            //   露出的是 Peek_Frame.png 自带的那块底部按钮座。
-            //   保留 Image 组件的唯一理由是**它要当命中区**：UGUI 的
-            //   Image.IsRaycastLocationValid 在 alphaHitTestMinimumThreshold == 0 时
-            //   直接 return true —— 也就是说「透明 Image 照样吃射线」，不需要另加不可见 Graphic。
-            //
-            //   （原来这里挂的是 HandPick_Confirm.png，横向九宫格拉伸。它纵向被 174 → 58
-            //    硬压成一条发白的扁条，与面板自带的座对不齐 —— 那正是用户圈红框要挪走的东西。
-            //    素材与它的 border 常量都还留着，见 UiLayout 的 M30 段。）
-            btnImg.sprite = null;
-            btnImg.color = UiTheme.HandPickConfirmOn;   // 纯白：让 colors 的 tint 说了算
+            btnImg.sprite = seat;
+            btnImg.color = Color.white;      // 贴图里已经带了配色，别再染色
             btnImg.raycastTarget = true;
 
             var confirm = btnGo.AddComponent<Button>();
-            confirm.transition = Selectable.Transition.ColorTint;
+            // 两态用的是**两张图**（亮 / 暗），不是 ColorTint —— 牌座的银边与青灯
+            // 不是简单乘一个颜色就能压暗的，乘出来会发灰。
+            confirm.transition = Selectable.Transition.SpriteSwap;
             confirm.targetGraphic = btnImg;
-            var colors = confirm.colors;
-            colors.normalColor = UiTheme.HandPickConfirmOn;
-            colors.highlightedColor = UiTheme.HandPickConfirmOn;
-            colors.pressedColor = UiTheme.HandPickConfirmOn;
-            colors.selectedColor = UiTheme.HandPickConfirmOn;
-            colors.disabledColor = UiTheme.HandPickConfirmOff;
-            colors.fadeDuration = 0.08f;
-            confirm.colors = colors;
-
-            // 初始 disabled（用 disabledColor 呈现）。运行时 HandPickView.Show 会立刻调
-            // RefreshConfirm 按真实 MinSelect 覆盖它；这里的值只是「万一没走到那段代码」
-            // 时的安全默认 —— 让按钮偏向不可按，而不是偏向可按。
-            confirm.interactable = false;
+            var spriteState = confirm.spriteState;
+            spriteState.highlightedSprite = seat;
+            spriteState.pressedSprite = seatOff;
+            spriteState.selectedSprite = seat;
+            spriteState.disabledSprite = seatOff;
+            confirm.spriteState = spriteState;
+            confirm.interactable = false;    // 运行时由 HandPickView.RefreshConfirm 覆盖
 
             GameObject btnLabelGo = NewUi("Label", btnGo.transform);
             Stretch(Rt(btnLabelGo));
             TMP_Text confirmLabel = AddText(btnLabelGo, title, UiLayout.FontSizeHandPickConfirm,
-                UiTheme.TextPrimary, TextAlignmentOptions.Center, "确认");
+                UiTheme.HandPickSeatTextOn, TextAlignmentOptions.Center, "确认");
 
             var view = go.AddComponent<HandPickView>();
             var so = new SerializedObject(view);
@@ -1458,17 +1427,16 @@ namespace MagicBrawl.App.EditorTools
             so.FindProperty("_panel").objectReferenceValue = panel;
             so.FindProperty("_panelImage").objectReferenceValue = panelImg;
             so.FindProperty("_title").objectReferenceValue = titleLabel;
+            so.FindProperty("_recess").objectReferenceValue = recess;
+            so.FindProperty("_ledge").objectReferenceValue = ledge;
             so.FindProperty("_slotArea").objectReferenceValue = area;
-            so.FindProperty("_slotAreaBackdrop").objectReferenceValue = areaBackdrop;
-            so.FindProperty("_emptyFrame").objectReferenceValue = empty;
+            so.FindProperty("_emptyFrame").objectReferenceValue = Rt(emptyGo);
+            so.FindProperty("_addSlot").objectReferenceValue = addSlot;
             so.FindProperty("_confirmButton").objectReferenceValue = confirm;
             so.FindProperty("_confirmImage").objectReferenceValue = btnImg;
             so.FindProperty("_confirmLabel").objectReferenceValue = confirmLabel;
-            // 卡面的兜底来源。正常走 CardArtLibrary（插画 —— 2026-09-30 起只剩这一份图），
-            // 但那本库由构建器生成 —— 库还没建到这一批时查不到图，卡框会刷成一块
-            // 灰方块且零报错（M25 的 PeekCardBack 正是这么炸过）。构建期直接从
-            // AssetDatabase 取一张牌背顶上：它不是正确卡面，但形状与「这是一张牌」的
-            // 语义是对的，比一块灰方块清楚得多（顺序问题一解决就被真卡面盖掉）。
+            // 卡面的兜底来源。正常走 CardArtLibrary（插画），库还没建到这一批时查不到图，
+            // 卡框会刷成一块灰方块且零报错 —— 这里先塞一张牌背，形状与「这是一张牌」的语义对。
             so.FindProperty("_cardFaceFallback").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<Sprite>(PeekCardBackPath);
 
@@ -1486,6 +1454,25 @@ namespace MagicBrawl.App.EditorTools
 
             go.SetActive(false);
             return view;
+        }
+
+        /// <summary>
+        /// 载入一张托盘素材，缺图时打一条能照着修的警告。
+        ///
+        /// <para>这几张图是 Python 直接写进 `Assets/Art/Ui/` 的（连 `.meta` 一起），
+        /// 万一 `.meta` 被重导丢掉、或图被当成普通贴图导入，`LoadAssetAtPath&lt;Sprite&gt;`
+        /// 会安静地返回 null —— 面板退化成一块纯色、按钮什么都不剩，而 Unity 零报错。</para>
+        /// </summary>
+        private static Sprite LoadHandPickSprite(string path, string label)
+        {
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                Debug.LogWarning("[BattleUi] 缺" + label + "底图：" + path
+                                 + "\n    确认这张图的 Texture Type = Sprite (2D and UI)、Sprite Mode = Single。");
+            }
+
+            return sprite;
         }
 
         /// <summary>
@@ -1530,8 +1517,9 @@ namespace MagicBrawl.App.EditorTools
                 UiLayout.HandPickSlotWidth, 2);
 
             // ⚠ 这里刻意**没有**序号角标节点（2026-09-23 用户口径）。
-            //   别照着旧版本再加回来：SlotArea 的兄弟序里有 SlotSiblingBase() 那套
-            //   「装饰在下、槽位在上」的算术，多一个子节点不是无害的改动。
+            //   SlotArea 的子节点顺序是 [EmptyFrame][AddSlot][Slot0…7]，槽位天然画在
+            //   两格虚线上面（构建器先建装饰、再建槽位，运行时不改 sibling）。
+            //   要加节点就加在槽位**之前**。
             var comp = slotGo.AddComponent<HandPickSlot>();
             var so = new SerializedObject(comp);
             so.FindProperty("_face").objectReferenceValue = face;
@@ -1917,6 +1905,11 @@ namespace MagicBrawl.App.EditorTools
                 UiTheme.TextPrimary, out confirm, out confirmLabel);
 
             // 「不替换 / 保留这张」——文案运行时由引擎的 Done 选项覆盖（开局与补牌后不一样）。
+            //
+            // ⚠ 2026-10-31 晚：这枚按钮在运行时会被 DealView.PlaceConfirmDeckButton **搬到
+            //   手牌区右侧**、改叫「确认卡组」；上面那枚「确认替换」则被直接关掉
+            //   （用户口径：拖进换牌区就是确认，上方不需要第二个入口）。
+            //   所以这里仍然照旧建两枚 —— 搬 / 关都发生在运行时，Prefab 与场景不用重建。
             Button skip;
             TMP_Text skipLabel;
             MakeDealButton(bodyGo.transform, "SkipButton", UiLayout.DealSkipHeight, title,

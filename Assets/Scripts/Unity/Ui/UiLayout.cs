@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace MagicBrawl.App
 {
@@ -821,7 +821,15 @@ namespace MagicBrawl.App
         /// <summary>「确认替换」按钮。</summary>
         public const float DealConfirmHeight = 54f;
 
-        /// <summary>「不替换 / 保留这张」按钮 —— 文案由引擎的 Done 选项给，长的有 8 个字。</summary>
+        /// <summary>
+        /// 「不替换 / 保留这张」按钮 —— 文案由引擎的 Done 选项给，长的有 8 个字。
+        ///
+        /// <para>⚠ 2026-10-31 晚：这枚按钮在运行时被搬到手牌区右侧、改叫「确认卡组」
+        /// （<c>DealView.PlaceConfirmDeckButton</c>），位置改用 <see cref="DockRight"/> /
+        /// <see cref="DockBottom"/> / <see cref="DockWidth"/> / <see cref="DockHeight"/>；
+        /// 「确认替换」则被关掉。面板高度由 ContentSizeFitter 自己缩，本值只描述构建器
+        /// 建出来的那个初始形态。</para>
+        /// </summary>
         public const float DealSkipHeight = 48f;
 
         public const float DealRowSpacing = 8f;
@@ -1656,6 +1664,16 @@ namespace MagicBrawl.App
         /// </summary>
         public const float SlowShiftSeconds = 0.7f;
 
+        /// <summary>
+        /// 「这张牌 / 这一区被减速了」的闪烁时长（秒，闪两下）。
+        ///
+        /// <para><b>为什么要单独一个时长</b>：0.7 秒的位移只解决「牌动了」，用户 2026-10-31
+        /// 追加口径是「很容易注意不到，要加特效」。闪两下必须<b>在这口气里播完</b>
+        /// （下一拍一刷新就会重绑卡面、把脉冲掐掉），所以它同时是这一拍的等待时长 ——
+        /// 见 <c>BattleUi.HandleBeat</c> 里对 <c>_slowHold</c> 的取大。</para>
+        /// </summary>
+        public const float SlowFlashSeconds = 0.9f;
+
         // ── M25b AI 偷看手牌的眼睛提示（2026-10-08）────────────
         //
         //  与 PeekLayer 同一张卡（雷云 ad / 狂躁蘑菇 w），但方向相反：那一拍是 **AI**
@@ -1714,265 +1732,189 @@ namespace MagicBrawl.App
         public const float FontSizePeekBadge = 22f;
 
         // ══════════════════════════════════════════════════════
-        //  M27 · 手牌选择弹窗（磁暴 / 充能 / 电弧）
+        //  M27 · 手牌选择弹窗（磁暴 / 充能 / 电弧 / 漩涡）
         // ══════════════════════════════════════════════════════
         //
-        //  这三种效果都是「攻击时把手中若干张其它法术送入冷却」（`EffectOp.CoolHandForAtk` /
-        //  `CoolHandForHaste` / `CoolHandForCombo`），引擎给的选项就是**玩家自己的手牌**。
-        //  用户口径（2026-09-21）：不要用按钮列表，要一个**参考图那样的弹窗** ——
-        //  顶部标题、中间一块「已选卡框」、底部一个确认键。
+        //  2026-10-31 · v4「托盘」改版
         //
-        //  素材直接复用 M25 切出来的 `Peek_Frame.png`（431×556）——
-        //  它就是「标题牌位 + 中间一块空卡框 + 底部一枚按钮座」的三段结构，
-        //  与参考图那张面板完全同构（当初切出来时注释里写「留给放大查看的单卡展示」，
-        //  这里正好用上）。逐像素量出来的三段边界见下。
+        //  旧版是 431×556 的竖版面板（`Peek_Frame.png` 九宫格横拉），面板正好压在手牌上，
+        //  而且那张图是「顶部牌位 + 中间竖卡框 + 底部按钮座」的**单卡神龛** —— 多选时
+        //  只能拿一条纯色背板盖住被抻变形的内框。用户口径：界面要更简洁，只保留
+        //  「显示卡牌的区域 + 确认键」，按钮沿用现在这枚发光牌座。
+        //
+        //  现在：一块横向托盘停在手牌上方（390…694，手牌顶 ≈ 783），里面只有
+        //  [已选牌][空槽] 与右侧的牌座按钮，标题缩成面板上沿的一枚小铭牌。
+        //
+        //  三条口径：
+        //   · 容量用「空槽」表达：还能放就还有一格虚线；放满空槽消失。**不写「已选 N/M」**。
+        //   · 一张没选时按钮文案是「跳过」—— 这几张牌的 `MinSelect` 本来就是 0。
+        //   · 面板是纯色圆角板（`CardBox_Line.png` 九宫格着色），不再用 Peek_Frame，
+        //     怎么拉宽都不会把装饰抻变形。
+
+        /// <summary>托盘高度（固定，不随张数变）。</summary>
+        public const float HandPickPanelHeight = 304f;
 
         /// <summary>
-        /// 面板尺寸基准（= `Peek_Frame.png` 原图高度，**纵向任何情况下都不缩放**）。
+        /// 托盘中心相对屏幕中心的纵向偏移。
         ///
-        /// <para>纵向绝不拉伸：这张图的三段装饰（顶部尖顶 + 两侧翼、中间内框、底部按钮座）
-        /// 挤在同一块画布里，纵向一拉就把尖顶和按钮座抻变形。</para>
-        ///
-        /// <para><b>横向是可以拉的</b> —— 逐行剖面量出来的事实：
-        /// 第 100…520 行两侧全幅（0…430）不透明、且边缘无装饰，只有顶部 0…99 与
-        /// 底部 521…555 带翅膀 / 收边。所以九宫格的左右 border 取
-        /// <see cref="HandPickPanelBorderLeft"/> / <see cref="HandPickPanelBorderRight"/>
-        /// （= 110，正好落在「面板外框内侧、内框外侧」那段空白里），
-        /// 中间那段横向拉伸时两侧的翼与收边**原地不动**。</para>
+        /// <para>面板 390…694（1080 画布），中心 542，屏幕中心 540 —— 只差 2 px。
+        /// 手牌扇形最高那张的顶角约在 783，托盘底边 694 与它留 89 px，
+        /// <b>不再压住待选的牌</b>（旧版面板底边在 818，压掉中间两三张）。</para>
         /// </summary>
-        public const float HandPickPanelBaseWidth = 431f;
+        public const float HandPickPanelCenterY = -2f;
 
-        public const float HandPickPanelHeight = 556f;
+        /// <summary>0 张时的面板宽度 = 一格空槽 + 固定部分。</summary>
+        public const float HandPickPanelBaseWidth = 176f + 358f;
 
-        /// <summary>
-        /// 面板九宫格的左右边界。
-        ///
-        /// <para>取 110：原图内框描边在 x=107…314，而面板外框内缘约在 x=0…430 的
-        /// 外描边之后（约 8）。110 落在「外框内缘」与「内框左缘」之间那片纯色躯干里，
-        /// 拉伸它不会碰到任何装饰。右侧对称取到 431 − 314 − 7 ≈ 110。</para>
-        ///
-        /// <para>⚠ 这三个地方必须一致：本组常量、编辑器侧 <c>EnsureHandPickImporters</c>、
-        /// 以及 <c>UiTheme.HandPickPanelTorso</c>（盖住被拉宽的内框装饰用的躯干色）。</para>
-        /// </summary>
-        public const float HandPickPanelBorderLeft = 110f;
+        /// <summary>托盘左边距（面板外沿 → 内凹槽）。</summary>
+        public const float HandPickTrayPad = 20f;
 
-        public const float HandPickPanelBorderRight = 110f;
+        /// <summary>内凹槽与里面卡槽之间再留多少。</summary>
+        public const float HandPickRecessPad = 10f;
 
-        /// <summary>
-        /// 面板九宫格的上下边界：保住顶部牌位 + 两侧翼（0…99）与底部收边（521…555）。
-        /// </summary>
-        public const float HandPickPanelBorderTop = 100f;
+        /// <summary>卡槽区与按钮之间的净空。</summary>
+        public const float HandPickButtonGap = 24f;
 
-        public const float HandPickPanelBorderBottom = 36f;
+        /// <summary>按钮右沿到面板外沿。</summary>
+        public const float HandPickTrayRightPad = 30f;
 
-        /// <summary>
-        /// 标题文字框：距面板顶边的距离与高度。
-        ///
-        /// <para>量自原图（`Peek_Frame.png`），<b>2026-09-28 重新量的</b>：顶部 title band
-        /// 的亮边在第 44…47 行、下亮边在第 105…108 行，中间那块可以放字的暗色内槽是
-        /// <b>48…103</b>（高 56，中心 ≈ 75.5）。于是 title box 顶边取
-        /// `53.5`（中心 = 53.5 + 46/2 = 76.5，字墨迹中心 ≈ 75.5）。</para>
-        ///
-        /// <para>⚠ <b>原来是 35（中心 58）—— 那是「标题 + 副标题」两行时代的取值</b>：
-        /// 原先标题下面还有一条「已选 N / M」的计数（中心 ≈ 105），两行合起来才在 band 里居中。
-        /// 2026-09-27 用户要求删掉那条计数之后，标题<b>没有跟着重新居中</b>，
-        /// 于是整整偏上约 18 px —— 文字顶到 band 上缘、下面空一大片
-        /// （用户 2026-09-28 的截图：标题「移出·获加速」看着「没放进框里、偏上了」）。
-        /// 单行标题现在要自己占满这块内槽。</para>
-        /// </summary>
-        public const float HandPickTitleTop = 53.5f;
+        /// <summary>卡槽中心相对面板中心的纵向偏移（面板中心 542，卡牌中心 548）。</summary>
+        public const float HandPickRowCenterY = -6f;
 
-        public const float HandPickTitleHeight = 46f;
+        /// <summary>内凹槽高度（卡高 + 上下各 10）。</summary>
+        public const float HandPickRecessHeight = 264f;
 
-        // ⚠ 2026-09-27：原先这里有两条副标题常量（`HandPickSubTitleGap = 8` /
-        //   `HandPickSubTitleHeight = 32`）—— 供标题正下方那条「已选 N / M」的计数用。
-        //   用户口径「标题底下会有一个当前选择牌数和当前手牌总数的数字显示，不需要显示这个」
-        //   → 计数连同节点、字号常量一起删掉（节点由 `BattleUiBuilder.BuildHandPickLayer` 建）。
-        //   删掉它们**不影响任何布局**：那条计数是压在标题牌位下方的装饰，
-        //   中间的「已选卡框」区一直按 <see cref="HandPickSlotAreaCenterY"/> 定位。
+        /// <summary>卡槽区高度（= 单张卡框高）。</summary>
+        public const float HandPickSlotAreaHeight = 244f;
 
-        /// <summary>
-        /// 标题文字框宽度 —— <b>= 原图 title band 的内槽宽</b>（不是「面板减去内边距」）。
-        ///
-        /// <para>M30 起标题改成「效果名」而不是卡名，最长的一条是
-        /// 「送入冷却增加力量（可选择多张）」= 15 字，30 号字量出来约 450 px。
-        /// 一开始把框开到 470「怕被截成省略号」—— 那是错的：470 &gt; 431（单张态面板宽），
-        /// 于是标题框左右各捅出面板 20 px，在美术图上就是**文字横着压在面板外框上**
-        /// （2026-09-22 截图 `m30_confirm_empty.png` 一眼可见）。</para>
-        ///
-        /// <para>改 379（面板 − 2×26）之后仍然偏宽：那只保证「文字不出面板」，
-        /// 但 title band 是一条**两端带翼的横条**（见目标图
-        /// `ae67a6sgshbf-…png`），文字压在两端的翼上看着同样脏。
-        /// 逐行量原图 y=58 那一行的暗色内槽：x ≈ 83…340 → <b>宽 ≈ 257</b>、中心 211.5
-        /// （面板中心 215.5，基本居中）。所以这里取 257 —— 文字只花在平直那段里。</para>
-        ///
-        /// <para>代价是 15 字要缩到 19 号左右（<see cref="FontSizeHandPickTitleMin"/> 正好兜住）。
-        /// 缩字号只是小一点，溢出却是「压到描边上」——前者可接受，后者不能。</para>
-        /// </summary>
-        public const float HandPickTitleWidth = 257f;
+        /// <summary>台沿灯线的高度与纵向位置（贴着卡牌底边）。</summary>
+        public const float HandPickLedgeHeight = 3f;
 
-        /// <summary>标题字号（含「（可选择多张）」的后缀时靠自动缩容压回框内，所以基数不用调小）。</summary>
-        public const float FontSizeHandPickTitleBase = 30f;
+        public const float HandPickLedgeY = -131f;
 
-        /// <summary>标题自动缩容的下限 —— 再小就糊了，宁可让框宽一点。</summary>
-        public const float FontSizeHandPickTitleMin = 19f;
+        /// <summary>单张卡框尺寸 —— 手牌卡（196×272）的 0.9 倍，卡面由 CardView_Hand 实例缩放。</summary>
+        public const float HandPickSlotWidth = 176f;
 
-        /// <summary>
-        /// 中间「已选卡框」区的中心距面板<strong>顶边</strong>的距离。
-        ///
-        /// <para>量自原图：内框描边的上边界 ≈ 第 150 行、下边界 ≈ 第 430 行 →
-        /// 中心 ≈ 290。半高 = (430 − 150) / 2 = 140。</para>
-        /// </summary>
-        public const float HandPickSlotAreaCenterY = 290f;
+        public const float HandPickSlotHeight = 244f;
 
-        /// <summary>中间卡框区的高度（= 原图内框高 280）。</summary>
-        public const float HandPickSlotAreaHeight = 280f;
+        /// <summary>已选卡之间的间距。</summary>
+        public const float HandPickSlotGap = 24f;
 
-        /// <summary>
-        /// 单张卡框的尺寸（= 原图内框 207×280 —— 恰好是一张卡的比例）。
-        ///
-        /// <para>它是**单张时**的框宽；多选时框宽仍是它，但整条卡槽区
-        /// （<see cref="HandPickSlotAreaWidthFor"/>）会按张数变宽。</para>
-        /// </summary>
-        public const float HandPickSlotWidth = 207f;
+        /// <summary>内凹槽的左右内边距。</summary>
+        public const float HandPickSlotAreaPadding = 10f;
 
-        public const float HandPickSlotHeight = 280f;
-
-        /// <summary>已选卡之间的间距（多选时卡框并排，间距要小 —— 卡框本身已有描边）。</summary>
-        public const float HandPickSlotGap = 8f;
-
-        /// <summary>
-        /// 卡槽区左右各留的内边距 —— 它**不是**「贴着面板外框」的余量，
-        /// 而是「贴着原图内框（装卡那圈亮描边）」的余量。
-        ///
-        /// <para>原图内框的左右边界量得 x ≈ 116…312（宽 ≈ 196），而面板九宫格的
-        /// 左右 border 是 110 → 拉伸区从左 110 起。于是内框距拉伸区左沿 6 px、
-        /// 距右沿 9 px。这里取 12 稍宽一点，让牌不至于压在内框描边上。</para>
-        /// </summary>
-        public const float HandPickSlotAreaPadding = 12f;
-
-        /// <summary>
-        /// 原图内框左右各距「九宫格拉伸区边界」多少 px（左 6 / 右 9，取大者）。
-        ///
-        /// <para><b>为什么需要这个数</b>：面板横向拉伸时，内框是**烘焙在中间拉伸区里的**，
-        /// 它不像左右 border 那样原地不动 —— 但也不会按比例放大。
-        /// 真实的内框宽 = <c>面板宽 − 110 − 110 − 2×本值</c>。
-        /// 牌排得太宽就会伸出内框、压到面板躯干上（2026-09-22 的 3 张态截图正是如此）。</para>
-        /// </summary>
-        public const float HandPickInnerFrameInset = 12f;
-
-        /// <summary>
-        /// 已选卡框区的最大宽度 = <b>手牌上限那一档的内容宽</b>。
-        ///
-        /// <para>⚠ 这里**不能**用「画布宽 − 两侧留白」那种屏幕级上限（原来是 1800）：
-        /// 那条上限比面板能长的宽度还大，等于没有约束 —— 卡槽区一旦比面板内框宽，
-        /// 牌就会横着捅出内框、压到面板躯干上（2026-09-22 的 3 张态截图正是如此）。</para>
-        ///
-        /// <para>= 8 张（<c>BattleState.HandLimit</c>）× 207 + 7×8 + 2×12 = <b>1744</b>。
-        /// 这个值同时是 <see cref="HandPickPanelMaxWidthFor"/> 的基准 ——
-        /// 两者都用**常量**表达，避免「卡槽区上限 ↔ 面板上限」互相引用成死循环
-        /// （属性取值器在静态初始化顺序上是不可靠的）。</para>
-        /// </summary>
-        public const float HandPickSlotAreaMaxWidth = HandPickSlotRowMaxItems * 207f
-            + (HandPickSlotRowMaxItems - 1) * 8f + 2f * 12f;
-
-        /// <summary>一行最多摆几张（= 手牌上限 8）。超过就溢出面板，不做换行。</summary>
+        /// <summary>一行最多摆几张（= 手牌上限 8）。</summary>
         public const int HandPickSlotRowMaxItems = 8;
 
-        /// <summary>空卡框的描边粗细（没选牌时，卡框是一圈虚线占位）。</summary>
-        public const float HandPickEmptyOutline = 3f;
+        /// <summary>卡槽区最大宽度（不含凹槽内边距）。超出就溢出面板，不做换行。</summary>
+        public const float HandPickSlotAreaMaxWidth = HandPickSlotRowMaxItems * HandPickSlotWidth
+            + (HandPickSlotRowMaxItems - 1) * HandPickSlotGap;
+
+        /// <summary>确认键尺寸（沿用现有牌座比例）。</summary>
+        public const float HandPickConfirmWidth = 264f;
+
+        public const float HandPickConfirmHeight = 66f;
+
+        /// <summary>确认键中心距面板右沿（= 右距 + 半宽）。</summary>
+        public const float HandPickConfirmRightInset = HandPickTrayRightPad + HandPickConfirmWidth * 0.5f;
 
         /// <summary>
-        /// 底部确认键的按钮座：距面板<strong>底边</strong>的距离与高度。
-        ///
-        /// <para><b>2026-09-22 对齐原图按钮座</b>（修「双下巴」）。确认键底图换成素材
-        /// （<c>HandPick_Confirm.png</c>）之后，它与 <c>Peek_Frame.png</c> **自带的**
-        /// 底部按钮座叠在一起 —— 原图那条按钮座还在画面里，我的按钮只要不完全盖住它，
-        /// 就会露出第二个轮廓，看着像两张脸叠一起。</para>
-        ///
-        /// <para>逐行量原图按钮座的内槽（在 431×556 的原图里）：
-        /// PNG y ≈ 469…526、x ≈ 85…341。换算到 Unity 坐标（原点在面板中心、y 向上）：
-        /// <c>y = 556−1−526 … 556−1−469 = 29…86</c>（高 <b>58</b>、中心 <b>57.5</b>）、
-        /// <c>x = 85…341 − 215.5 = −130.5…125.5</c>（宽 <b>257</b>、中心 −2.5 ≈ 居中）。</para>
-        ///
-        /// <para>所以按钮就是 <b>310 → 258 宽、76 → 58 高、中心 51 → 57.5</b>
-        /// —— 尺寸与原图内槽一致，正好盖住它、不再露出第二圈。
-        /// ⚠ 别再「凭手感」给尺寸：这个值必须来自量图，差 10 px 就是一条明显的重影。</para>
+        /// 面板宽度里「除卡槽行以外」的固定部分：
+        /// 左边距 + 凹槽内边距 ×2 + 间距 + 按钮宽 + 右距 = 20 + 20 + 24 + 264 + 30 = 358。
         /// </summary>
-        public const float HandPickConfirmCenterFromBottom = 57.5f;
+        public const float HandPickPanelChrome = HandPickTrayPad + 2f * HandPickSlotAreaPadding
+            + HandPickButtonGap + HandPickConfirmWidth + HandPickTrayRightPad;
 
-        public const float HandPickConfirmHeight = 58f;
+        /// <summary>标题铭牌：尺寸，以及它相对面板中心的纵向位置（面板上沿外 16 px）。</summary>
+        public const float HandPickTitleTabWidth = 240f;
 
-        /// <summary>确认键宽度（= 原图按钮座内槽宽 257，取整 258）。</summary>
-        public const float HandPickConfirmWidth = 258f;
+        public const float HandPickTitleTabHeight = 40f;
 
         /// <summary>
-        /// 确认键中心相对 <c>HandPickLayer</c> 根（= <b>屏幕中心</b>）的纵向偏移。
-        ///
-        /// <para><b>为什么单独列一条、而不是在建节点时现算</b> —— 这是 M31 真实踩过的符号坑：
-        /// M31 把确认键的父节点从「面板」（尺寸会被按张数改宽）换成了「满屏根」，
-        /// 两者原点其实都是屏幕中心，但 <see cref="HandPickConfirmCenterFromBottom"/> 的口径是
-        /// 「离<b>面板底边</b>多远」，换算成「离屏幕中心多远」时<b>必须取负</b>
-        /// —— 面板底边在屏幕中心<b>下方</b> <c>HandPickPanelHeight/2</c> 处。</para>
-        ///
-        /// <para>写成正号的现象：按钮镜像到面板<b>顶部</b>、压在标题牌位与「1/3」计数上，
-        /// 而底面那块原图自带的按钮座空着 —— <b>Unity 零报错</b>，只能靠肉眼/截图发现
-        /// （用户 2026-09-23 截图报的正是这个）。所以这行换算只准写在这里，别再当场乘加减。</para>
+        /// 铭牌吊在面板上沿外侧（下半截与面板重叠 4 px）。
+        /// = 半高 152 + 16。
         /// </summary>
-        public static float HandPickConfirmCenterYFromCenter()
+        public const float HandPickTitleTabOffsetY = HandPickPanelHeight * 0.5f + 16f;
+
+        /// <summary>铭牌里的文字框（比铭牌窄一圈，长标题靠自动缩容压回框内）。</summary>
+        public const float HandPickTitleWidth = 216f;
+
+        public const float HandPickTitleHeight = 36f;
+
+        /// <summary>标题字号（旧版竖版面板是 30，缩成铭牌后 20）。</summary>
+        public const float FontSizeHandPickTitle = 20f;
+
+        public const float FontSizeHandPickTitleBase = 20f;
+
+        public const float FontSizeHandPickTitleMin = 13f;
+
+        /// <summary>确认键文字字号（牌座 264×66，两字放在中间）。</summary>
+        public const float FontSizeHandPickConfirm = 30f;
+
+        /// <summary>
+        /// 卡槽行宽（只算牌，不含凹槽内边距）。
+        ///
+        /// <para><paramref name="members"/> = 已选张数 + 空槽（还能放时）。
+        /// 0 张时传 1 —— 那一格就是「空卡位」，与面板严格对齐。</para>
+        /// </summary>
+        public static float SlotAreaWidthFor(int members)
         {
-            return HandPickConfirmCenterFromBottom - HandPickPanelHeight * 0.5f;
+            if (members <= 1)
+            {
+                return HandPickSlotWidth;
+            }
+
+            float w = members * HandPickSlotWidth + (members - 1) * HandPickSlotGap;
+            return w > HandPickSlotAreaMaxWidth ? HandPickSlotAreaMaxWidth : w;
         }
 
-        // ── M30 · 确认键底图（`HandPick_Confirm.png`）────────────
-        //
-        // 用户口径（2026-09-22）：确认键不要用「自己摆的一个灰蓝色方块」，要用素材里给的那条按钮条。
-        // 素材 = `Assets/Art/Ui/HandPick_Confirm.png`（626×174），由 `Tools/art-audit/slice_handpick_kit.py`
-        // 从 `Art/148cae8c-….png` 底部那条切出。两端是「六边形 + 斜角 + 外侧辉光」造型，
-        // 直接按尺寸缩放会把两端压扁，所以走九宫格横向拉伸：左右各 96 当 border 保护两端造型，
-        // 中间那段纯色躯干负责横拉。
-        //
-        // ⚠ 纵向 border 已经改到 26（见 HandPickConfirmBorderY）：素材 626×174 里上下
-        //   各有一条很薄的亮描边，26 刚好把它们护住又不至于把按钮压成细缝。
-        //
-        // ⚠ **2026-09-23 起按钮不再画这条素材了**（用户口径：「移除掉这个确认键的背景，
-        //   就用按钮座那个背景」）。它压在原图内槽上时纵向被 174 → 58 硬压，观感是一条
-        //   发白的扁条，与底面那块按钮座对不上。现在按钮只留文字与命中区、
-        //   背景交给 `Peek_Frame.png` 自带的按钮座。这三个常量仍然留着并继续做导入参数校验
-        //   （`EnsurePeekImporters`）—— 素材没删，将来要用不必再回头收拾 border。
-        //   详见 `Docs/implementation/30-…`。
+        /// <summary>面板宽度 = 卡槽行宽 + 固定部分（<see cref="HandPickPanelChrome"/>）。</summary>
+        public static float HandPickPanelWidthFor(int members)
+        {
+            return SlotAreaWidthFor(members) + HandPickPanelChrome;
+        }
 
-        /// <summary>确认键底图路径（构建器 + 导入参数校验都用它）。</summary>
-        public const string HandPickConfirmSpritePath = "Assets/Art/Ui/HandPick_Confirm.png";
+        // ── 素材路径（2026-10-31 新增）────────────────────────
+        //
+        //  牌座：`HandPick_Seat.png` / `HandPick_SeatOff.png`（264×66 @2x，无字）。
+        //  它们是照着 `Peek_Frame.png` 底部那块发光牌座重画的独立贴图 ——
+        //  旧版按钮其实是「面板自带按钮座上的一个文字」，离开面板就什么都没有。
+        //  文字仍由 TMP 叠在上面（title 字体），贴图里不带字。
+        //
+        //  ⚠ `HandPickConfirmSpritePath`（旧的 626×174 奶油长条）**不能动**：
+        //    Home / 设置 / 卡组 / 结算四处按钮都在用它。
+
+        public const string HandPickSeatSpritePath = "Assets/Art/Ui/HandPick_Seat.png";
+
+        public const string HandPickSeatOffSpritePath = "Assets/Art/Ui/HandPick_SeatOff.png";
+
+        /// <summary>空槽 / 待放槽的虚线框（176×244，与卡框同尺寸）。</summary>
+        public const string HandPickSlotDashSpritePath = "Assets/Art/Ui/HandPick_SlotDash.png";
+
+        /// <summary>标题铭牌底图（240×40）。</summary>
+        public const string HandPickTitleTabSpritePath = "Assets/Art/Ui/HandPick_TitleTab.png";
 
         /// <summary>
-        /// 确认键底图九宫格的左右 border（= 素材两端的造型宽度）。
+        /// 托盘底图：96×96 的白色圆角块（圆角 18，九宫格 24），靠 Image.color 染成深蓝。
         ///
-        /// <para>⚠ 只存在 .meta 里、重导就悄悄丢，丢了是圆角/斜角被抻成椭圆而 <b>Unity 零警告</b>
-        /// —— 所以构建流程里固定校验（编辑器侧 <c>EnsureHandPickImporters</c>）。</para>
+        /// <para>为什么不用现成的 `CardBox_Line.png`：那张是**描边**（中心透明），
+        /// 染深色只会得到一圈线；`CardBox.png` 是实心的，但圆角 38 —— 拉到 304 高的托盘上
+        /// 太圆，所以单独出了一张圆角 18 的。</para>
         /// </summary>
-        public const float HandPickConfirmBorderX = 96f;
+        public const string HandPickPanelSpritePath = "Assets/Art/Ui/HandPick_Tray.png";
 
-        /// <summary>
-        /// 确认键底图九宫格的上下 border。
-        ///
-        /// <para><b>必须小于按钮高度</b>：九宫格里上下 border 之和一旦 ≥ 目标高度，
-        /// 中间那段可拉伸区就没了 —— Unity 会把整张图硬压，两端造型直接被挤扁。
-        /// 素材高 174、按钮高 76，所以这里取 26 + 26 = 52 &lt; 76，中间留 24 px 拉伸余量；
-        /// 纵向本来也不该拉伸，这点余量只是让整图能被匀压缩到 76。</para>
-        /// </summary>
-        public const float HandPickConfirmBorderY = 26f;
+        /// <summary>内凹槽底图：96×96 白色圆角块（圆角 12，九宫格 20），同样靠染色。</summary>
+        public const string HandPickRecessSpritePath = "Assets/Art/Ui/HandPick_Recess.png";
 
-        /// <summary>
-        /// 手牌飞入卡框的时长（玩家点一张手牌 → 它在卡框里落位）。
-        /// 0.26 s、OutCubic：比淡入慢一点，让人看清「哪张牌飞过去了」。
-        /// </summary>
+        // ── 动画时长（沿用旧版）──────────────────────────────
+
+        /// <summary>手牌飞入卡框的时长（点一张手牌 → 它在卡框里落位）。</summary>
         public const float HandPickFlySeconds = 0.26f;
 
-        /// <summary>整块浮层淡入 / 淡出的时长（与 M25 同口径）。</summary>
+        /// <summary>整块浮层淡入 / 淡出的时长。</summary>
         public const float HandPickFadeSeconds = 0.18f;
 
-        /// <summary>面板出现时从多小弹到 1（弹一下）。</summary>
+        /// <summary>面板出现时从多小弹到 1。</summary>
         public const float HandPickPanelPopFrom = 0.94f;
 
         public const float HandPickPanelPopSeconds = 0.24f;
@@ -1983,79 +1925,27 @@ namespace MagicBrawl.App
         /// <summary>新卡落进卡框时的放大回弹时长。</summary>
         public const float HandPickAddSeconds = 0.2f;
 
-        /// <summary>
-        /// 面板宽度随「中间卡槽区」的宽度走：`卡槽区宽 + 2×` 内框到<b>内框沿</b>的距离。
-        ///
-        /// <para><b>原图实测</b>：九宫格左右 border = 110，内框左右边界 = 116 / 312。
-        /// 单张态面板 431、卡槽区 207 → 每侧余量 = <b>112</b>。
-        /// 但内框本身的左右沿距面板外沿是 116 / 431−312 = 119 ——
-        /// 这两个数不一样，是因为卡槽区（放牌的那条）比内框**还窄一点**：
-        /// 牌不该贴着内框的亮描边。差值 119 − 112 = 7 就是那圈留白。</para>
-        ///
-        /// <para>所以「面板 = 卡槽区 + 224」这条口径天然保证了牌在内框里
-        /// —— 只要 112 × 2 = 224 ≤ 内框两侧总留白 238。**不要再改这个 112**：
-        /// 改小了牌会伸出内框压到面板躯干上（2026-09-22 的 3 张态截图）。</para>
-        /// </summary>
-        public static float HandPickPanelWidthFor(int count)
-        {
-            float w = SlotAreaWidthFor(count) + 2f * HandPickPanelSideMargin;
-            float max = HandPickPanelMaxWidthFor();
-            return w > max ? max : w;
-        }
+        // ── 旧素材（别的界面还在用，勿删）────────────────────
+        //
+        //  `HandPick_Confirm.png` 是 M30 那条奶油长条，HandPick 自己已经不用了，
+        //  但 Home / 设置 / 卡组 / 结算四处按钮仍在加载它 —— 路径与 border 都得留着。
+        //  `Peek_Frame.png` 同理：PeekView 还在用它，这里只保留它的九宫格边界给导入校验。
 
-        /// <summary>
-        /// 卡槽区两侧各留多少才到面板外沿（实测 112）—— <b>面板与卡槽区之间的唯一口径</b>。
-        /// </summary>
-        public const float HandPickPanelSideMargin = 112f;
+        public const string HandPickConfirmSpritePath = "Assets/Art/Ui/HandPick_Confirm.png";
 
-        /// <summary>
-        /// 面板能到的最宽值 —— 由卡槽区上限推出（卡槽区上限 + 两侧各 112）。
-        ///
-        /// <para>为什么要有这条：面板与卡槽区必须**同进同退**。面板宽度没有上限时，
-        /// 卡槽区封了顶而面板还在长，两者就脱钩了（牌挤在中间、面板左右空出一大块）。
-        /// 两边都以 <see cref="HandPickSlotAreaMaxWidth"/> 为唯一基准，口径才一致。</para>
-        /// </summary>
-        public static float HandPickPanelMaxWidthFor()
-        {
-            return HandPickSlotAreaMaxWidth + 2f * HandPickPanelSideMargin;
-        }
+        public const float HandPickConfirmBorderX = 96f;
 
-        /// <summary>
-        /// 中间卡槽区（装已选牌的那一排）在给定了「选了几张」之后应该有多宽。
-        ///
-        /// <para>0 张时 = 单张框宽（画面上一块空卡框，与面板严格对齐）；
-        /// 多张时按张数往外扩，并以 <see cref="HandPickSlotAreaMaxWidth"/> 封顶。</para>
-        /// </summary>
-        public static float SlotAreaWidthFor(int count)
-        {
-            if (count <= 1)
-            {
-                return HandPickSlotWidth;
-            }
+        public const float HandPickConfirmBorderY = 26f;
 
-            float w = count * HandPickSlotWidth + (count - 1) * HandPickSlotGap
-                      + 2f * HandPickSlotAreaPadding;
-            return w > HandPickSlotAreaMaxWidth ? HandPickSlotAreaMaxWidth : w;
-        }
+        public const float HandPickPanelBorderLeft = 110f;
 
-        // ── 字号 ─────────────────────────────────────────────
+        public const float HandPickPanelBorderRight = 110f;
 
-        /// <summary>标题字号。</summary>
-        public const float FontSizeHandPickTitle = 30f;
+        public const float HandPickPanelBorderTop = 100f;
 
-        /// <summary>
-        /// 确认键文字字号。
-        ///
-        /// <para>2026-09-23 起确认键自己不再画底图（露出的是 <c>Peek_Frame.png</c> 自带的
-        /// 底部按钮座），两字「确认」要落在那个内槽里不顶上下描边，所以字号保持 26。</para>
-        /// </summary>
-        public const float FontSizeHandPickConfirm = 26f;
+        public const float HandPickPanelBorderBottom = 36f;
 
-        // ⚠ 2026-09-27：原先这里有一条 `FontSizeHandPickSubTitle = 22`（「已选 0 / 3」那行计数）。
-        //   计数整个移除，字号常量跟着删 —— 见 `HandPickTitleTop` 那段后的说明。
 
-        /// <summary>确认键不可用时文字的颜色（暗下去；按钮底图的 disabled 色另有其物）。</summary>
-        public const float HandPickDisabledDim = 0.45f;
 
         // ══════════════════════════════════════════════════════
         //  M28 · 查看怪物手牌（按住怪物右下角的手牌数标签）

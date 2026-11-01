@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using MagicBrawl.Core;
 using TMPro;
 using UnityEngine;
@@ -95,6 +96,9 @@ namespace MagicBrawl.App
 
         public void Bind(CardSnapshot card, ViewMode mode, int slotIndex)
         {
+            // 上一张牌留下的减速脉冲不能跟着绑到新牌上（同一批里池化复用的那几张最常见）
+            StopSlowFlash();
+
             Card = card;
             Mode = mode;
             SlotIndex = slotIndex;
@@ -234,6 +238,7 @@ namespace MagicBrawl.App
 
         public void Clear()
         {
+            StopSlowFlash();
             SetPresentationHidden(false);
             HasCard = false;
             Card = default(CardSnapshot);
@@ -354,6 +359,108 @@ namespace MagicBrawl.App
             {
                 _group.alpha = alpha;
             }
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  被减速的提示（2026-10-31）
+        // ══════════════════════════════════════════════════════
+        //
+        //  用户口径：冷却区的牌被减速时，**光靠「往后退一行」的位移很容易注意不到**，
+        //  那张牌自己要有特效。
+        //
+        //  落点选「染插画」而不是新建一层特效节点，理由有三条：
+        //    ① 卡面是组成式的（插画铺满整卡），染它就是整张脸在闪，比任何外框都显眼；
+        //    ② 不新建节点 —— 运行时 new 出来的东西会被构建器推倒重建冲掉（M21 的教训），
+        //       而手牌 / 迷你卡 / 放大查看共用这一棵树，加子节点还要考虑层级；
+        //    ③ 只有一个 Image.color 在变，池化复用 / 每帧重绑都不会留下脏状态
+        //       （Bind 会把插画颜色按卡面原色重写一次）。
+        //
+        //  ⚠ 颜色不写死在这里：<see cref="UiTheme.SlowFlashCard"/>，时长与强度在 UiLayout。
+
+        /// <summary>本卡面正在跑的减速脉冲（重复触发时先停旧的，免得两条协程抢同一个颜色）。</summary>
+        private Coroutine _slowFlash;
+
+        /// <summary>脉冲开始前的插画色（结束 / 中断时按它复位）。</summary>
+        private Color _slowFlashBase = Color.white;
+
+        /// <summary>
+        /// 闪两下冰蓝 —— 告诉玩家<b>这张牌被减速了</b>。
+        ///
+        /// <para>只做表现，不碰任何规则数据：真实的剩余冷却早在引擎里结算完了
+        /// （见 <c>CooldownOps.TrySlow</c>），这里只是让那一步看得见。</para>
+        ///
+        /// <para>幂等：同一张牌连着一批里被减速两次（「减速 ×2」）时重新起播，
+        /// 不会叠成两倍亮度。</para>
+        /// </summary>
+        public void PlaySlowFlash()
+        {
+            if (_art == null || !isActiveAndEnabled)
+            {
+                return;
+            }
+
+            if (_slowFlash != null)
+            {
+                // 已经在闪 = 这一批里又被减速了一次（「减速 ×2」）→ 重起一遍，但**不要**
+                // 把「闪到一半的颜色」当成基准色（那会让它越闪越偏）。
+                StopCoroutine(_slowFlash);
+                _slowFlash = null;
+            }
+            else
+            {
+                _slowFlashBase = _art.color;
+            }
+
+            _slowFlash = StartCoroutine(CoSlowFlash());
+        }
+
+        private IEnumerator CoSlowFlash()
+        {
+            float duration = UiLayout.SlowFlashSeconds;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = duration <= 0f ? 1f : Mathf.Clamp01(elapsed / duration);
+
+                // |sin(2πt)|：0 → 1 → 0 → 1 → 0，正好两下（一下太短，容易正好被下一拍盖住）
+                float wave = Mathf.Abs(Mathf.Sin(t * Mathf.PI * 2f));
+
+                if (_art != null)
+                {
+                    _art.color = Color.Lerp(_slowFlashBase, UiTheme.SlowFlashCard, wave);
+                }
+
+                yield return null;
+            }
+
+            if (_art != null)
+            {
+                _art.color = _slowFlashBase;
+            }
+
+            _slowFlash = null;
+        }
+
+        /// <summary>停掉脉冲并复位插画色（重绑 / 回收 / 禁用时都要走）。</summary>
+        private void StopSlowFlash()
+        {
+            if (_slowFlash != null)
+            {
+                StopCoroutine(_slowFlash);
+                _slowFlash = null;
+            }
+
+            if (_art != null)
+            {
+                _art.color = _slowFlashBase;
+            }
+        }
+
+        private void OnDisable()
+        {
+            StopSlowFlash();
         }
 
         // ══════════════════════════════════════════════════════

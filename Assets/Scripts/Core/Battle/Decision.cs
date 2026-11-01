@@ -133,6 +133,24 @@ namespace MagicBrawl.Core
         /// <summary>该选项能影响到的牌数（区域类的「数值集中度」，供 AI 与 UI 评估）。</summary>
         public int Count;
 
+        /// <summary>
+        /// 冷却类选项的<b>极性</b>：<c>true</c> = 加速（剩余冷却前进）／<c>false</c> = 减速。
+        ///
+        /// <para><b>为什么极性必须挂在选项上，而不是留在请求里</b>：加速 / 减速的目标
+        /// <b>横跨双方</b>（引擎按 <c>Participants</c> 同时给两边的冷却牌），所以「这张牌是谁的」
+        /// 表达不了「这一步是有利还是不利」。而 <see cref="EffectWindow"/> 会把同一拍里
+        /// 两条并列的冷却效果（暴风雪的「加速」+「区域减速」）合成<b>一个</b>
+        /// <see cref="RequestKind.ChooseCooldownEffects"/> 决策 —— 那一刻
+        /// <see cref="DecisionRequest.ContextHaste"/> 只能代表其中一条（template 那一条），
+        /// 派生的 Kind 也不再是 <see cref="RequestKind.ChooseHasteTarget"/> /
+        /// <see cref="RequestKind.ChooseSlowTarget"/>。极性只有在生成选项的地方才写得下来。</para>
+        ///
+        /// <para><b>用途</b>：AI 在合并拍里按「加速只给自己、减速只给对方」挑选项
+        /// （见 <c>CooldownTargetPolicy</c>）；自测的立场断言也读它。
+        /// 非冷却类选项恒为 <c>false</c>，不要拿它判断别的语义。</para>
+        /// </summary>
+        public bool HasteOption;
+
         public bool IsSkip
         {
             get { return Kind == OptionKind.Skip; }

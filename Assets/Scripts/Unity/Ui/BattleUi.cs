@@ -373,6 +373,23 @@ namespace MagicBrawl.App
         /// </summary>
         private float _slowHold;
 
+        /// <summary>
+        /// 本批冷却演出里「<b>玩家自己的哪几张牌</b>被减速了」（<c>CardInstance.Uid</c>）。
+        ///
+        /// <para><b>为什么先记账、不立刻播</b>：回放按「批」走 —— 一批冷却事件全部过完
+        /// 才 RaiseStateChanged → <see cref="RefreshAll"/> 重绑冷却区（见 BattleDriver 的
+        /// <c>ContinuesCooldownBatch</c>）。事件到达时屏幕上那张迷你卡可能还是旧的一格、
+        /// 也可能刚被腾进池子；只有绑完之后的节点才是这一拍的。所以这里只记 uid，
+        /// 等 <see cref="RefreshAll"/> 绑完再交给 <see cref="CooldownView.FlashSlowCards"/>。</para>
+        ///
+        /// <para>同一批的边界与 <see cref="_slowHold"/> 完全一致（遇上非冷却拍清零），
+        /// 所以不会把上一批的减速闪到这一批上。</para>
+        /// </summary>
+        private readonly HashSet<int> _slowCardUids = new HashSet<int>();
+
+        /// <summary>本批冷却演出里「玩家自己哪一格冷却槽被<b>区域</b>减速了」（行号 = 4 − 剩余冷却）。</summary>
+        private readonly List<int> _slowZoneRows = new List<int>();
+
         /// <summary>准备标记条是否已经接过线（<see cref="EnsurePreparedBar"/> 幂等用）。</summary>
         private bool _preparedWired;
 
@@ -1138,6 +1155,8 @@ namespace MagicBrawl.App
             {
                 _effectBatchShown = false;
                 _slowHold = 0f;
+                _slowCardUids.Clear();
+                _slowZoneRows.Clear();
             }
 
             // 2026-10-31：冷却变化要**等卡牌滑到新行**再进下一拍。
@@ -1164,11 +1183,26 @@ namespace MagicBrawl.App
                     && change.Card.OwnerSeat == LocalSeat
                     && change.To > change.From)
                 {
-                    _slowHold = Mathf.Max(_slowHold, UiLayout.SlowShiftSeconds);
+                    _slowHold = Mathf.Max(_slowHold,
+                        Mathf.Max(UiLayout.SlowShiftSeconds, UiLayout.SlowFlashSeconds));
 
                     if (_cooldown != null)
                     {
                         _cooldown.SetCardMoveSeconds(change.Card.Uid, UiLayout.SlowShiftSeconds);
+                    }
+
+                    // 2026-10-31（用户口径第二轮）：**这一张牌自己也要闪**，否则「往后退一格」
+                    // 在对面出牌的那一拍很容易被漏掉。区域减速还要额外点亮「那一格槽位」，
+                    // 因为玩家看到的语义是「这个区被压住了」，而不只是几张牌各退一行。
+                    _slowCardUids.Add(change.Card.Uid);
+
+                    if (IsZoneReason(change.Reason))
+                    {
+                        int row = Mathf.Clamp(4 - change.To, 0, 3);
+                        if (!_slowZoneRows.Contains(row))
+                        {
+                            _slowZoneRows.Add(row);
+                        }
                     }
                 }
 
@@ -2131,6 +2165,9 @@ namespace MagicBrawl.App
                     _cooldown.ClearPlayable();
                     ApplyZonePickState();
                 }
+
+                // 绑定 / 可点态都定下来之后再闪（节点与底色此刻才是这一拍的样子）
+                ApplySlowFx();
             }
 
             if (_stage != null)
@@ -2181,7 +2218,40 @@ namespace MagicBrawl.App
             _coolingLiveValid = true;
         }
 
-        /// <summary>把某个座位的演出态复制进渲染缓冲（<c>BindBoth</c> 的入参）。</summary>
+        /// <summary>
+        /// 把这一批记下来的「玩家被减速」落到屏幕上（2026-10-31）。
+        ///
+        /// <para>只做表现：减速本身早在引擎里结算完了，这里只是让那一步看得见 ——
+        /// 卡面闪两下冰蓝（<see cref="CardView.PlaySlowFlash"/>），区域减速再把
+        /// 被压住的那一格冷却槽一起闪（<see cref="CooldownView.FlashSlowZone"/>）。</para>
+        ///
+        /// <para>只在 <see cref="RefreshAll"/> 绑完冷却区之后调用，用完即清 ——
+        /// 下一次刷新没重新记就什么都不会闪。</para>
+        /// </summary>
+        private void ApplySlowFx()
+        {
+            if (_cooldown == null)
+            {
+                return;
+            }
+
+            if (_slowCardUids.Count > 0)
+            {
+                _cooldown.FlashSlowCards(_slowCardUids);
+                _slowCardUids.Clear();
+            }
+
+            for (int i = 0; i < _slowZoneRows.Count; i++)
+            {
+                _cooldown.FlashSlowZone(LocalSeat, _slowZoneRows[i]);
+            }
+
+            _slowZoneRows.Clear();
+        }
+
+        /// <summary>
+        /// 把某个座位的演出态复制进渲染缓冲（<c>BindBoth</c> 的入参）。
+        /// </summary>
         private void CopyCoolingLive(int seat, List<CardSnapshot> sink)
         {
             sink.Clear();
@@ -3497,7 +3567,7 @@ namespace MagicBrawl.App
             _driver.SubmitPlayerDecision(picks);
         }
 
-        /// <summary>发牌台「不替换 / 保留这张」：直接提交引擎给的那个 Done 选项（文案也是它给的）。</summary>
+        /// <summary>发牌台「确认卡组」：直接提交引擎给的那个 Done 选项（= 不再换牌）。</summary>
         private void OnDealSkipped(Option option)
         {
             Pick(option);

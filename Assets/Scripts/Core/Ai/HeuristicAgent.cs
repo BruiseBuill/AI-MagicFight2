@@ -142,13 +142,13 @@ namespace MagicBrawl.Core
                     return DecideDefense(request);
 
                 case RequestKind.ChooseHasteTarget:
-                    return Of(request, PickSmallestCooldown(request));
-
                 case RequestKind.ChooseSlowTarget:
-                    return Of(request, PickStrongestOpponentCooling(request));
-
                 case RequestKind.ChooseZoneValue:
-                    return Of(request, PickDensestZone(request));
+                // ⚠ 合并拍（暴风雪 a =「加速」+「区域减速」、海涌 q =「加速」+「区域加速」）
+                //    以前没有分支 → 掉进 default 的 FirstNonSkip =「按生成顺序取第一个」，
+                //    而生成顺序是「施法者 → 对方」→ 减速先落在自己身上、加速先落在对方身上。
+                case RequestKind.ChooseCooldownEffects:
+                    return Of(request, PickCooldownTarget(request));
 
                 case RequestKind.ChooseRefreshTarget:
                     return Of(request, PickRefreshTarget(request));
@@ -1149,78 +1149,23 @@ namespace MagicBrawl.Core
         //  非核心决策（沿用 SimpleAiAgent 的既定口径）
         // ══════════════════════════════════════════════════════
 
-        /// <summary>加速：己方剩余冷却最小的牌。</summary>
-        protected static Option PickSmallestCooldown(DecisionRequest req)
-        {
-            Option best = null;
-            for (int i = 0; i < req.Options.Count; i++)
-            {
-                Option o = req.Options[i];
-                if (!IsCardOption(o) || o.Card.OwnerSeat != req.Seat)
-                {
-                    continue;
-                }
-
-                if (best == null || o.Card.RemainingCooldown < best.Card.RemainingCooldown)
-                {
-                    best = o;
-                }
-            }
-
-            return best ?? req.SkipOption;
-        }
-
-        /// <summary>减速：对方力量最高的冷却牌（对方冷却区是明牌）。</summary>
-        protected static Option PickStrongestOpponentCooling(DecisionRequest req)
-        {
-            Option best = null;
-            for (int i = 0; i < req.Options.Count; i++)
-            {
-                Option o = req.Options[i];
-                if (!IsCardOption(o) || !req.IsEnemy(o.Card.OwnerSeat))
-                {
-                    continue;
-                }
-
-                if (best == null || o.Card.EffectivePower > best.Card.EffectivePower)
-                {
-                    best = o;
-                }
-            }
-
-            return best ?? req.SkipOption;
-        }
-
         /// <summary>
-        /// 区域类：只在对我有利的那一方里挑匹配张数最多的一档
-        /// （区域加速偏向自己的冷却区、区域减速偏向对方的冷却区）。
+        /// 冷却类决策的统一入口（2026-10-31）—— <b>加速只给自己、减速只给对方</b>。
+        ///
+        /// <para><b>为什么不是三条各自实现</b>：旧版是「加速挑自己最小的 / 减速挑对方最强的 /
+        /// 区域挑自己那边最密的」三个小函数，各自按「牌是谁的」过滤。它们对单张拍是对的，
+        /// 但<b>合并拍</b>（暴风雪 / 海涌：引擎把「加速 + 区域加速/减速」合成一个
+        /// <see cref="RequestKind.ChooseCooldownEffects"/>）根本走不到它们 —— 那一拍的 Kind
+        /// 变了，于是落进 <c>FirstNonSkip</c>，取到的是「按座位顺序生成的第一个选项」，
+        /// 表现就是「AI 给自己减速 / 给对手加速」。</para>
+        ///
+        /// <para>口径与取舍收在 <see cref="CooldownTargetPolicy"/> 一处：立场优先，同档再比
+        /// 剩余冷却 / 力量 / 匹配张数；一步有利的都没有就跳过（引擎不让跳过时才挑最不伤的）。
+        /// 怪物子类若要改「往谁身上使劲」，覆写本方法即可，不用再抄一遍过滤。</para>
         /// </summary>
-        protected static Option PickDensestZone(DecisionRequest req)
+        protected virtual Option PickCooldownTarget(DecisionRequest req)
         {
-            Option best = null;
-            int bestScore = -1;
-
-            for (int i = 0; i < req.Options.Count; i++)
-            {
-                Option o = req.Options[i];
-                if (o.Kind != OptionKind.ZoneValue)
-                {
-                    continue;
-                }
-
-                bool favorable = o.Seat == -1
-                                 || (req.ContextHaste ? o.Seat == req.Seat : req.IsEnemy(o.Seat));
-
-                if (!favorable || o.Count <= bestScore)
-                {
-                    continue;
-                }
-
-                bestScore = o.Count;
-                best = o;
-            }
-
-            return best ?? req.SkipOption;
+            return CooldownTargetPolicy.Pick(req, State);
         }
 
         /// <summary>立即冷却完成 / 重置对方冷却：按极性挑剩余冷却最小的。</summary>

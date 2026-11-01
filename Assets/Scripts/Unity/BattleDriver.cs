@@ -464,6 +464,9 @@ namespace MagicBrawl.App
                     UseAuras = false,
                     ReplaceWeakCards = false,
                     BlindPickSeed = unchecked(seed + seat),
+                    // 2026-10-31：只给「雪崩那种双方一起的区域减速」数张数用 ——
+                    // 没有它，「自己 4 张 / 对面 0 张」时照样会放（等于自我减速）。
+                    State = state,
                 };
                 return new AiController(easy);
             }

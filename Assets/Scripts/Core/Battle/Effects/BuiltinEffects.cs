@@ -146,8 +146,8 @@ namespace MagicBrawl.Core
                 Options = options, MinSelect = canLeaveEmpty ? 0 : 1, MaxSelect = maximum,
                 ContextNoSkip = !canLeaveEmpty, ContextHaste = haste };
         }
-        private static Option CardOption(CardInstance card)
-        { return new Option { Kind = OptionKind.ChooseCard, Seat = card.OwnerSeat, Card = card, Label = card.Def.Name, Value = card.RemainingCooldown }; }
+        private static Option CardOption(CardInstance card, bool haste = false)
+        { return new Option { Kind = OptionKind.ChooseCard, Seat = card.OwnerSeat, Card = card, Label = card.Def.Name, Value = card.RemainingCooldown, HasteOption = haste }; }
         private static Option Pick(EffectChoice choice)
         {
             if (choice.Selected != null) foreach (Option option in choice.Selected) if (!option.IsSkip) return option;
@@ -187,10 +187,13 @@ namespace MagicBrawl.Core
 
                                     options.Add(new Option { Kind = OptionKind.ZoneValue, Seat = seat,
                                         Value = card.RemainingCooldown, Count = matched,
+                                        // 极性写进选项本身：加速 + 区域减速 会合成同一个决策（暴风雪），
+                                        // 那一刻 ContextHaste 只剩 template 那一条的极性（见 Option.HasteOption）。
+                                        HasteOption = haste,
                                         Label = title + " " + card.RemainingCooldown });
                                 }
                             }
-                            else options.Add(CardOption(card));
+                            else options.Add(CardOption(card, haste));
                         }
                     }
                     return Request(c, zone ? RequestKind.ChooseZoneValue : haste ? RequestKind.ChooseHasteTarget : RequestKind.ChooseSlowTarget,

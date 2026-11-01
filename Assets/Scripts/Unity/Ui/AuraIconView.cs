@@ -329,29 +329,60 @@ namespace MagicBrawl.App
         {
             Data = data;
 
+            // ── v2（2026-10-31）：一枚光环 = 一张整图 ────────────────────────────
+            // 库里有图就把「底版」直接当整枚徽章画，剑 / 盾 / 感叹号那套符号整体退场：
+            // 它们本来就是卡面的 α β γ 触发符号，借过来用等于让一个图形背两套含义
+            //（详见 AuraIconLibrary 的注释）。
+            // 库里没有图（素材未导入）则原样退回 v1 —— HUD 不能整排变空白。
+            Sprite badge = AuraIconLibrary.Get(data.Kind, data.Sigil);
+
             if (_plate != null)
             {
-                _plate.color = data.PlateColor;
+                if (badge != null)
+                {
+                    // 整图模式：底版铺满 72（图里自带 6% 透明边与六边形描边），
+                    // 「本拍用不上」改成把整张图乘暗 —— 没有 v1 那层遮罩可盖了。
+                    _plate.sprite = badge;
+                    _plate.type = Image.Type.Simple;
+                    _plate.preserveAspect = true;
+                    _plate.color = data.Sigil || data.Usable ? Color.white : UiTheme.AuraBadgeDim;
+
+                    RectTransform prt = _plate.rectTransform;
+                    prt.sizeDelta = new Vector2(UiLayout.BuffIconSize, UiLayout.BuffIconSize);
+                }
+                else
+                {
+                    _plate.color = data.PlateColor;
+                    _plate.type = Image.Type.Sliced;
+                    _plate.preserveAspect = false;
+
+                    RectTransform prt = _plate.rectTransform;
+                    float inner = UiLayout.BuffIconSize - UiLayout.BuffIconEdgeWidth * 2f;
+                    prt.sizeDelta = new Vector2(inner, inner);
+                }
             }
 
             if (_glyphA != null)
             {
-                _glyphA.sprite = glyphA;
-                _glyphA.enabled = glyphA != null;
+                _glyphA.sprite = badge == null ? glyphA : null;
+                _glyphA.enabled = badge == null && glyphA != null;
                 _glyphA.color = UiTheme.AuraGlyph;
             }
 
             if (_glyphB != null)
             {
-                _glyphB.sprite = glyphB;
-                _glyphB.enabled = glyphB != null;
+                _glyphB.sprite = badge == null ? glyphB : null;
+                _glyphB.enabled = badge == null && glyphB != null;
                 _glyphB.color = UiTheme.AuraGlyph;
             }
 
-            // 「攻防二选一」要并排画剑 + 盾（左右各偏一点、尺寸收小一档），
-            // 其余类型只有一个符号、居中且更大。模板里两个符号都建好了，这里只调位置和尺寸。
-            PlaceGlyph(_glyphA, data, data.IsDual ? -UiLayout.BuffIconGlyphDualOffset : 0f);
-            PlaceGlyph(_glyphB, data, UiLayout.BuffIconGlyphDualOffset);
+            if (badge == null)
+            {
+                // 「攻防二选一」要并排画剑 + 盾（左右各偏一点、尺寸收小一档），
+                // 其余类型只有一个符号、居中且更大。模板里两个符号都建好了，这里只调位置和尺寸。
+                PlaceGlyph(_glyphA, data, data.IsDual ? -UiLayout.BuffIconGlyphDualOffset : 0f);
+                PlaceGlyph(_glyphB, data, UiLayout.BuffIconGlyphDualOffset);
+            }
 
             if (_value != null)
             {
@@ -368,16 +399,20 @@ namespace MagicBrawl.App
             //（玩家需要知道自己有什么，只是现在动不了）。
             // ⚠ 刻印两者都不适用：它**永远不能拖**，所以「可用 / 不可用」这个概念对它不成立；
             //   压暗（_dim）会让玩家以为它没在生效，而刻印亮着就是「正在每回合触发」的意思。
+            //
+            // ⚠ v2 整图模式：外框（Frame）是这一层唯一的射线目标，关掉 Image 会连点击一起丢，
+            //   所以把它涂成全透明「留形不留色」；「可用 / 不可用」改由底版的乘色表达。
             if (_frame != null)
             {
-                _frame.color = data.Sigil || data.Usable
-                    ? UiTheme.AuraIconReadyEdge
-                    : UiTheme.AuraIconEdge;
+                _frame.color = badge != null
+                    ? new Color(0f, 0f, 0f, 0f)
+                    : (data.Sigil || data.Usable ? UiTheme.AuraIconReadyEdge : UiTheme.AuraIconEdge);
             }
 
             if (_dim != null)
             {
-                _dim.enabled = !data.Usable && !data.Sigil;
+                // 那层遮罩是「圆角方块」，盖在六边形上会把角露出来 —— 整图模式下不用它。
+                _dim.enabled = badge == null && !data.Usable && !data.Sigil;
             }
 
             ResetState();

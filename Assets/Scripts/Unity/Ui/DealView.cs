@@ -18,9 +18,8 @@ namespace MagicBrawl.App
     ///
     /// <para><b>为什么不自己判断规则</b>：哪些牌能被替换、最多换几张，全在
     /// <c>DecisionSnapshot</c> 的 <c>Options</c> 与 <c>MaxSelect</c> 里 —— 引擎已经把非法项滤掉了，
-    /// 本类只做「标记 + 数数量 + 把序号回传」（铁律第 3 条）。连「不替换」那颗按钮的文字
-    /// 都直接用引擎给的 Done 选项 <c>Label</c>：开局是「不替换，开始对局」，补牌后是「保留这张，继续」，
-    /// 一句话都不用在 UI 里硬编码。</para>
+    /// 本类只做「标记 + 数数量 + 把序号回传」（铁律第 3 条）。「不换牌」提交的也是引擎给的
+    /// Done 选项（只是按钮文字由本类统一写成「确认卡组」，见 <see cref="ConfirmDeckLabel"/>）。</para>
     ///
     /// <para><b>两个入口不重复</b>：替换决策期间 <see cref="TargetPicker"/> 整个收起 ——
     /// Done 选项改由这里承担，否则同一件事会有两个按钮。</para>
@@ -28,6 +27,12 @@ namespace MagicBrawl.App
     /// <para><b>2026-10-31 · 换牌改成手势</b>：点 / 划把手牌标记成「要换的」，
     /// 然后把其中任意一张<b>向上拖进手牌区上方那条投放槽</b> —— 标记的整批一次换掉。
     /// 只拖一张没标记的牌，就只换那一张。额度（开局 3 / 补牌 1）由引擎逐次递减。</para>
+    ///
+    /// <para><b>2026-10-31 晚 · 上方那两个按钮撤了</b>：既然「拖进换牌区」本身就是确认，
+    /// 上方再摆「确认替换 / 不替换，开始对局」就是同一件事的第二个入口。现在只留
+    /// <b>一枚「确认卡组」</b>，摆在<b>手牌区右侧</b>（= 右侧动作区那一格，替换拍那里本来就是空的），
+    /// 点它 = 不再换牌、直接进对局；开局与第 2 / 3 回合补牌后都是这一套。
+    /// 详见 <see cref="PlaceConfirmDeckButton"/>。</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class DealView : MonoBehaviour
@@ -46,7 +51,10 @@ namespace MagicBrawl.App
         /// <summary>玩家点了「确认替换」：回填选中的<strong>选项序号</strong>（按标记顺序）。</summary>
         public event Action<List<int>> Confirmed;
 
-        /// <summary>玩家点了 Done（不替换 / 保留这张）：原样回传引擎给的那个选项。</summary>
+        /// <summary>
+        /// 玩家点了「确认卡组」＝不再换牌：原样回传引擎给的那个 Done 选项
+        /// （`BattleUi.OnDealSkipped` 直接交给引擎，不拼任何选项）。
+        /// </summary>
         public event Action<Option> Skipped;
 
         private readonly List<Option> _replaceOptions = new List<Option>();
@@ -141,12 +149,12 @@ namespace MagicBrawl.App
                 }
             }
 
-            // 按钮文字来自引擎：开局 =「不替换，开始对局」，补牌后 =「保留这张，继续」。
+            // 2026-10-31 晚：这枚按钮已经搬到手牌区右侧、改叫「确认卡组」。
+            // 文案不再沿用引擎的 Done 文案（开局「不替换，开始对局」/ 补牌后「保留这张，继续」）——
+            // 同一件事在三条入口上说法必须一致，具体行为仍由 Done 选项决定。
             if (_skipLabel != null)
             {
-                _skipLabel.text = _doneOption != null && !string.IsNullOrEmpty(_doneOption.Label)
-                    ? _doneOption.Label
-                    : "不替换";
+                _skipLabel.text = ConfirmDeckLabel;
             }
 
             if (_confirmLabel != null)
@@ -166,11 +174,15 @@ namespace MagicBrawl.App
                 _hand.SetPaintSink(Paint, _maxSelect);
             }
 
-            // 「确认替换」也回来：选中之后拖上去是一种提交方式，点它也是一种。
-            if (_confirmButton != null)
+            // 「确认替换」撤掉（用户口径 2026-10-31 晚）：拖进换牌区就是确认，
+            // 上方再留一枚按钮等于同一件事有两个入口。
+            if (_confirmButton != null && _confirmButton.gameObject.activeSelf)
             {
-                _confirmButton.gameObject.SetActive(true);
+                _confirmButton.gameObject.SetActive(false);
             }
+
+            // 唯一的确认口：手牌区右侧的「确认卡组」（不再换牌 = 提交引擎给的 Done）
+            PlaceConfirmDeckButton();
 
             if (_panel != null)
             {
@@ -189,6 +201,7 @@ namespace MagicBrawl.App
         public void Hide()
         {
             StopFlash();
+            HideConfirmDeckButton();
 
             _replaceOptions.Clear();
             _selected.Clear();
@@ -326,13 +339,14 @@ namespace MagicBrawl.App
             }
 
             // 两条路都通（2026-10-31 第二轮）：点/划选好再一起拖，或者直接拖那一张。
+            // 2026-10-31 晚：「确认替换」撤掉后，唯一的「我不换了」入口在手牌区右侧，
+            // 这行必须把它说出来 —— 否则玩家会以为非换不可。
             //
             // ⚠ 文案必须短：Hint 行只有 DealHintHeight(24) 高，420 宽的面板里
-            //   19pt 超过 ~20 个字就会折行，折出来的第二行会被下面的「确认替换」压住。
-            //   「还能换几张」由计数行（已选 N / M）承担，这里只说怎么操作。
+            //   19pt 超过 ~20 个字就会折行；下面两条分别 19 / 17 个字，正好放得下。
             _hint.text = _maxSelect > 1
-                ? "点选要换的牌，向上拖进换牌区"
-                : "把这张牌向上拖进换牌区";
+                ? "点选后拖进换牌区，或点右侧确认卡组"
+                : "拖进换牌区换掉，或点右侧确认卡组";
         }
 
         private void RefreshCounter()
@@ -386,6 +400,86 @@ namespace MagicBrawl.App
             if (Skipped != null)
             {
                 Skipped(_doneOption);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  「确认卡组」（2026-10-31 晚）
+        // ══════════════════════════════════════════════════════
+        //
+        //  用户口径原文：「由于现在换牌是将牌拖到区域内，就代表确认要换，因此就没有必要在
+        //  上方再显示一个确认替换和不替换开始对局的选项，只需要保留一个确认卡组的按钮
+        //  放在手牌区的右侧，方便玩家点到之后就确认不再换牌即可（123回合开始时都是如此）」。
+        //
+        //  ── 为什么「搬」而不是「新建」 ──────────────────────
+        //  构建器建的那枚「不替换 / 保留这张」按钮，提交的正是引擎给的 Done 选项
+        //  （`OnSkipClicked` → `Skipped(_doneOption)`），点击回调、样式、字体全都在身上。
+        //  搬它一个节点就够；新建一枚还要自己找字体、接监听、再造一遍 ColorTint —— 全是重复。
+        //
+        //  ── 位置为什么是「右侧动作区那一格」 ────────────────
+        //  用户说的「手牌区的右侧」在 1920×1080 下就是 x 1740…1896 / y 176…248 那块空地
+        //  （见 UiLayout.Dock* 的位置账）。而替换拍 `BattleUi.SetDockState` **不摆动作键**
+        //  （ChooseReplace 走 break），所以那一格此刻一定是空的，两者不会打架。
+        //
+        //  ⚠ 它已经不在 DealPanel 的 VerticalLayoutGroup 里了，所以尺寸必须自己写死成
+        //    DockWidth × DockHeight；LayoutElement 留着但 ignoreLayout（万一被谁塞回组里，
+        //    也不会突然把面板撑高）。
+
+        /// <summary>这枚按钮上的字（开局 / 补牌后统一用这一句）。</summary>
+        public const string ConfirmDeckLabel = "确认卡组";
+
+        private bool _confirmDeckPlaced;
+
+        /// <summary>把「确认卡组」摆到手牌区右侧（幂等；<c>Show</c> 会被引擎反复调用）。</summary>
+        private void PlaceConfirmDeckButton()
+        {
+            if (_skipButton == null)
+            {
+                return;
+            }
+
+            if (!_confirmDeckPlaced)
+            {
+                Canvas canvas = GetComponentInParent<Canvas>();
+                Transform parent = canvas != null ? canvas.transform : transform;
+
+                _skipButton.transform.SetParent(parent, false);
+                _skipButton.transform.SetSiblingIndex(SiblingBeforeResults(parent));
+
+                var rect = (RectTransform)_skipButton.transform;
+                rect.anchorMin = new Vector2(1f, 0f);
+                rect.anchorMax = new Vector2(1f, 0f);
+                rect.pivot = new Vector2(1f, 0f);
+                rect.anchoredPosition = new Vector2(-UiLayout.DockRight, UiLayout.DockBottom);
+                rect.sizeDelta = new Vector2(UiLayout.DockWidth, UiLayout.DockHeight);
+
+                LayoutElement layout = _skipButton.GetComponent<LayoutElement>();
+                if (layout != null)
+                {
+                    layout.ignoreLayout = true;
+                }
+
+                _confirmDeckPlaced = true;
+            }
+
+            if (_skipLabel != null)
+            {
+                _skipLabel.text = ConfirmDeckLabel;
+            }
+
+            // 引擎这一拍没给 Done（理论上不会 —— ChooseReplace 一定有「不替换」这一档）→ 不摆死键
+            bool usable = _doneOption != null;
+            if (_skipButton.gameObject.activeSelf != usable)
+            {
+                _skipButton.gameObject.SetActive(usable);
+            }
+        }
+
+        private void HideConfirmDeckButton()
+        {
+            if (_skipButton != null && _skipButton.gameObject.activeSelf)
+            {
+                _skipButton.gameObject.SetActive(false);
             }
         }
 

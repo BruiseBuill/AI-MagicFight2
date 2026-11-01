@@ -123,7 +123,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!28 &428164611
+--- !u!28 &450622452
 Texture2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -418,7 +418,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!213 &842050736
+--- !u!213 &665365914
 Sprite:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -445,7 +445,7 @@ Sprite:
   m_SpriteAtlas: {fileID: 0}
   m_RD:
     serializedVersion: 3
-    texture: {fileID: 428164611}
+    texture: {fileID: 450622452}
     alphaTexture: {fileID: 0}
     secondaryTextures: []
     m_SubMeshes:
@@ -536,7 +536,7 @@ Sprite:
     downscaleMultiplier: 1
   m_AtlasRD:
     serializedVersion: 3
-    texture: {fileID: 428164611}
+    texture: {fileID: 450622452}
     alphaTexture: {fileID: 0}
     secondaryTextures: []
     m_SubMeshes:
@@ -908,14 +908,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 5294409112353752008, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 842050736}
+    - target: {fileID: 767988016976879447, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_Alpha
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6589231674372889282, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
       propertyPath: m_Name
       value: BattleCanvas
       objectReference: {fileID: 0}
+    - target: {fileID: 7295284098981018161, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 665365914}
     - target: {fileID: 7405142784476415619, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -1008,6 +1012,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7435738216477102622, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 7958436797884792193, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -1015,6 +1023,14 @@ PrefabInstance:
     - target: {fileID: 7958436797884792193, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8700900042812378238, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039067901782123489, guid: 29c15578f48b25a4b83760f4c0cad399, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

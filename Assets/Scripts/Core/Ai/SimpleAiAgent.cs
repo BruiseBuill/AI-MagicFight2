@@ -10,11 +10,16 @@ namespace MagicBrawl.Core
     /// <item>进攻：有牌就打，选当前力量最高的一张。</item>
     /// <item>防御：能挡就挡，选刚好够的最小牌（省大牌）；挡不住则放弃。</item>
     /// <item>加速：选己方剩余冷却最小的牌。减速：选对方力量最高的冷却牌。</item>
-    /// <item>区域类：在**对我有利的那一方**里选当前数值最集中的一档。</item>
+    /// <item>区域类：只在**对我有利的那一方**里选当前数值最集中的一档。</item>
     /// <item>冷却类：立即冷却完成选自己的牌；重置冷却本来就只给对方的牌。</item>
     /// <item>光环：默认不使用（<see cref="UseAuras"/> 留开关）。</item>
     /// <item>其余：取第一个合法选项。</item>
     /// </list>
+    ///
+    /// <para><b>2026-10-31</b>：加速 / 减速 / 区域 / 合并拍（暴风雪那种「加速 + 区域减速」
+    /// 合成一个 <see cref="RequestKind.ChooseCooldownEffects"/>）统一走
+    /// <see cref="CooldownTargetPolicy"/> —— 旧实现在合并拍上落进默认分支「取第一个选项」，
+    /// 而选项是按「施法者 → 对方」生成的，于是会给自己减速、给对手加速。</para>
     /// </summary>
     public sealed class SimpleAiAgent : IAgent
     {
@@ -26,6 +31,16 @@ namespace MagicBrawl.Core
 
         /// <summary>送入冷却换增益时，最多冷却几张手牌。</summary>
         public int MaxCoolHandCards { get; set; }
+
+        /// <summary>
+        /// 本局状态（<b>可为 null</b>）—— 只给 <see cref="CooldownTargetPolicy"/> 用。
+        ///
+        /// <para><b>为什么现在才要它</b>：雪崩（an）的「区域减速」是<b>双方一起</b>被打
+        /// （选项 <c>Seat = -1</c>），值不值得做只能数两边的张数；没有状态就只能当「中性」，
+        /// 于是「自己冷却区 4 张、对面 0 张」时仍会放 —— 纯自我减速（用户 2026-10-31 口径：
+        /// 减速不能减到自己）。除这一条外，本类不读状态，保持「零依赖」的可回归性。</para>
+        /// </summary>
+        public BattleState State { get; set; }
 
         /// <summary>
         /// 「查看对方手牌」的盲选种子（雷云 / 狂躁蘑菇，2026-09-21）。
@@ -69,13 +84,13 @@ namespace MagicBrawl.Core
                     return DecideDefense(request);
 
                 case RequestKind.ChooseHasteTarget:
-                    return Of(request, PickSmallestCooldown(request));
-
                 case RequestKind.ChooseSlowTarget:
-                    return Of(request, PickStrongestOpponentCooling(request));
-
                 case RequestKind.ChooseZoneValue:
-                    return Of(request, PickDensestZone(request));
+                // ⚠ 合并拍（暴风雪 a / 海涌 q 这类「加速 + 区域加速/减速」）以前直接掉进
+                //    default 的 FirstNonSkip，等于「按生成顺序取第一个」—— 而生成顺序是
+                //    「施法者 → 对方」，于是减速先落在自己身上、加速先落在对方身上。
+                case RequestKind.ChooseCooldownEffects:
+                    return Of(request, CooldownTargetPolicy.Pick(request, State));
 
                 case RequestKind.ChooseRefreshTarget:
                     return Of(request, PickRefreshTarget(request));
@@ -246,90 +261,11 @@ namespace MagicBrawl.Core
             return best ?? req.SkipOption;
         }
 
-        /// <summary>加速：己方剩余冷却最小的牌（让它尽快回手）。没有己方冷却牌则放弃。</summary>
-        private Option PickSmallestCooldown(DecisionRequest req)
-        {
-            Option best = null;
-            for (int i = 0; i < req.Options.Count; i++)
-            {
-                Option o = req.Options[i];
-                if (!IsCardOption(o) || o.Card.OwnerSeat != req.Seat)
-                {
-                    continue;   // 加速只给自己用 —— 加速对方的牌等于资敌
-                }
-
-                if (best == null || o.Card.RemainingCooldown < best.Card.RemainingCooldown)
-                {
-                    best = o;
-                }
-            }
-
-            return best ?? req.SkipOption;
-        }
-
-        /// <summary>减速：对方力量最高的冷却牌。</summary>
-        private Option PickStrongestOpponentCooling(DecisionRequest req)
-        {
-            Option best = null;
-
-            for (int i = 0; i < req.Options.Count; i++)
-            {
-                Option o = req.Options[i];
-                if (!IsCardOption(o) || !req.IsEnemy(o.Card.OwnerSeat))
-                {
-                    continue;
-                }
-
-                if (best == null || o.Card.EffectivePower > best.Card.EffectivePower)
-                {
-                    best = o;
-                }
-            }
-
-            return best ?? req.SkipOption;
-        }
-
-        /// <summary>
-        /// 区域类：<b>只在对我有利的那一方</b>里挑匹配张数最多的一档
-        /// （区域加速偏向自己的冷却区、区域减速偏向对方的冷却区）。
-        ///
-        /// <para><b>2026-09-20 修正</b>：旧打分是 <c>张数 × 2 + (有利 ? 1 : 0)</c>，
-        /// 那 1 分被 2 倍张数轻易盖过 —— 对面 3 张的档（6 分）压过自己 2 张的档（5 分），
-        /// AI 会当场把「区域加速」放给对手。用户口径是「加速一律给自己、减速一律给对方」，
-        /// 所以改成<b>先按立场过滤、再在有利档里比密度</b>；一张都不占优就放弃
-        /// （宁可不做，也不做资敌的那一步）。</para>
-        ///
-        /// <para>立场按 <see cref="Option.Seat"/> 判：施法者自己 = 有利、对方 = 不利；
-        /// <c>Seat == -1</c>（双方一起，见雪崩）算有利 —— 它同时作用于两边，
-        /// 不存在「选了它就是帮对手」这一说。极性取自 <see cref="DecisionRequest.ContextHaste"/>。</para>
-        /// </summary>
-        private Option PickDensestZone(DecisionRequest req)
-        {
-            Option best = null;
-            int bestScore = -1;
-
-            for (int i = 0; i < req.Options.Count; i++)
-            {
-                Option o = req.Options[i];
-                if (o.Kind != OptionKind.ZoneValue)
-                {
-                    continue;
-                }
-
-                bool favorable = o.Seat == -1
-                                 || (req.ContextHaste ? o.Seat == req.Seat : req.IsEnemy(o.Seat));
-
-                if (!favorable || o.Count <= bestScore)
-                {
-                    continue;
-                }
-
-                bestScore = o.Count;
-                best = o;
-            }
-
-            return best ?? req.SkipOption;
-        }
+        // ⚠ 2026-10-31：「加速 / 减速 / 区域 / 合并拍」的挑目标逻辑整体搬进
+        //    CooldownTargetPolicy（两个 AI 共用一份口径）。原来这里的三份实现
+        //    （PickSmallestCooldown / PickStrongestOpponentCooling / PickDensestZone）
+        //    各自按「牌是谁的」过滤，合并拍（ChooseCooldownEffects）根本走不到它们，
+        //    所以才出现「给自己减速」—— 判据只有一处才不会再漏。
 
         /// <summary>
         /// 冷却类目标（立即冷却完成 / 重置对方冷却）。

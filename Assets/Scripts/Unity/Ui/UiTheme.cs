@@ -322,6 +322,15 @@ namespace MagicBrawl.App
         /// <summary>底版描边（暗色，让图标在浅色背景上也立得住）。</summary>
         public static readonly Color AuraIconEdge = Hex("10151E");
 
+        /// <summary>
+        /// 徽章图标「本拍用不上」时的乘色（v2，2026-10-31）。
+        ///
+        /// <para>v2 的图标是一张实色位图（整枚六边形），没有 v1 那层
+        /// <see cref="AuraIconDim"/> 圆角遮罩可盖 —— 盖上会把六边形的角露出来。
+        /// 所以改成给底版乘一个灰：图还在、颜色退掉，与「现在动不了」是同一种读法。</para>
+        /// </summary>
+        public static readonly Color AuraBadgeDim = Hex("8A9099");
+
         /// <summary>符号（剑 / 盾 / 感叹号）的颜色 —— 近白，压在饱和底版上最清楚。</summary>
         public static readonly Color AuraGlyph = Hex("FFF6E2");
 
@@ -408,6 +417,23 @@ namespace MagicBrawl.App
         /// <para>同 <see cref="SelectionGlow"/> 的暖金调子，让玩家一眼看出「这两片现在能点」。</para>
         /// </summary>
         public static readonly Color ZonePickableEdge = Hex("FFD166");
+
+        // ══════════════════════════════════════════════════════
+        //  玩家被减速时的提示（2026-10-31）
+        // ══════════════════════════════════════════════════════
+        //
+        //  用户口径：光把位移放慢还不够，「很容易注意不到」—— 某一张牌被减速，那张牌上要有特效；
+        //  某一个区被减速，那个区也要有特效。
+        //
+        //  口径：**冰蓝**，与「减速 = 冰 / 水」的元素语义同源；它不能和暖金的可点高亮
+        //  （ZonePickableEdge）、红色的受伤 / 危险态撞色，否则玩家分不清「能点」与「被减速」。
+        //  ⚠ 这两个颜色只染**已有节点**（卡面插画 / 槽位底图）的 Image.color，不新建节点。
+
+        /// <summary>玩家自己的牌被减速时，卡面插画闪到的颜色。</summary>
+        public static readonly Color SlowFlashCard = Hex("8FD4FF");
+
+        /// <summary>玩家自己的冷却区被（区域）减速时，那一格槽位闪到的颜色。</summary>
+        public static readonly Color SlowFlashZone = Hex("6FB6E8");
 
         // ══════════════════════════════════════════════════════
         //  M25 查看对方手牌弹窗（雷云 / 狂躁蘑菇的第 2 个 α 效果）
@@ -512,6 +538,30 @@ namespace MagicBrawl.App
 
         /// <summary>确认键不可用时的文字色。</summary>
         public static readonly Color HandPickConfirmTextOff = Hex("6B7C88");
+
+        // ── M27 v4 · 托盘（2026-10-31）────────────────────────
+        //
+        //  面板不再是 Peek_Frame 那张美术图，改成一块**纯色圆角板** +
+        //  一枚独立的牌座按钮。颜色全部对着美术图取：
+        //  牌座面 #1B4E79 / 青边 #3ED8FF 都在贴图里，这里只管「板」和「字」。
+
+        /// <summary>托盘底色（对照 Peek_Frame 的躯干色，略提一档）。</summary>
+        public static readonly Color HandPickTrayFill = Hex("0F2531");
+
+        /// <summary>托盘里那块内凹槽 —— 比托盘再暗一档，卡牌放进去有「台面」感。</summary>
+        public static readonly Color HandPickTrayRecess = Hex("0A1B23");
+
+        /// <summary>台沿灯线（贴着卡牌底边的一条青色细线）。</summary>
+        public static readonly Color HandPickTrayLedge = new Color(0.353f, 0.839f, 0.949f, 0.45f);
+
+        /// <summary>牌座按钮文字（可用）。</summary>
+        public static readonly Color HandPickSeatTextOn = Hex("EAF7FF");
+
+        /// <summary>牌座按钮文字（不可用 / 跳过）。</summary>
+        public static readonly Color HandPickSeatTextOff = Hex("8FB6C4");
+
+        /// <summary>空槽中央那枚「＋」。</summary>
+        public static readonly Color HandPickSlotPlus = Hex("6FC9E4");
 
         // ══════════════════════════════════════════════════════
         //  M28 查看怪物手牌（按住右下角手牌数）

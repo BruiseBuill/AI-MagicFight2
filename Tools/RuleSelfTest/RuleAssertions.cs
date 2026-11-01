@@ -708,10 +708,15 @@ namespace MagicBrawl.SelfTest
             /// <item>加速 / 立即冷却完成（<see cref="DecisionRequest.ContextHaste"/> = true）→ 目标必须是自己</item>
             /// <item>减速 / 重置对方冷却（ContextHaste = false）→ 目标必须是对手</item>
             /// <item>区域类看 <c>ContextHaste</c>；选项 Seat = −1（雪崩那种「双方一起」）不判</item>
+            /// <item>合并拍（<see cref="RequestKind.ChooseCooldownEffects"/>，暴风雪 / 海涌）看<b>选项自己的</b>
+            ///   <see cref="Option.HasteOption"/> —— 那一拍的 <c>ContextHaste</c> 只代表第一条效果，
+            ///   拿它判会把「区域减速」当成加速（2026-10-31 补的缺口）</item>
             /// </list>
             ///
             /// <para>这条断言能抓住的实际缺陷：「区域类打分被张数盖过，AI 把区域加速放给对面」
-            /// 与「立即冷却完成拿玩家的牌去冷却」（都真实发生过）。</para>
+            /// 与「立即冷却完成拿玩家的牌去冷却」（都真实发生过）。2026-10-31 又抓到一次：
+            /// 合并拍落进 AI 的默认分支「取第一个选项」，而选项按「施法者 → 对方」生成 ——
+            /// AI 拿区域减速把自己那一侧减了。</para>
             /// </summary>
             private void CheckTargetPolarity(DecisionRequest req, DecisionResponse resp)
             {
@@ -719,6 +724,8 @@ namespace MagicBrawl.SelfTest
                 {
                     return;
                 }
+
+                bool merged = req.Kind == RequestKind.ChooseCooldownEffects;
 
                 bool favorable;   // true = 本拍有利于施法者 → 目标应是自己
                 switch (req.Kind)
@@ -736,6 +743,11 @@ namespace MagicBrawl.SelfTest
                         favorable = req.ContextHaste;
                         break;
 
+                    // 合并拍：极性只能逐选项判（见下面的 favorableForPick）
+                    case RequestKind.ChooseCooldownEffects:
+                        favorable = true;
+                        break;
+
                     default:
                         return;
                 }
@@ -751,6 +763,10 @@ namespace MagicBrawl.SelfTest
                     return;
                 }
 
+                // 合并拍里「加速」和「减速」的选项躺在同一个列表里，请求级的 ContextHaste
+                // 只是 template（第一条效果）的极性 —— 必须读选项自己那份。
+                bool favorableForPick = merged ? pick.HasteOption : favorable;
+
                 int seat = pick.Kind == OptionKind.ZoneValue
                     ? pick.Seat
                     : (pick.Card != null ? pick.Card.OwnerSeat : -1);
@@ -761,11 +777,11 @@ namespace MagicBrawl.SelfTest
                 }
 
                 bool own = seat == req.Seat;
-                if (favorable != own)
+                if (favorableForPick != own)
                 {
                     Violations.Add("定向效果目标立场错误：" + req.Kind
                                    + " 选了" + (own ? "自己" : "对方") + "的牌（期望"
-                                   + (favorable ? "自己" : "对方") + "）");
+                                   + (favorableForPick ? "自己" : "对方") + "）");
                 }
             }
         }

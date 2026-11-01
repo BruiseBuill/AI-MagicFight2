@@ -63,15 +63,21 @@ namespace MagicBrawl.App
         //   → 字段与刷它的两句一起删掉，节点也由构建器那侧移除。
         //   选了几张一眼就看得见（牌摆在中间卡框里、面板还会跟着变宽），不需要再报一遍数。
 
-        [Header("卡框区")]
-        [Tooltip("装已选牌的一排（卡框 + 覆盖装饰的躯干条都在这一层里）。")]
+        [Header("台面")]
+        [Tooltip("托盘上的内凹槽 —— 会跟着卡槽行一起变宽。")]
+        [SerializeField] private RectTransform _recess;
+
+        [Tooltip("台沿灯线（贴着卡牌底边的一条青色细线，宽度跟着卡槽行走）。")]
+        [SerializeField] private RectTransform _ledge;
+
+        [Tooltip("装已选牌的一排（卡框在这层里）。")]
         [SerializeField] private RectTransform _slotArea;
 
-        [Tooltip("盖住面板原图内框装饰的纯色条（多选 / 有牌时才亮）。")]
-        [SerializeField] private Image _slotAreaBackdrop;
-
-        [Tooltip("还没选牌时显示的那一块空卡框（虚线描边 + 暗底）。")]
+        [Tooltip("还没选牌时露出的那一格虚线空卡位。")]
         [SerializeField] private RectTransform _emptyFrame;
+
+        [Tooltip("还能再放时，跟在已选牌右边的那一格虚线槽。")]
+        [SerializeField] private RectTransform _addSlot;
 
         [Tooltip("预建的已选卡框 Slot0…Slot7，运行时只激活前 N 个。")]
         [SerializeField] private HandPickSlot[] _slots = new HandPickSlot[0];
@@ -466,16 +472,13 @@ namespace MagicBrawl.App
         // ══════════════════════════════════════════════════════
 
         /// <summary>
-        /// 按「当前已选张数」重排。
+        /// 按「当前已选张数」重排整块托盘。
         ///
-        /// <para><b>面板横向变宽</b>：面板图是九宫格（左右 border = 110），拉宽时
-        /// 顶部的标题牌位与底部的按钮座原地不动，只有中间那段躯干变宽 ——
-        /// 所以「界面大小可变」不需要另切一张图。</para>
+        /// <para><b>members</b> = 已选张数 + 空槽（还能放时）。宽度、凹槽、台沿、按钮
+        /// 全按 members 走，所以「选了几张」是看得见的 —— 不需要另写「已选 N/M」。</para>
         ///
-        /// <para><b>同时把原图内框的装饰盖掉</b>：那块内框（圆角描边 + 中心菱形花纹）
-        /// 在被拉宽时会一起变形，所以有牌时就压一条与躯干同色的纯色条
-        /// （<see cref="UiTheme.HandPickPanelTorso"/>）在上面，再在纯色条上摆自己的卡框。
-        /// 一张没选时**不盖** —— 那时露出来的正是原图那块空卡框，就是用户要的初始样子。</para>
+        /// <para><b>按钮不用在这里改位置</b>：它是面板的子节点、锚在右沿内侧
+        /// （`anchor = (1, 0.5)`），面板一变宽它自己就跟过去了。</para>
         /// </summary>
         private void Layout()
         {
@@ -485,70 +488,84 @@ namespace MagicBrawl.App
         /// <summary>
         /// 同上，但可以指定「第几个卡框要播落位回弹」。
         ///
-        /// <para><b>参数</b>：<paramref name="popIndex"/> ≥ 0 = 那一格是新加进来的（播大回弹）；
+        /// <para><b>参数</b>：<paramref name="popIndex"/> ≥ 0 = 那一格是新加进来的；
         /// -1 = 没有新格（重排 / 取消 / 首次弹出）。</para>
-        ///
-        /// <para><b>为什么选牌后必须走这里而不是只调 <see cref="RefreshSlots"/> 一次</b>：
-        /// 面板宽度、SlotArea 宽度、空框显隐、遮挡条显隐全在 <b>本方法</b>里 ——
-        /// 只调 RefreshSlots 会让「选了 3 张但面板仍是单张宽」这种半调子状态出现。
-        /// 所有改动已选集合的地方都必须收口到本方法。</para>
         /// </summary>
         private void Layout(int popIndex)
         {
             int count = _selected.Count;
-            float panelW = UiLayout.HandPickPanelWidthFor(count);
-            float areaW = UiLayout.SlotAreaWidthFor(count);
+            // 空槽只在「已经选了至少一张、还没放满」时出现：
+            // 一张没选时由 EmptyFrame 那格虚线占位，两个都亮会并排出现两格空位。
+            bool showAdd = count > 0 && count < _maxSelect;
+            int members = count == 0 ? 1 : count + (showAdd ? 1 : 0);
+
+            float rowW = UiLayout.SlotAreaWidthFor(members);                        // 卡牌行宽
+            float recessW = rowW + 2f * UiLayout.HandPickSlotAreaPadding;            // 凹槽宽
+            float panelW = UiLayout.HandPickPanelWidthFor(members);                  // 面板宽
+            float rowCenterX = UiLayout.HandPickTrayPad
+                               + UiLayout.HandPickSlotAreaPadding + rowW * 0.5f;
+
+            bool animate = _showing && gameObject.activeInHierarchy;
 
             if (_panel != null)
             {
-                UiSizeMotion.Resize(_panel, new Vector2(panelW, UiLayout.HandPickPanelHeight), _showing && gameObject.activeInHierarchy);
+                UiSizeMotion.Resize(_panel, new Vector2(panelW, UiLayout.HandPickPanelHeight), animate);
             }
 
-            float areaCenterY = UiLayout.HandPickPanelHeight * 0.5f - UiLayout.HandPickSlotAreaCenterY;
+            if (_recess != null)
+            {
+                // 锚点/轴心运行时重申（铁律 15）：这里的 x 是「距面板左沿」，
+                // 只有锚在左沿才成立。场景若还是旧结构（锚在面板中心），
+                // 不重申就会把整条卡槽甩到面板右半边去。
+                _recess.anchorMin = new Vector2(0f, 0.5f);
+                _recess.anchorMax = new Vector2(0f, 0.5f);
+                _recess.pivot = new Vector2(0.5f, 0.5f);
+                UiSizeMotion.Resize(_recess,
+                    new Vector2(recessW, UiLayout.HandPickRecessHeight), animate);
+                _recess.anchoredPosition = new Vector2(
+                    UiLayout.HandPickTrayPad + recessW * 0.5f, UiLayout.HandPickRowCenterY);
+            }
 
             if (_slotArea != null)
             {
-                UiSizeMotion.Resize(_slotArea, new Vector2(areaW, UiLayout.HandPickSlotAreaHeight), _showing && gameObject.activeInHierarchy);
-                _slotArea.anchoredPosition = new Vector2(0f, areaCenterY);
+                _slotArea.anchorMin = new Vector2(0f, 0.5f);
+                _slotArea.anchorMax = new Vector2(0f, 0.5f);
+                _slotArea.pivot = new Vector2(0.5f, 0.5f);
+                UiSizeMotion.Resize(_slotArea,
+                    new Vector2(rowW, UiLayout.HandPickSlotHeight), animate);
+                _slotArea.anchoredPosition = new Vector2(rowCenterX, UiLayout.HandPickRowCenterY);
             }
 
-            // 一张没选：露出原图的空卡框（它在面板正中，尺寸 = 单张框）
+            if (_ledge != null)
+            {
+                _ledge.anchorMin = new Vector2(0f, 0.5f);
+                _ledge.anchorMax = new Vector2(0f, 0.5f);
+                _ledge.pivot = new Vector2(0.5f, 0.5f);
+                UiSizeMotion.Resize(_ledge,
+                    new Vector2(rowW, UiLayout.HandPickLedgeHeight), animate);
+                _ledge.anchoredPosition = new Vector2(rowCenterX, UiLayout.HandPickLedgeY);
+            }
+
             if (_emptyFrame != null)
             {
-                _emptyFrame.sizeDelta =
-                    new Vector2(UiLayout.HandPickSlotWidth, UiLayout.HandPickSlotHeight);
+                // 空卡位永远在第一格（SlotArea 此刻也只有一格宽），不需要算位置。
                 _emptyFrame.anchoredPosition = Vector2.zero;
                 _emptyFrame.gameObject.SetActive(count == 0);
             }
 
-            // 有牌：盖住被拉变形的内框装饰。
-            // 这一层是 SlotArea 的子节点、铺满父节点（构建器里设成 Stretch），所以
-            // 这里只切 active —— 尺寸跟着 SlotArea 走，不要再写 sizeDelta（会与拉伸锚点打架）。
-            if (_slotAreaBackdrop != null)
-            {
-                _slotAreaBackdrop.gameObject.SetActive(count > 0);
-            }
-
-            RefreshSlots(popIndex);
+            RefreshSlots(popIndex, count, showAdd, rowW);
         }
 
         /// <summary>
-        /// 把前 N 个卡框摆好（N = 已选张数），其余停用。
+        /// 把前 N 个卡框摆好（N = 已选张数），其余停用；再把「待放槽」放到它们右边。
         /// <paramref name="popIndex"/> 若 ≥ 0，那一格额外播一下放大回弹。
         /// </summary>
-        private void RefreshSlots(int popIndex)
+        private void RefreshSlots(int popIndex, int count, bool showAdd, float rowW)
         {
-            int count = _selected.Count;
             float pitch = UiLayout.HandPickSlotWidth + UiLayout.HandPickSlotGap;
-            float totalW = count <= 0 ? 0f : count * pitch - UiLayout.HandPickSlotGap;
-            float firstX = -totalW * 0.5f + UiLayout.HandPickSlotWidth * 0.5f;
+            float firstX = -rowW * 0.5f + UiLayout.HandPickSlotWidth * 0.5f;
 
-            // 槽位在 SlotArea 里的起始兄弟下标。
-            //
-            // SlotArea 的子节点 = [Backdrop, EmptyFrame, Slot0…Slot7]（构建器顺序）。
-            // 前两个是「装饰」，必须待在槽位**下面**（同层绘制顺序 = 兄弟顺序），
-            // 所以槽位只能从它们后面开始排 —— 用实测下标算，构建器若增删装饰也能自适应。
-            int slotSiblingBase = SlotSiblingBase();
+            // 记下旧位置：同一张牌在重排时从原位飞过去，而不是瞬移
             var origins = new Dictionary<int, Vector3>();
             foreach (HandPickSlot old in _slots)
                 if (old != null && old.gameObject.activeInHierarchy && old.CardUid >= 0)
@@ -592,13 +609,12 @@ namespace MagicBrawl.App
                 slot.Interactable = true;
 
                 // 卡面走唯一那份 CardView_Hand.prefab（插画 + 卡名 + 力量 + 冷却 + 效果文字）。
-                // 直接把插画塞进 Image 只会显示一张光图 —— 用户 2026-10-05 报的正是这个
-                //（「选择冷却牌的界面当中，也只显示一个卡面插画」）。
+                // 直接把插画塞进 Image 只会显示一张光图（用户 2026-10-05 报的正是这个）。
                 if (slot.CardFace != null && o.Card != null && o.Card.Def != null)
                 {
                     CardSnapshot snap = CardSnapshot.FromDef(o.Card.Def, 0, o.Card.Def.Cooldown);
                     slot.CardFace.Bind(snap, CardView.ViewMode.Hand, i);
-                    // ⚠ 尺寸一律运行时重申（铁律 15）。
+                    // ⚠ 尺寸一律运行时重申（铁律 15）—— 卡框比手牌小一档，卡面要跟着缩。
                     slot.CardFace.SetFaceWidth(UiLayout.HandPickSlotWidth);
                     slot.CardFace.SetReadOnly();   // 点击由牌位自己接（点框里的牌 = 取消选择）
 
@@ -618,7 +634,6 @@ namespace MagicBrawl.App
                     Sprite face = FaceSpriteFor(o.Card);
                     slot.Face.enabled = true;
                     slot.Face.sprite = face;
-                    // 图还是没有时退化成一块深色方块 —— 至少位置和顺序是对的
                     slot.Face.color = face != null ? Color.white : UiTheme.MiniCardFace;
                 }
 
@@ -627,15 +642,18 @@ namespace MagicBrawl.App
                     slot.Edge.color = UiTheme.HandPickSlotEdge;
                 }
 
-                // 2026-09-23：序号角标已按用户口径整个移除，这里不再有 IndexBadge 那段。
+                // 槽位与装饰的层级：SlotArea 的子节点顺序是 [EmptyFrame][AddSlot][Slot0…7]，
+                // 槽位天然画在两格虚线上面。运行时不改 sibling，避免再踩 M31 那个
+                // 「Backdrop 反过来盖住牌」的坑。
+            }
 
-                // ⚠ 不能写 SetSiblingIndex(i)：SlotArea 的前两个子节点是 Backdrop 与 EmptyFrame
-                //   （构建器里就是先建它俩、再建 Slot0…7，同层绘制顺序 = 兄弟顺序，
-                //   所以它俩「天然在槽位下面」是靠这个次序保证的）。
-                //   若把 Slot_i 钉到下标 i，第 0/1/2 个 Slot 就会挤到 Backdrop 前面，
-                //   于是 Backdrop 反过来盖住已经放好的牌 —— 现象是「面板加宽了、框里却是空的」。
-                //   这里改成从槽位应有的起始下标起算，保持「装饰在下、槽位在上」。
-                slot.transform.SetSiblingIndex(slotSiblingBase + i);
+            if (_addSlot != null)
+            {
+                _addSlot.gameObject.SetActive(showAdd);
+                if (showAdd)
+                {
+                    _addSlot.anchoredPosition = new Vector2(firstX + count * pitch, 0f);
+                }
             }
 
             if (popIndex >= 0 && popIndex < _slots.Length && _slots[popIndex] != null
@@ -649,42 +667,15 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
-        /// 槽位在 <c>SlotArea</c> 里的起始兄弟下标 = 「第一个槽位之前还有几个装饰节点」。
-        ///
-        /// <para><b>为什么需要它</b>：同层绘制顺序 = 兄弟顺序，而 <c>SlotArea</c> 的前两个子节点
-        /// 是 Backdrop / EmptyFrame（装饰，必须待在牌下面）。若槽位把下标从 0 开始占，
-        /// 就会把这两个装饰挤到后面 —— Backdrop 反过来盖住已经放好的牌，
-        /// 现象是「面板加宽了、框里却是空的」。</para>
-        ///
-        /// <para><b>为什么按装饰实测、而不是按槽位实测</b>：槽位下标一旦被写坏，
-        /// 「槽位最小下标」也会跟着变成 0，读不出真实的起始位。
-        /// 装饰节点（Backdrop / EmptyFrame）从不被本类移动，它们的下标才是稳定的基准。</para>
-        /// </summary>
-        private int SlotSiblingBase()
-        {
-            Transform area = _slotArea != null ? _slotArea : transform;
-            int count = 0;
-
-            if (_slotAreaBackdrop != null && _slotAreaBackdrop.transform.parent == area)
-            {
-                count++;
-            }
-
-            if (_emptyFrame != null && _emptyFrame.transform.parent == area)
-            {
-                count++;
-            }
-
-            // 两个装饰都没接上（理论上不会）→ 退回 0，行为与改动前一致
-            return count;
-        }
-
-        /// <summary>
-        /// 确认键的可用态 —— <b>唯一一处「界面上能不能按」的判断</b>，
+        /// 确认键的可用态与文案 —— <b>唯一一处「界面上能不能按」的判断</b>，
         /// 判据完全是引擎给的 <c>MinSelect</c>（铁律 3：不在这里重复规则）。
         ///
-        /// <para>电弧（<c>MinSelect = 0</c> / <c>MaxSelect = 1</c>，2026-10-30 起）：
-        /// 确认键一进来就是亮的（可以不送牌），但最多只能放一张 —— 连击是一次性的。</para>
+        /// <para><b>文案会变</b>：一张没选时写「跳过」—— 这几张牌（磁暴 / 充能 / 电弧 /
+        /// 漩涡）的 <c>MinSelect</c> 都是 0，「什么都不选直接结算」本身就是一条合法答案，
+        /// 与其让「确认」两个字去承担两种含义，不如让它照着结果说话。</para>
+        ///
+        /// <para>底图两态用两张贴图（亮 / 暗）切换，见构建器里的 SpriteSwap ——
+        /// 牌座的银边和青灯乘一个 ColorTint 会发灰，压不出「暗下去」的观感。</para>
         /// </summary>
         private void RefreshConfirm()
         {
@@ -692,25 +683,14 @@ namespace MagicBrawl.App
 
             if (_confirmButton != null)
             {
-                // ⚠ ColorTint 是替换不是乘算，且 disabledColor 的 alpha 暗不下来 ——
-                //   所以两个颜色都用「本身就压到底」的实色（见 UiTheme 的说明）。
-                ColorBlock cb = _confirmButton.colors;
-                cb.normalColor = UiTheme.HandPickConfirmOn;
-                cb.highlightedColor = UiTheme.HandPickConfirmOn;
-                cb.pressedColor = UiTheme.HandPickConfirmOn;
-                cb.selectedColor = UiTheme.HandPickConfirmOn;
-                cb.disabledColor = UiTheme.HandPickConfirmOff;
-                _confirmButton.colors = cb;
                 _confirmButton.interactable = ok;
             }
 
             if (_confirmLabel != null)
             {
-                // 底图是素材那条**亮蓝**按钮条（M30），上面写白字正好；
-                // 不可用时整条被 ColorTint 换成深灰蓝，白字会糊，所以跟着暗下去。
-                _confirmLabel.color = ok ? UiTheme.TextPrimary : UiTheme.HandPickConfirmTextOff;
+                _confirmLabel.text = ok && _selected.Count == 0 ? "跳过" : "确认";
+                _confirmLabel.color = ok ? UiTheme.HandPickSeatTextOn : UiTheme.HandPickSeatTextOff;
             }
-
         }
 
         private void SetTitle(string title, string prompt)
