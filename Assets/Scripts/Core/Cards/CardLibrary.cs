@@ -132,7 +132,9 @@ namespace MagicBrawl.Core
 
             // 模仿：卡面力量写 X（HiddenPower），规则上的值恒为 1 —— 复制成功后才由 Copy 接管。
             // γ 那一行是**纯卡面声明**（RuleNote，永不结算）：规则落点在 Copy 与 PowerLabelText。
-            Add(23, "x", "模仿", 1, 4, true, CardElement.Curse,
+            // 2026-11-02：元素从 Curse 改为 Grass（用户口径「模仿属于草系法术」）——
+            //   牌表里从此没有卡使用 Curse，自定义战斗的历史牌组也就只会有 6 种元素符号。
+            Add(23, "x", "模仿", 1, 4, true, CardElement.Grass,
                 A(EffectOp.Copy, 3, text: "复制你冷却区中一个「基础冷却 ≤3 且无光环」的法术的力量和进攻效果"),
                 S(EffectOp.RuleNote, text: "未复制或防御时力量视为 1"));
 

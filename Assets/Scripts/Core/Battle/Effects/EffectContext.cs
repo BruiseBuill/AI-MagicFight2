@@ -56,11 +56,17 @@ namespace MagicBrawl.Core
             else CooldownOps.Refresh(State.Of(target.OwnerSeat), target, changes);
             _engine.EffectFlush(changes);
         }
-        public bool CoolCard(CardInstance target, int adjustment = 0)
+        /// <param name="reason">
+        /// 写进 <see cref="CooldownChange.Reason"/>。战报靠它区分「弃牌换资源」与
+        /// 「查看后送入冷却」这两种同样走 <see cref="CooldownOps.PutIntoCooldown"/> 的效果 ——
+        /// 不传就是引擎默认的「效果送入冷却区」，战报会当成无名入场而不记。
+        /// </param>
+        public bool CoolCard(CardInstance target, int adjustment = 0, string reason = null)
         {
             var changes = new List<CooldownChange>();
             bool changed = CooldownOps.PutIntoCooldown(State.Of(target.OwnerSeat), target,
-                Math.Max(0, target.Def.Cooldown + adjustment), changes, "效果送入冷却区");
+                Math.Max(0, target.Def.Cooldown + adjustment), changes,
+                string.IsNullOrEmpty(reason) ? "效果送入冷却区" : reason);
             _engine.EffectFlush(changes);
             return changed;
         }

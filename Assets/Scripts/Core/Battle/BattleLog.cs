@@ -431,6 +431,27 @@ namespace MagicBrawl.Core
         }
     }
 
+    /// <summary>
+    /// <b>复制成功</b>（2026-11-02）—— 模仿（x）接管了另一张牌的力量与进攻效果。
+    ///
+    /// <para><b>为什么需要单独一条</b>：复制只改 <c>AttackContext</c> 上的临时力量与效果，
+    /// 不留任何痕迹 —— 战报里会看到「模仿打了 7」，却看不出它抄的是哪张牌。
+    /// 记录层要的正是这个「抄了谁」，所以在这里点名一次。</para>
+    /// </summary>
+    public sealed class CardCopiedEvent : BattleEvent
+    {
+        /// <summary>复制者座位。</summary>
+        public int Seat;
+
+        /// <summary>被复制的牌名（复制方拿到的是定义，不持有对方那张实例）。</summary>
+        public string CardName;
+
+        public override string Describe()
+        {
+            return "复制 seat" + Seat + " ← " + CardName;
+        }
+    }
+
     /// <summary>胜负已分。</summary>
     public sealed class GameOverEvent : BattleEvent
     {

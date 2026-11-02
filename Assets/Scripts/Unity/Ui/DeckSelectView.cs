@@ -74,6 +74,35 @@ namespace MagicBrawl.App
         [SerializeField] private TMP_Text _clearLabel;
         [SerializeField] private Button _backButton;
 
+        [Header("历史牌组 / 随机（2026-11-02）")]
+        [SerializeField] private Button _historyButton;
+        [SerializeField] private Image _historyImage;
+        [SerializeField] private TMP_Text _historyLabel;
+        [Tooltip("历史牌座右上角的计数徽标（0 条时隐藏）。")]
+        [SerializeField] private GameObject _historyBadge;
+        [SerializeField] private TMP_Text _historyBadgeText;
+        [SerializeField] private Button _randomButton;
+        [SerializeField] private Image _randomImage;
+        [SerializeField] private TMP_Text _randomLabel;
+
+        [Header("历史牌组面板（覆盖层）")]
+        [SerializeField] private GameObject _historyOverlay;
+        [Tooltip("整屏遮罩，同时也是「点空白关闭」的按钮。")]
+        [SerializeField] private Button _historyVeil;
+        [SerializeField] private Button _historyCloseButton;
+        [Tooltip("面板底部那枚「关闭」牌座（与标题栏的 × 同一件事）。")]
+        [SerializeField] private Button _historyCloseSeat;
+        [SerializeField] private RectTransform _historyRowsRoot;
+        [Tooltip("两列网格的 Content；高度由 ShowHistory 按行数算（不用 ContentSizeFitter）。")]
+        [SerializeField] private RectTransform _historyContent;
+        [SerializeField] private DeckHistoryRowView _historyRowTemplate;
+        [SerializeField] private GameObject _historyEmpty;
+        [SerializeField] private TMP_Text _historySubtitle;
+        [SerializeField] private ScrollRect _historyScroll;
+
+        [Header("中央浮字（复用战斗的 FloatTipView）")]
+        [SerializeField] private FloatTipView _toast;
+
         /// <summary>点了某一方的页签（0 = 你 / 1 = 对手）。</summary>
         public event Action<int> TabClicked;
 
@@ -86,6 +115,21 @@ namespace MagicBrawl.App
         public event Action StartClicked;
         public event Action BackClicked;
         public event Action ClearClicked;
+
+        /// <summary>点了「随机 8 张」（只影响当前页签这一方）。</summary>
+        public event Action RandomClicked;
+
+        /// <summary>点了顶部的「历史牌组」牌座。</summary>
+        public event Action HistoryClicked;
+
+        /// <summary>历史面板被关掉（点遮罩 / 点 × / 点关闭）。</summary>
+        public event Action HistoryClosed;
+
+        /// <summary>点了某一条的「载入」（参数 = 该条在存档里的下标）。</summary>
+        public event Action<int> HistoryLoadClicked;
+
+        /// <summary>点了某一条的「×」（参数 = 该条在存档里的下标）。</summary>
+        public event Action<int> HistoryDeleteClicked;
 
         /// <summary>当前卡表里铺了几张（探针用）。</summary>
         public int CatalogCardCount
@@ -122,7 +166,21 @@ namespace MagicBrawl.App
         private UnityAction _startHandler;
         private UnityAction _backHandler;
         private UnityAction _clearHandler;
+        private UnityAction _historyHandler;
+        private UnityAction _randomHandler;
+        private UnityAction _historyVeilHandler;
+        private UnityAction _historyCloseHandler;
+        private UnityAction _historyCloseSeatHandler;
         private readonly List<UnityAction> _removeHandlers = new List<UnityAction>();
+
+        /// <summary>历史面板的行（按需克隆 + 失活复用，与卡表卡面同一口径）。</summary>
+        private readonly List<DeckHistoryRowView> _historyRows = new List<DeckHistoryRowView>();
+
+        /// <summary>历史面板当前铺了几行（探针用）。</summary>
+        public int HistoryRowCount
+        {
+            get { return _historyRows.Count; }
+        }
 
         private void Awake()
         {
@@ -155,6 +213,11 @@ namespace MagicBrawl.App
             HookButton(_startButton, ref _startHandler, RaiseStart);
             HookButton(_backButton, ref _backHandler, RaiseBack);
             HookButton(_clearButton, ref _clearHandler, RaiseClear);
+            HookButton(_historyButton, ref _historyHandler, RaiseHistory);
+            HookButton(_randomButton, ref _randomHandler, RaiseRandom);
+            HookButton(_historyVeil, ref _historyVeilHandler, RaiseHistoryClosed);
+            HookButton(_historyCloseButton, ref _historyCloseHandler, RaiseHistoryClosed);
+            HookButton(_historyCloseSeat, ref _historyCloseSeatHandler, RaiseHistoryClosed);
 
             if (_slotRemoves == null)
             {
@@ -204,6 +267,11 @@ namespace MagicBrawl.App
             UnhookButton(_startButton, ref _startHandler);
             UnhookButton(_backButton, ref _backHandler);
             UnhookButton(_clearButton, ref _clearHandler);
+            UnhookButton(_historyButton, ref _historyHandler);
+            UnhookButton(_randomButton, ref _randomHandler);
+            UnhookButton(_historyVeil, ref _historyVeilHandler);
+            UnhookButton(_historyCloseButton, ref _historyCloseHandler);
+            UnhookButton(_historyCloseSeat, ref _historyCloseSeatHandler);
 
             if (_slotRemoves != null)
             {
@@ -255,6 +323,36 @@ namespace MagicBrawl.App
         {
             Action<int> handler = SlotRemoveClicked;
             if (handler != null) handler(index);
+        }
+
+        private void RaiseRandom()
+        {
+            Action handler = RandomClicked;
+            if (handler != null) handler();
+        }
+
+        private void RaiseHistory()
+        {
+            Action handler = HistoryClicked;
+            if (handler != null) handler();
+        }
+
+        private void RaiseHistoryClosed()
+        {
+            Action handler = HistoryClosed;
+            if (handler != null) handler();
+        }
+
+        private void RaiseHistoryLoad(int storeIndex)
+        {
+            Action<int> handler = HistoryLoadClicked;
+            if (handler != null) handler(storeIndex);
+        }
+
+        private void RaiseHistoryDelete(int storeIndex)
+        {
+            Action<int> handler = HistoryDeleteClicked;
+            if (handler != null) handler(storeIndex);
         }
 
         private void OnCatalogCardClicked(CardView card)
@@ -454,6 +552,148 @@ namespace MagicBrawl.App
         }
 
         // ══════════════════════════════════════════════════════
+        //  历史牌组 / 随机（2026-11-02）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>历史牌座右上角的计数徽标（0 条时整枚隐藏，别显示「0」）。</summary>
+        public void SetHistoryBadge(int count)
+        {
+            if (_historyBadge != null)
+            {
+                bool show = count > 0;
+                if (_historyBadge.activeSelf != show)
+                {
+                    _historyBadge.SetActive(show);
+                }
+            }
+
+            if (_historyBadgeText != null)
+            {
+                _historyBadgeText.text = count > 0 ? count.ToString() : string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 铺开历史面板。<paramref name="rows"/> 已经由 Entry 解析成卡定义
+        /// （视图不认识存档，也不认识卡表）。
+        /// </summary>
+        public void ShowHistory(IReadOnlyList<DeckHistoryRowData> rows)
+        {
+            int count = rows != null ? rows.Count : 0;
+            EnsureHistoryRows(count);
+
+            for (int i = 0; i < _historyRows.Count; i++)
+            {
+                DeckHistoryRowView row = _historyRows[i];
+                if (row == null)
+                {
+                    continue;
+                }
+
+                bool used = i < count;
+                if (row.gameObject.activeSelf != used)
+                {
+                    row.gameObject.SetActive(used);
+                }
+
+                if (used)
+                {
+                    row.Bind(rows[i]);
+                }
+            }
+
+            if (_historyEmpty != null && _historyEmpty.activeSelf != (count == 0))
+            {
+                _historyEmpty.SetActive(count == 0);
+            }
+
+            if (_historySubtitle != null)
+            {
+                _historySubtitle.text = count == 0
+                    ? "还没有记录 —— 打一场就会自动留下"
+                    : "共 " + count + " 条 · 只记「谁用过」和 8 张牌 · 最多 " + DeckHistoryStore.Capacity + " 条";
+            }
+
+            if (_historyContent != null)
+            {
+                // 两列 → 行数 = ceil(条数 / 2)。高度自己算，不用 ContentSizeFitter
+                // （ScrollRect + Fitter + Grid 在编辑模式下会让 UGUI 反复重排，构建器那边踩过）
+                int rowCount = (count + 1) / 2;
+                float height = rowCount <= 0
+                    ? 0f
+                    : rowCount * HistoryRowHeight + (rowCount - 1) * HistoryRowGap;
+                _historyContent.sizeDelta = new Vector2(_historyContent.sizeDelta.x, height);
+            }
+
+            if (_historyOverlay != null && !_historyOverlay.activeSelf)
+            {
+                _historyOverlay.SetActive(true);
+            }
+
+            if (_historyScroll != null)
+            {
+                // 与卡表同一个坑：先强制重建布局，再归位，顺序不能反
+                Canvas.ForceUpdateCanvases();
+                _historyScroll.StopMovement();
+                _historyScroll.verticalNormalizedPosition = 1f;
+            }
+        }
+
+        public void HideHistory()
+        {
+            if (_historyOverlay != null && _historyOverlay.activeSelf)
+            {
+                _historyOverlay.SetActive(false);
+            }
+        }
+
+        /// <summary>历史面板现在是开的吗（探针 / 关闭逻辑用）。</summary>
+        public bool IsHistoryOpen
+        {
+            get { return _historyOverlay != null && _historyOverlay.activeSelf; }
+        }
+
+        /// <summary>中央一句话浮字（复用战斗里的 FloatTipView，1 秒左右自己淡出）。</summary>
+        public void ShowToast(string message)
+        {
+            if (_toast != null)
+            {
+                _toast.Show(message);
+            }
+        }
+
+        /// <summary>维持至少 <paramref name="count"/> 行（克隆一次，之后只切 active）。</summary>
+        private void EnsureHistoryRows(int count)
+        {
+            if (_historyRowTemplate == null || _historyRowsRoot == null)
+            {
+                return;
+            }
+
+            // ⚠ 模板必须失活：它在 Content 里也是 GridLayout 的一个孩子，
+            //   亮着会自己占掉第一格、还吃掉第一行的点击（2026-11-02 实测抓到）。
+            //   构建器已经会关它，这里再兜一层 —— 存量场景/prefab 不必重跑也正确。
+            if (_historyRowTemplate.gameObject.activeSelf)
+            {
+                _historyRowTemplate.gameObject.SetActive(false);
+            }
+
+            while (_historyRows.Count < count)
+            {
+                DeckHistoryRowView clone = Instantiate(_historyRowTemplate, _historyRowsRoot);
+                clone.name = "HistoryRow_" + _historyRows.Count;
+                clone.gameObject.SetActive(false);
+
+                // ⚠ 闭包捕获的必须是**这一行**，不是循环里会变的那个变量
+                DeckHistoryRowView captured = clone;
+                clone.LoadClicked += delegate { RaiseHistoryLoad(captured.StoreIndex); };
+                clone.DeleteClicked += delegate { RaiseHistoryDelete(captured.StoreIndex); };
+
+                _historyRows.Add(clone);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
         //  内部
         // ══════════════════════════════════════════════════════
 
@@ -540,6 +780,20 @@ namespace MagicBrawl.App
 
         /// <summary>右侧 8 格的卡面宽度（= 格子宽，让卡面正好填满格子）。</summary>
         public const float DeckSlotFaceWidth = 184f;
+
+        /// <summary>历史面板里一行的高度（两列网格的 cell 高）。</summary>
+        public const float HistoryRowHeight = 62f;
+
+        /// <summary>历史面板里行与行的间距。</summary>
+        public const float HistoryRowGap = 10f;
+
+        /// <summary>历史面板里一行的宽度（半个面板减去间距）。</summary>
+        public const float HistoryRowWidth = 734f;
+
+        /// <summary>历史面板里一枚小牌的宽度 / 高度 / 间距（构建器与视图共用）。</summary>
+        public const float HistoryChipWidth = 86f;
+        public const float HistoryChipHeight = 30f;
+        public const float HistoryChipGap = 5f;
 
         /// <summary>牌座暗态的文字色（与 HandPick 弹窗的暗态同色）。</summary>
         private static readonly Color SeatTextOff = new Color32(0x7C, 0x8D, 0xA3, 0xFF);

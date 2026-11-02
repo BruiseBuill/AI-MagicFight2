@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using MagicBrawl.Core;
+using UnityEngine;
 
 namespace MagicBrawl.App
 {
@@ -644,6 +645,72 @@ namespace MagicBrawl.App
         //
         //  用户口径：「该事件对应的场景暂时还没有做好，先姑且用个黑屏 + 按钮的方式替代一下」。
         //  所以这一组颜色只服务「一块黑底 + 一个能点的键」，正式场景做好后这套可以整个删掉。
+
+        // ══════════════════════════════════════════════════════
+        //  自定义战斗 · 历史牌组（2026-11-02）
+        // ══════════════════════════════════════════════════════
+        //
+        //  口径同上面几组：这里只放**静态配色**，构建器把它写进 Image.color；
+        //  运行时只按状态换 sprite / 透明度，不另写一套色。
+
+        /// <summary>历史面板的遮罩（同时是关闭区，必须吃射线盖住整屏）。</summary>
+        public static readonly Color HistoryVeil = new Color(0f, 0f, 0f, 0.55f);
+
+        /// <summary>历史面板底（比主面板略深一档，压在遮罩上仍能分出面）。</summary>
+        public static readonly Color HistoryPanel = Hex("161D29");
+
+        /// <summary>一条记录的底板（比面板底再深一档，否则整行看起来是飘在面板上的）。</summary>
+        public static readonly Color HistoryRow = Hex("10161F");
+
+        /// <summary>一条记录的描边（外圈 1.5px，行与面板靠它分开）。</summary>
+        public static readonly Color HistoryRowEdge = Hex("26334A");
+
+        /// <summary>小牌底板。</summary>
+        public static readonly Color HistoryChip = Hex("1E2939");
+
+        /// <summary>小牌描边。</summary>
+        public static readonly Color HistoryChipEdge = Hex("2C3A4E");
+
+        /// <summary>小牌上的卡名。</summary>
+        public static readonly Color HistoryChipName = Hex("DDE7F5");
+
+        /// <summary>「载入」小键的底 / 描边 / 字。</summary>
+        public static readonly Color HistoryLoadFill = Hex("16394C");
+        public static readonly Color HistoryLoadEdge = Hex("6FD3F0");
+        public static readonly Color HistoryLoadText = Hex("EAF7FF");
+
+        /// <summary>历史牌座上的计数徽标（与「你已选」同一支金）。</summary>
+        public static readonly Color HistoryBadge = Hex("FFD166");
+
+        /// <summary>徽标上的数字（压在金底上，必须深）。</summary>
+        public static readonly Color HistoryBadgeText = Hex("2A1F06");
+
+        // ── 六元素（历史小牌的元素色块 / 符号底色）─────────────────
+        //  与设计稿同一组值；顺序与 CardElement 一一对应，改色只改这里。
+        public static readonly Color ElementIce = Hex("7FD8F5");
+        public static readonly Color ElementWater = Hex("3A8FD6");
+        public static readonly Color ElementElectric = Hex("FFD166");
+        public static readonly Color ElementFire = Hex("FF7043");
+        public static readonly Color ElementGrass = Hex("7BD88F");
+        public static readonly Color ElementStone = Hex("C8A47A");
+
+        /// <summary>
+        /// 某一元素的强调色。<see cref="CardElement.None"/> / Curse 退回次要文字色 ——
+        /// 牌表里已经没有 Curse（模仿已归草系），这里只是兜底，不显示符号由调用方决定。
+        /// </summary>
+        public static Color ElementAccent(CardElement element)
+        {
+            switch (element)
+            {
+                case CardElement.Ice: return ElementIce;
+                case CardElement.Water: return ElementWater;
+                case CardElement.Electric: return ElementElectric;
+                case CardElement.Fire: return ElementFire;
+                case CardElement.Grass: return ElementGrass;
+                case CardElement.Stone: return ElementStone;
+                default: return TextSecondary;
+            }
+        }
 
         /// <summary>把 "RRGGBB" 转成 Color（不解析 # 前缀之外的花样，够用即可）。</summary>
         public static Color Hex(string hex)

@@ -274,7 +274,7 @@ namespace MagicBrawl.Core
             yield return choice;
             int count = 0;
             foreach (Option option in choice.Selected)
-                if (option.Card != null && c.Owner.Hand.Contains(option.Card) && c.CoolCard(option.Card)) count++;
+                if (option.Card != null && c.Owner.Hand.Contains(option.Card) && c.CoolCard(option.Card, 0, "弃牌")) count++;
             if (e.Op == EffectOp.CoolHandForAtk) c.AddAttackPower(count * e.Arg("amount"));
             else if (single) { if (count > 0) c.GrantCombo(); }
             else
@@ -297,7 +297,11 @@ namespace MagicBrawl.Core
             });
             yield return choice;
             Option pick = Pick(choice);
-            if (pick != null) c.CopyAttack(pick.Card.Def);
+            if (pick != null)
+            {
+                c.CopyAttack(pick.Card.Def);
+                c.Emit(new CardCopiedEvent { Seat = c.Seat, CardName = pick.Card.Def.Name });
+            }
         }
         /// <summary>
         /// 雪崩（an）：双方冷却区中剩余冷却 = <c>threshold</c> 的牌全体 +1，<b>可以放弃</b>。
@@ -354,7 +358,7 @@ namespace MagicBrawl.Core
             Option pick = Pick(choice);
             if (pick == null) yield break;
             bool hit = e.Arg("secondary") == EffectDef.LookAtMost ? pick.Card.Def.Power <= e.Arg("threshold") : pick.Card.Def.Power >= e.Arg("threshold");
-            bool cooled = hit && c.CoolCard(pick.Card, e.Arg("cooldownAdjustment"));
+            bool cooled = hit && c.CoolCard(pick.Card, e.Arg("cooldownAdjustment"), "查看");
             c.Emit(new HandRevealedEvent { ViewerSeat = c.Seat, OwnerSeat = c.OpponentSeat, Card = pick.Card, Cooled = cooled, SlotIndex = pick.Value });
         }
     }

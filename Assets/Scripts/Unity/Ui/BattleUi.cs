@@ -1911,6 +1911,11 @@ namespace MagicBrawl.App
             bool win = winnerSeat == LocalSeat;
             bool draw = winnerSeat < 0;
 
+            // 战报（2026-11-02）：先把这一局落盘，再铺结算界面 ——
+            // 结算界面上那张表读的就是刚存下的这一份（BattleRecordStore.All[0]），
+            // 重开一局也不会丢。
+            BattleRecordRecorder.Finish(null, win && !draw, draw, reason);
+
             // M44：结算界面铺开之后，右上角那两枚常驻键（设置 / 卡池）没有意义 ——
             //   对局已经结束，而且它们排在结算界面之后会盖在结算画面上。收起来；
             //   重开一局时 HandleStarted 会把它们放回去（重试 / 再来一局都会走到那里）。

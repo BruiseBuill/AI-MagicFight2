@@ -78,9 +78,15 @@ namespace MagicBrawl.App
             _view.StartClicked += OnStartClicked;
             _view.BackClicked += OnBackClicked;
             _view.ClearClicked += OnClearClicked;
+            _view.RandomClicked += OnRandomClicked;
+            _view.HistoryClicked += OnHistoryClicked;
+            _view.HistoryClosed += OnHistoryClosed;
+            _view.HistoryLoadClicked += OnHistoryLoadClicked;
+            _view.HistoryDeleteClicked += OnHistoryDeleteClicked;
 
             _tab = 0;
             Refresh();
+            _view.SetHistoryBadge(DeckHistoryStore.Count);
 
             Debug.Log("[DeckSelectEntry] 卡表 " + _cards.Count + " 张，"
                       + "你的牌组 " + _playerIds.Count + " 张，对手 " + _enemyIds.Count + " 张。");
@@ -127,6 +133,11 @@ namespace MagicBrawl.App
             _view.StartClicked -= OnStartClicked;
             _view.BackClicked -= OnBackClicked;
             _view.ClearClicked -= OnClearClicked;
+            _view.RandomClicked -= OnRandomClicked;
+            _view.HistoryClicked -= OnHistoryClicked;
+            _view.HistoryClosed -= OnHistoryClosed;
+            _view.HistoryLoadClicked -= OnHistoryLoadClicked;
+            _view.HistoryDeleteClicked -= OnHistoryDeleteClicked;
         }
 
         private List<string> CurrentIds
@@ -200,6 +211,155 @@ namespace MagicBrawl.App
             Refresh();
         }
 
+        // ══════════════════════════════════════════════════════
+        //  随机 8 张（2026-11-02）
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 「随机 8 张」：<b>只洗当前页签这一方</b>，另一方的牌一张不动。
+        ///
+        /// <para><b>池子口径</b>：当前卡表 − <b>另一方已选</b>。双方共用同一副牌表
+        /// （同一张不能重复选），所以随机也不能把对方占着的牌抽给你 ——
+        /// 否则「随机一次，结果开战报错」就成了最气人的路径。</para>
+        ///
+        /// <para>整方覆盖而不是「补空位」：用户点的是「随机选牌」，
+        /// 期望的是<b>换一套</b>；补空位在已有 7 张时会让人以为按钮没反应。</para>
+        /// </summary>
+        private void OnRandomClicked()
+        {
+            var pool = new List<CardDef>(_cards.Count);
+            for (int i = 0; i < _cards.Count; i++)
+            {
+                CardDef card = _cards[i];
+                if (card != null && !OtherIds.Contains(card.Id))
+                {
+                    pool.Add(card);
+                }
+            }
+
+            if (pool.Count < BattleLaunch.DeckSize)
+            {
+                Refresh();
+                _view.SetHint("可选的牌不够 " + BattleLaunch.DeckSize + " 张 —— 对方那边占得太多了。");
+                return;
+            }
+
+            List<string> ids = CurrentIds;
+            ids.Clear();
+            for (int i = 0; i < BattleLaunch.DeckSize; i++)
+            {
+                int pick = UnityEngine.Random.Range(0, pool.Count);
+                ids.Add(pool[pick].Id);
+                pool.RemoveAt(pick);
+            }
+
+            Refresh();
+
+            string side = _tab == 0 ? "你的牌组" : "对手的牌组";
+            _view.SetHint("已随机填入 " + BattleLaunch.DeckSize + " 张（" + side + "）· 另一方的牌没有动");
+            _view.ShowToast("已随机填入 " + BattleLaunch.DeckSize + " 张");
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  历史牌组（2026-11-02）
+        // ══════════════════════════════════════════════════════
+
+        private void OnHistoryClicked()
+        {
+            ShowHistoryNow();
+        }
+
+        private void OnHistoryClosed()
+        {
+            _view.HideHistory();
+        }
+
+        /// <summary>
+        /// 把存档里的某一条整组载入<b>当前页签这一方</b>。
+        ///
+        /// <para><b>与另一方撞牌怎么办</b>：静默覆盖对手会让人莫名其妙丢牌，所以
+        /// 这里选择「从另一方移除那几张」<b>并在提示里说清楚</b> —— 双方共用一张卡表，
+        /// 不处理的话开战校验会直接失败，那才是死路。</para>
+        /// </summary>
+        private void OnHistoryLoadClicked(int storeIndex)
+        {
+            DeckHistoryEntry entry = DeckHistoryStore.At(storeIndex);
+            if (entry == null)
+            {
+                ShowHistoryNow();
+                return;
+            }
+
+            List<CardDef> cards = Resolve(entry.ids);
+            if (cards.Count != BattleLaunch.DeckSize)
+            {
+                _view.SetHint("这一条里有 " + (BattleLaunch.DeckSize - cards.Count)
+                              + " 张已经不在当前卡表里，载入不了。");
+                return;
+            }
+
+            int bumped = 0;
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (OtherIds.Remove(cards[i].Id))
+                {
+                    bumped++;
+                }
+            }
+
+            CurrentIds.Clear();
+            for (int i = 0; i < cards.Count; i++)
+            {
+                CurrentIds.Add(cards[i].Id);
+            }
+
+            Refresh();
+            _view.HideHistory();
+
+            string side = _tab == 0 ? "你的牌组" : "对手的牌组";
+            string owner = entry.Owner == DeckOwner.Player ? "玩家" : "AI";
+            _view.SetHint("已把「" + owner + "」用过的 " + BattleLaunch.DeckSize + " 张载入到「" + side + "」"
+                           + (bumped > 0 ? "　·　另一边有 " + bumped + " 张重复，已从那边移除" : string.Empty));
+            _view.ShowToast("已载入 " + BattleLaunch.DeckSize + " 张");
+        }
+
+        private void OnHistoryDeleteClicked(int storeIndex)
+        {
+            if (!DeckHistoryStore.RemoveAt(storeIndex))
+            {
+                return;
+            }
+
+            _view.SetHistoryBadge(DeckHistoryStore.Count);
+            ShowHistoryNow();
+        }
+
+        /// <summary>把存档投影成行：解析不了的（有卡已不在当前卡表）整条跳过。</summary>
+        private void ShowHistoryNow()
+        {
+            IReadOnlyList<DeckHistoryEntry> all = DeckHistoryStore.All;
+            var rows = new List<DeckHistoryRowData>(all.Count);
+
+            for (int i = 0; i < all.Count; i++)
+            {
+                DeckHistoryEntry entry = all[i];
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                List<CardDef> cards = Resolve(entry.ids);
+                if (cards.Count != BattleLaunch.DeckSize)
+                {
+                    continue;
+                }
+
+                rows.Add(new DeckHistoryRowData(entry.Owner, cards.ToArray(), i));
+            }
+
+            _view.ShowHistory(rows);
+        }
+
         private void OnStartClicked()
         {
             string error;
@@ -209,8 +369,15 @@ namespace MagicBrawl.App
                 return;
             }
 
+            // 2026-11-02：开战这一刻把双方各记一条历史（用户口径「每一次开战之后默认保存」）。
+            // ⚠ 校验通过之后才写 —— 半成品牌组不该进历史，否则第一次载入就会拿到 5 张。
+            DeckHistoryStore.Add(DeckOwner.Player, _playerIds);
+            DeckHistoryStore.Add(DeckOwner.Ai, _enemyIds);
+            _view.SetHistoryBadge(DeckHistoryStore.Count);
+
             Debug.Log("[DeckSelectEntry] 开战 → " + SceneRoutes.BattleScene
-                      + "（你 " + _playerIds.Count + " 张 / 对手 " + _enemyIds.Count + " 张）");
+                      + "（你 " + _playerIds.Count + " 张 / 对手 " + _enemyIds.Count + " 张）"
+                      + " · 历史 " + DeckHistoryStore.Count + " 条");
             SceneRoutes.LoadBattle();
         }
 

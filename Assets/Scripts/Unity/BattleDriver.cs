@@ -448,6 +448,9 @@ namespace MagicBrawl.App
             _engine = engine;
             foreach (var pair in controllers) _controllers.Add(pair.Key, pair.Value);
             _engine.OnEvent += HandleEvent;
+
+            // 战报（2026-11-02）：同一条事件流的另一个消费者 —— 只读，不影响任何结算。
+            BattleRecordRecorder.Attach(_engine, 0);
             _paused = false;
 
             _log.Clear();
