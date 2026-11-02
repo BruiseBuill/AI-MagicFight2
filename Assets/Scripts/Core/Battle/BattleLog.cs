@@ -28,6 +28,26 @@ namespace MagicBrawl.Core
         }
     }
 
+    /// <summary>
+    /// <b>回合开始</b>（2026-11-01）—— <c>TurnNumber</c> 自增之后、<b>补牌之前</b>。
+    ///
+    /// <para><b>为什么需要它</b>：补牌（<see cref="CardDrawnEvent"/>，reason「回合 N 补牌」）
+    /// 本来就是「进入第 N 回合」才发生的，可事件是<b>批量回放</b>的 —— 界面在补牌那一拍之前
+    /// 读到的手牌已经是整批算完的终态，于是第 2 / 3 回合的补牌牌会提前一整批飞进手里
+    /// （用户口径：第 1 回合还没结束就开始补第 2 回合的牌）。这一条给表现层一个明确的
+    /// <b>回合边界拍</b>：先宣告「第 N 回合」，再补牌。</para>
+    ///
+    /// <para>与 <see cref="TurnStartedEvent"/> 是两件事：后者是<b>半场</b>开始
+    /// （某一方开始进攻、冷却 −1），一个回合里有两次；本事件一回合只有一条。</para>
+    /// </summary>
+    public sealed class RoundBeganEvent : BattleEvent
+    {
+        public override string Describe()
+        {
+            return "── 第 " + TurnNumber + " 回合开始";
+        }
+    }
+
     /// <summary>半场开始（已触发冷却 −1）。</summary>
     public sealed class TurnStartedEvent : BattleEvent
     {

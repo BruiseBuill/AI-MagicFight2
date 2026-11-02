@@ -184,6 +184,21 @@ namespace MagicBrawl.App
 
         private readonly List<string> _log = new List<string>();
 
+        /// <summary>
+        /// 本批里「引擎已经算完、但演出还没演到进手牌那一拍」的牌（<see cref="CardInstance.Uid"/>）。
+        ///
+        /// <para><b>为什么需要它</b>（2026-11-01，用户口径）：一次 <c>Submit</c> 会把整批算完 ——
+        /// 玩家交防御牌之后，引擎在同一批里把第 1 回合收尾、第 2 回合补牌、进入换牌决策全部走完。
+        /// 界面每演一拍都要 <c>CollectHand</c> 重绑手牌，读到的却是<b>整批终态</b>：补到的那张牌
+        /// 从玩家自己防御那一拍起就摆在手里了 —— 看起来就是「第 1 回合还没结束就开始补第 2 回合的牌」。</para>
+        ///
+        /// <para>做法与 <c>BattleUi._coolingLive</c> 同一条思路（回放中只认「已演到」的状态）：
+        /// 开播前先把本批所有 <see cref="CardDrawnEvent"/> / <see cref="CardReturnedEvent"/> 的 uid
+        /// 记进来，演到那一条才放行。<see cref="CollectHand"/> 据此过滤 —— 于是补牌/回手的牌
+        /// 严格在自己那一拍出现。</para>
+        /// </summary>
+        private readonly HashSet<int> _handArrivalPending = new HashSet<int>();
+
         private bool _waitingPlayer;
         private DecisionSnapshot _pending;
 
@@ -267,6 +282,13 @@ namespace MagicBrawl.App
             List<CardInstance> hand = _engine.State.Of(seat).Hand;
             for (int i = 0; i < hand.Count; i++)
             {
+                // 还没演到「进手牌」那一拍的牌不算在手牌里（见 _handArrivalPending）：
+                // 引擎是整批算完的，直接读会把补牌 / 回手的牌提前摆进手里。
+                if (_handArrivalPending.Count > 0 && _handArrivalPending.Contains(hand[i].Uid))
+                {
+                    continue;
+                }
+
                 sink.Add(CardSnapshot.From(hand[i]));
             }
         }
@@ -502,6 +524,7 @@ namespace MagicBrawl.App
             _activeController = null;
             // 回放协程被停掉时 IsPlayingBeats 会留在 true（迭代器没有 finally 复位）
             IsPlayingBeats = false;
+            _handArrivalPending.Clear();
             foreach (IParticipantController controller in _controllers.Values) controller.Cancel();
             _controllers.Clear();
             _paused = false;
@@ -624,6 +647,22 @@ namespace MagicBrawl.App
 
             _buffer.RemoveRange(0, count);
 
+            // 先把本批「还没演到的进手牌」记下来（见 _handArrivalPending）：
+            // 补牌的牌必须等演到它自己那一条 CardDrawnEvent 才许进手牌 ——
+            // 否则它会跟着这一批的**第一拍**（例如玩家自己的防御结算）一起冒出来。
+            _handArrivalPending.Clear();
+            for (int i = 0; i < beats.Count; i++)
+            {
+                if (beats[i] is CardDrawnEvent)
+                {
+                    _handArrivalPending.Add(((CardDrawnEvent)beats[i]).Card.Uid);
+                }
+                else if (beats[i] is CardReturnedEvent)
+                {
+                    _handArrivalPending.Add(((CardReturnedEvent)beats[i]).Card.Uid);
+                }
+            }
+
             // 从这里到循环结束，引擎状态都是「整批算完的终态」——
             // 界面必须改用事件累加出来的演出态（见 IsPlayingBeats 的说明）。
             IsPlayingBeats = true;
@@ -641,6 +680,18 @@ namespace MagicBrawl.App
                 if (OnBeat != null)
                 {
                     OnBeat(e);
+                }
+
+                // 演到「进手牌」这一拍 → 从此刻起这张牌才算在手里（见 _handArrivalPending）。
+                // ⚠ 必须排在下面那条「连续发牌合成一拍」的 continue **之前**：被跳过的
+                //   中间那几张也要在这里放行，否则它们会一直悬着，直到整批结束才出现。
+                if (e is CardDrawnEvent)
+                {
+                    _handArrivalPending.Remove(((CardDrawnEvent)e).Card.Uid);
+                }
+                else if (e is CardReturnedEvent)
+                {
+                    _handArrivalPending.Remove(((CardReturnedEvent)e).Card.Uid);
                 }
 
                 // 2026-10-31：**开局发牌合并成一拍**。
@@ -698,6 +749,7 @@ namespace MagicBrawl.App
 
             // 回放结束 = 所有事件都演完了，引擎状态与演出态此刻等价。
             // 下一次界面刷新会以引擎重建（见 BattleUi.SyncCoolingLive）。
+            _handArrivalPending.Clear();
             IsPlayingBeats = false;
         }
 
@@ -989,6 +1041,13 @@ namespace MagicBrawl.App
         /// </summary>
         private static float BeatDuration(BattleEvent e)
         {
+            if (e is RoundBeganEvent)
+            {
+                // 2026-11-01：回合边界要停一下，玩家才读得到「第 N 回合」——
+                // 补牌的牌排在它后面，没有这一停就还是「上一回合最后一下接补牌」。
+                return 0.5f;
+            }
+
             if (e is TurnStartedEvent)
             {
                 return 0.32f;

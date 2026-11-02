@@ -751,6 +751,12 @@ namespace MagicBrawl.Core
             State.InCombo = false;
             State.ComboDepth = 0;
 
+            // 回合宣告拍（2026-11-01）：先把「进入第 N 回合」发出去，补牌排在它后面。
+            //   引擎口径一直是「TurnNumber 自增之后才补」，问题在演出 —— 事件批量回放，
+            //   表现层若在补牌那一拍之前读引擎，就会把第 N 回合的牌提前画在第 N−1 回合里。
+            //   这一条就是那条边界：界面据此先亮出「第 N 回合」，再让补牌进场。
+            Emit(new RoundBeganEvent());
+
             // 刻印 · TurnStart（2026-10-07）：双方已点亮的刻印各触发一次（火炬 at）。
             //   插在这里 = 「回合开始」最靠前的落点；真正的结算由 Advance 的
             //   AdvanceSpecialEffects 在下一拍之前跑完 —— 所以本回合的补牌与替换决策

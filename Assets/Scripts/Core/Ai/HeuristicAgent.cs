@@ -19,9 +19,9 @@ namespace MagicBrawl.Core
     /// <item>全局覆盖：回血卡永远最低，但当「生命上限 − 当前生命 ≥ 2」时强制最高。</item>
     /// </list>
     ///
-    /// <para><b>防御</b>：能挡就挡、同类里挑<b>防御力量最小</b>的牌；能不交光环就不交
-    /// （先找 0 补值的牌 → 其次免疫光环 → 最后才报备防御力量光环）。连击流派例外：
-    /// 只用「非连击、非区域加速」的牌防，且不动用光环，挡不住就直接掉血。</para>
+    /// <para><b>防御</b>：免疫光环能用就用（不交牌、来源牌回手即作废；连击流派同样适用）→
+    /// 零补值挡牌（挑防御力量最小的）→ 连击流派在此放弃（保留手牌打连击）→
+    /// 最后才报备防御力量光环补值。</para>
     ///
     /// <para><b>怪物复写</b>：本类所有关键决策都是 <c>virtual</c>，怪物专属 AI 继承它、
     /// 只覆写需要改的那几条即可（见 <see cref="RushMonsterAgent"/> 示例）。可覆写点：</para>
@@ -257,14 +257,22 @@ namespace MagicBrawl.Core
         }
 
         /// <summary>
-        /// 出牌时随牌提交的进攻光环。默认<b>不消耗</b>任何光环
-        /// —— 用户口径只要求「优先打出带光环的卡」（那是出牌选择，会让它进冷却区、
-        /// 成为未来的光环来源），没要求进攻时主动消耗指示物。
-        /// 怪物子类若想打爆发，可覆写它返回需要的光环序号。
+        /// 出牌时随牌提交的进攻光环（2026-11-01 v2）。
+        ///
+        /// <para>用户口径：<b>「当前牌的力量 + 光环值 &gt; 9 → 不用，否则用」</b>
+        /// （9 是全卡表最高防御力量，再加不会让更多牌挡不住）；
+        /// 连击 / 快速回填只在进攻可用，能用就用。具体实现见 <see cref="AuraPolicy.PickAttackAuras"/>。</para>
+        ///
+        /// <para>怪物子类若想改变「烧不烧」的口径，覆写本方法即可（例如只在致死时烧）。</para>
         /// </summary>
         protected virtual int[] AurasForAttack(DecisionRequest req, CardInstance card)
         {
-            return null;
+            if (!UseAuras)
+            {
+                return null;
+            }
+
+            return AuraPolicy.PickAttackAuras(req, card, State);
         }
 
         /// <summary>
@@ -698,12 +706,9 @@ namespace MagicBrawl.Core
 
             // ★ 例外：手上有**可用的免疫光环**时不再掷骰。
             //   免疫不交牌、直接免掉整次攻击（含双发），是白拿的手段 —— 赌掉它没有道理。
-            //   ⚠ 判据必须与「管线真的会用掉它」一致，所以带上 UseAuras 与防御口径：
-            //     ① UseAuras = false 的调用点根本不会消耗光环；
-            //     ② 连击流派（AvoidComboAndZone）在管线里于「用免疫」那一支 **之前** 就放弃防御了
-            //        （它刻意不动用任何光环）—— 那种情况下这里返回 true 也会被拦下，
-            //        与其制造「闸门放行、管线却放弃」的自相矛盾，不如让它照常走张数规则。
-            if (UseAuras && style != DefenseStyle.AvoidComboAndZone && HasImmuneAuraOption(req))
+            //   ⚠ 2026-11-01：连击流派也照用。免疫不进力量预算，与「留着牌打连击」不冲突；
+            //     管线里的免疫判定已经提到最前（见 DecideDefense ①），两处口径一致。
+            if (UseAuras && HasImmuneAuraOption(req))
             {
                 return true;
             }
@@ -743,7 +748,7 @@ namespace MagicBrawl.Core
         /// <summary>
         /// 本拍有没有<b>可用的免疫光环选项</b>（石化 ak / 石盾 al 那类 —— 它们覆盖整次攻击、含双发）。
         ///
-        /// <para>复用 <see cref="FirstAuraIndex"/>（与管线 <c>DecideDefense</c> 第 ③ 步同一个判据），
+        /// <para>复用 <see cref="FirstAuraIndex"/>（与管线 <c>DecideDefense</c> 第 ① 步同一个判据），
         /// 所以「闸门说恒防」与「管线真的会用掉那枚免疫」永远是同一件事 ——
         /// 判据各写一份的下场是「闸门放行、管线却放弃」这种自相矛盾的行为。</para>
         /// </summary>
@@ -823,6 +828,10 @@ namespace MagicBrawl.Core
         /// <summary>
         /// 防御：见类注释。流派 3（连击）自动切到 <see cref="DefenseStyle.AvoidComboAndZone"/>，
         /// 其余流派走 <see cref="DefenseStyle.Cheapest"/>。
+        ///
+        /// <para><b>顺序（2026-11-01 v2）</b>：免疫 → 零补值挡牌 → 连击流派放弃 → 力量光环补值。
+        /// 免疫被提到最前，因为它是唯一「不交牌」的手段，而且来源牌回手就作废 ——
+        /// 能用掉却留着，等于白扔。</para>
         /// </summary>
         protected virtual DecisionResponse DecideDefense(DecisionRequest req)
         {
@@ -839,20 +848,9 @@ namespace MagicBrawl.Core
 
             DefenseStyle style = DefenseStyleOf(req.Seat);
 
-            // ① 不用光环就能挡住 → 直接出（最省资源）。
-            Option free = PickCheapestDefense(req, style, true);
-            if (free != null)
-            {
-                return SubmitDefense(req, free, null);
-            }
-
-            // ② 连击流派不动用光环（也就不用免疫）→ 挡不住就掉血。
-            if (style == DefenseStyle.AvoidComboAndZone)
-            {
-                return Of(req, req.SkipOption);
-            }
-
-            // ③ 免疫光环：不用交牌、比「补值 + 出牌」更省。只在还没准备过光环时决策。
+            // ① 免疫光环：这一拍能用就用掉 —— 不交牌，且来源牌回手时未使用的会作废。
+            //    连击流派同样适用：免疫不进力量预算，与「留着牌打连击」不冲突。
+            //    只在还没准备过光环时决策（免疫走直接提交，不需要预算法）。
             if (!req.AurasPrepared)
             {
                 int immune = FirstAuraIndex(req, true);
@@ -860,6 +858,19 @@ namespace MagicBrawl.Core
                 {
                     return DecisionResponse.WithAuras(req.Seat, null, new[] { immune });
                 }
+            }
+
+            // ② 零补值挡牌（Value == 0）：不用光环补值，但**仍要交出这张牌**。
+            Option free = PickCheapestDefense(req, style, true);
+            if (free != null)
+            {
+                return SubmitDefense(req, free, null);
+            }
+
+            // ③ 连击流派不动用**力量光环**挡刀（手牌留给连击）→ 挡不住就掉血。
+            if (style == DefenseStyle.AvoidComboAndZone)
+            {
+                return Of(req, req.SkipOption);
             }
 
             // ④ 需要防御力量光环补值。

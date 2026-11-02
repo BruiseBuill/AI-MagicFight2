@@ -1286,7 +1286,16 @@ namespace MagicBrawl.App
                 return;
             }
 
-            if (e is TurnStartedEvent)
+            if (e is RoundBeganEvent)
+            {
+                // 回合边界（2026-11-01）：先把「第 N 回合」亮出来，补牌排在这一拍之后。
+                //   ⚠ 攻防读数 / 手牌提示都是上一回合留下来的，先收掉 —— 这一拍只讲
+                //     「新的回合开始了」，别让「挡住了 · 生命 -1」跟补牌同屏。
+                _stage.ClearContext();
+                _stage.SetAttack(string.Empty);
+                _stage.SetPhase("回合开始", e.TurnNumber);
+            }
+            else if (e is TurnStartedEvent)
             {
                 var ts = (TurnStartedEvent)e;
                 _stage.BeginTurn(ts.Seat == LocalSeat, ts.IsComboFollowUp, e.TurnNumber);
