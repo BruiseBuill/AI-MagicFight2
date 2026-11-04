@@ -28,6 +28,12 @@ namespace MagicBrawl.Core
         /// <summary>没出牌 / 无可挡之牌。</summary>
         public const string EmptyDefense = "空";
 
+        /// <summary>TMP 富文本里的「盾」（挡住）。用汉字而不是符号 —— 字体一定有，语义也不会歧义。</summary>
+        private const string ShieldRich = "<color=#5AA9E8>盾</color>";
+
+        /// <summary>TMP 富文本里的「免」（免疫光环）。</summary>
+        private const string ImmuneRich = "<color=#9B7BE8>免</color>";
+
         /// <summary>效果串（不含括号）。没有效果返回空串。</summary>
         public static string Notes(HalfRecord half)
         {
@@ -70,8 +76,8 @@ namespace MagicBrawl.Core
                 return empty + " " + Damage(hit.Damage, useGlyph);
             }
 
-            string shield = useGlyph ? "\u25A3" : "挡";
-            if (hit.Result == RecordHitResult.BlockedImmune) shield = useGlyph ? "\u25C8" : "免";
+            string shield = useGlyph ? ShieldRich : "挡";
+            if (hit.Result == RecordHitResult.BlockedImmune) shield = useGlyph ? ImmuneRich : "免";
 
             return string.IsNullOrEmpty(hit.DefenseCard)
                 ? shield
@@ -120,7 +126,7 @@ namespace MagicBrawl.Core
         /// <summary>结算 / 详情页顶部那行图例。</summary>
         public static string Legend(bool useGlyph)
         {
-            string shield = useGlyph ? "\u25A3" : "挡";
+            string shield = useGlyph ? ShieldRich : "挡";
             return shield + " 挡住　♥ 掉血　空 未防　/ 多段";
         }
 

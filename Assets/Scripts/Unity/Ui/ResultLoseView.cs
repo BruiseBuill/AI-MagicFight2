@@ -97,6 +97,22 @@ namespace MagicBrawl.App
             }
         }
 
+        /// <summary>
+        /// 把<b>本局的记录表</b>铺进失败结算面板（2026-11-02）。
+        ///
+        /// <para>位置比胜利界更靠上、也更矮：这一块的空档只有「提示行 +250」到「按钮 −180」
+        /// 之间那么高，行高会按回合数自动压。</para>
+        /// </summary>
+        public void ShowRecord(MagicBrawl.Core.BattleRecord record)
+        {
+            if (_root == null || record == null)
+            {
+                return;
+            }
+
+            BattleRecordPanel.Build((RectTransform)_root.transform, record, 20f, 300f);
+        }
+
         /// <summary>铺开失败界面。</summary>
         /// <param name="title">横幅文字（「战斗失败」/「平局」）。</param>
         /// <param name="hint">横幅下面那行提示；空串时该行隐藏。</param>

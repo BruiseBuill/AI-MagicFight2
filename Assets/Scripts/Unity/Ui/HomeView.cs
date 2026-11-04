@@ -62,12 +62,64 @@ namespace MagicBrawl.App
         private UnityAction _standardHandler;
         private UnityAction _customHandler;
 
+        /// <summary>「对局记录」这枚运行时克隆出来的键。</summary>
+        private Button _historyButton;
+
         private void Awake()
         {
             Debug.Log("[HomeView] Awake: 标准="
                       + (_standardButton == null ? "null" : _standardButton.name)
                       + " 自定义=" + (_customButton == null ? "null" : _customButton.name));
+            EnsureHistoryButton();
             Hook();
+        }
+
+        /// <summary>
+        /// 首页第三枚键「对局记录」（2026-11-02）。
+        ///
+        /// <para><b>为什么克隆而不是让构建器加</b>：加字段就要改 <c>HomeUiBuilder</c> 并重跑
+        /// 整套场景构建；这枚键要的底板 / 字色与「自定义对战」完全同源，
+        /// 克隆一份挪到下面最省事，也不动任何 Prefab（与 <c>ResultWinView.EnsureHomeButton</c> 同一手法）。</para>
+        /// </summary>
+        private void EnsureHistoryButton()
+        {
+            if (_historyButton != null || _customButton == null)
+            {
+                return;
+            }
+
+            Transform parent = _customButton.transform.parent;
+            if (parent == null)
+            {
+                return;
+            }
+
+            GameObject clone = Instantiate(_customButton.gameObject, parent);
+            clone.name = "HistoryButton";
+            clone.transform.SetAsLastSibling();
+
+            var rt = (RectTransform)clone.transform;
+            var src = (RectTransform)_customButton.transform;
+            rt.anchoredPosition = src.anchoredPosition + new Vector2(0f, -src.sizeDelta.y - 18f);
+
+            TMP_Text label = clone.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.text = "对局记录";
+            }
+
+            _historyButton = clone.GetComponent<Button>();
+            if (_historyButton != null)
+            {
+                // 克隆不携带运行时监听（同 ResultWinView 的注释），先清再挂。
+                _historyButton.onClick.RemoveAllListeners();
+                _historyButton.onClick.AddListener(OnHistoryClicked);
+            }
+        }
+
+        private void OnHistoryClicked()
+        {
+            BattleRecordOverlay.ShowHistory(BattleRecordOverlay.Hide);
         }
 
         // ⚠ 注册写在 OnEnable 而不是只在 Awake：Awake 每个对象只跑一次，

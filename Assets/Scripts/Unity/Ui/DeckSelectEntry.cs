@@ -371,8 +371,10 @@ namespace MagicBrawl.App
 
             // 2026-11-02：开战这一刻把双方各记一条历史（用户口径「每一次开战之后默认保存」）。
             // ⚠ 校验通过之后才写 —— 半成品牌组不该进历史，否则第一次载入就会拿到 5 张。
-            DeckHistoryStore.Add(DeckOwner.Player, _playerIds);
+            // ⚠ 先写 AI 再写玩家：两条都是插到最前，反过来的话列表第一行永远是「对手那套」，
+            //   而玩家打开历史第一个想找的通常是自己刚用的那副。
             DeckHistoryStore.Add(DeckOwner.Ai, _enemyIds);
+            DeckHistoryStore.Add(DeckOwner.Player, _playerIds);
             _view.SetHistoryBadge(DeckHistoryStore.Count);
 
             Debug.Log("[DeckSelectEntry] 开战 → " + SceneRoutes.BattleScene

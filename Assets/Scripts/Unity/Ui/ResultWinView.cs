@@ -314,6 +314,24 @@ namespace MagicBrawl.App
         }
 
         /// <summary>
+        /// 把<b>本局的记录表</b>铺进结算面板（2026-11-02）。
+        ///
+        /// <para>铺在「横幅」与「按钮」之间那条空带子里 —— 这一版没有战斗奖励，
+        /// 卡位 / 金币行整组是隐藏的（<c>Show(null, 0)</c>），正好让给记录表。</para>
+        ///
+        /// <para>开关这块界面的仍是 <see cref="Show"/>：本方法只挂内容，被 <c>_root</c> 一并开合。</para>
+        /// </summary>
+        public void ShowRecord(BattleRecord record)
+        {
+            if (_root == null || record == null)
+            {
+                return;
+            }
+
+            BattleRecordPanel.Build((RectTransform)_root.transform, record);
+        }
+
+        /// <summary>
         /// 改底部主键上的文字（「再来一局」/「继续」）。
         ///
         /// <para>与 <c>BattleUi.SetAgainLabel</c> 同一做法：文案写死在构建器里，

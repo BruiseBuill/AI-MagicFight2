@@ -9,6 +9,111 @@ using UnityEngine.UI;
 namespace MagicBrawl.App
 {
     /// <summary>
+    /// <b>把记录表铺进一个已有的结算面板</b>（2026-11-02）。
+    ///
+    /// <para>与 <see cref="BattleRecordOverlay"/> 的区别只在外壳：那个自己起 Canvas（历史详情用），
+    /// 这个往调用方给的 <c>RectTransform</c> 里塞 —— 因为 <c>ResultWinRoot</c> 的坐标是
+    /// <b>相对画面中心</b>、y 朝上（<c>UiLayout.ResultWin*</c> 的口径），
+    /// 自己另起一块反而对不齐横幅与按钮。</para>
+    ///
+    /// <para><b>占哪块地方</b>：横幅底边约 +310，按钮顶边约 −309；
+    /// 中间的卡位 / 金币行在这一版是隐藏的（<c>Show(null, 0)</c>），所以整条带子都是空的。
+    /// 表就摆在这条带子里，纵向居中略偏上。</para>
+    /// </summary>
+    public static class BattleRecordPanel
+    {
+        private const string NodeName = "BattleRecordPanel";
+        private const float Width = 1500f;
+        private const float Height = 540f;
+
+        private const float TurnX = 8f;
+        private const float TurnWidth = 62f;
+
+        private const float FirstX = 72f;
+        private const float SecondX = 780f;
+        private const float HalfWidth = 640f;
+
+        /// <summary>铺进 <paramref name="parent"/>（幂等：重复调用会先拆掉上一次那张）。</summary>
+        public static void Build(RectTransform parent, BattleRecord record)
+        {
+            Build(parent, record, -15f, Height);
+        }
+
+        /// <summary>
+        /// 指定纵向中心与高度。失败界的空档比胜利界窄（提示行在 +250、按钮在 −180），
+        /// 所以那边传一个更矮的表，行高由 <c>rows</c> 自动压缩。
+        /// </summary>
+        public static void Build(RectTransform parent, BattleRecord record, float centerY, float height)
+        {
+            if (parent == null || record == null) return;
+
+            Transform old = parent.Find(NodeName);
+            if (old != null) UnityEngine.Object.Destroy(old.gameObject);
+
+            var go = new GameObject(NodeName, typeof(RectTransform));
+            var root = (RectTransform)go.transform;
+            root.SetParent(parent, false);
+            root.anchorMin = new Vector2(0.5f, 0.5f);
+            root.anchorMax = new Vector2(0.5f, 0.5f);
+            root.pivot = new Vector2(0.5f, 0.5f);
+            root.anchoredPosition = new Vector2(0f, centerY);
+            root.sizeDelta = new Vector2(Width, height);
+
+            Label(root, "回合", 20f, UiTheme.TextSecondary, new Vector2(TurnX, -14f), new Vector2(TurnWidth, 28f));
+            Label(root, "你 → 敌", 20f, UiTheme.TextSecondary, new Vector2(FirstX, -14f), new Vector2(HalfWidth, 28f));
+            Label(root, "敌 → 你", 20f, UiTheme.TextSecondary, new Vector2(SecondX, -14f), new Vector2(HalfWidth, 28f));
+
+            Label(root, BattleRecordText.Legend(true), 18f, UiTheme.TextSecondary,
+                new Vector2(Width - 560f, -14f), new Vector2(560f, 28f));
+
+            int rows = Mathf.Max(1, record.Rows.Count);
+            float rowH = Mathf.Min(46f, (height - 60f) / rows);
+            float y = -48f;
+
+            for (int i = 0; i < record.Rows.Count; i++)
+            {
+                TurnRecord row = record.Rows[i];
+                bool last = i == record.Rows.Count - 1;
+
+                Label(root, "T" + row.Turn, Mathf.Min(24f, rowH * 0.62f),
+                    last ? UiTheme.WinAccent : UiTheme.TextSecondary,
+                    new Vector2(TurnX, y), new Vector2(TurnWidth, rowH));
+
+                Label(root, BattleRecordText.Half(row.First, true), Mathf.Min(24f, rowH * 0.62f), UiTheme.TextPrimary,
+                    new Vector2(FirstX, y), new Vector2(HalfWidth, rowH * 1.6f));
+
+                Label(root, BattleRecordText.Half(row.Second, true), Mathf.Min(24f, rowH * 0.62f), UiTheme.TextPrimary,
+                    new Vector2(SecondX, y), new Vector2(HalfWidth, rowH * 1.6f));
+
+                y -= rowH;
+            }
+        }
+
+        private static void Label(RectTransform parent, string text, float size, Color color,
+            Vector2 pos, Vector2 box)
+        {
+            var go = new GameObject("Cell", typeof(RectTransform));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(parent, false);
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = pos;
+            rt.sizeDelta = box;
+
+            var label = go.AddComponent<TextMeshProUGUI>();
+            TMP_FontAsset font = BattleRecordOverlay.FontAsset();
+            if (font != null) label.font = font;
+            label.text = text ?? string.Empty;
+            label.fontSize = size;
+            label.color = color;
+            label.alignment = TextAlignmentOptions.TopLeft;
+            label.raycastTarget = false;
+            label.enableWordWrapping = true;
+        }
+    }
+
+    /// <summary>
     /// <b>对局记录的界面</b>（2026-11-02）：结算页那张表 + 首页的历史列表。
     ///
     /// <para><b>为什么整块在运行时搭、不进 Prefab</b>：这块界面要按「这局有几个回合」
@@ -274,7 +379,7 @@ namespace MagicBrawl.App
             return button;
         }
 
-        private static TMP_FontAsset FontAsset()
+        internal static TMP_FontAsset FontAsset()
         {
             if (_font != null) return _font;
 

@@ -2043,6 +2043,12 @@ namespace MagicBrawl.App
 
             _resultWin.SetContinueLabel("再来一局");
             _resultWin.Show(null, 0);
+
+            // 战报（2026-11-02）：刚才 Finish 时已经把这一局插到了存档表头 —— All[0] 就是它。
+            if (BattleRecordStore.Count > 0)
+            {
+                _resultWin.ShowRecord(BattleRecordStore.All[0]);
+            }
         }
 
         /// <summary>
@@ -2067,6 +2073,12 @@ namespace MagicBrawl.App
                           + "　·　种子 " + _driver.LastSeed;
 
             _resultLose.Show(draw ? "平局" : "战斗失败", hint);
+
+            // 战报（2026-11-02）：与胜利界同一份数据源。
+            if (BattleRecordStore.Count > 0)
+            {
+                _resultLose.ShowRecord(BattleRecordStore.All[0]);
+            }
         }
 
         /// <summary>
